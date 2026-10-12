@@ -28,3 +28,30 @@ enum PowerManager {
             .takeRetainedValue() as? Bool
     }
 }
+
+/// The lid opening or closing, or an external display changing whether closing it sleeps the Mac
+@MainActor
+final class LidMonitor {
+    /// kIOPMMessageClamshellStateChange, a macro Swift can't import
+    nonisolated private static let clamshellChange: UInt32 = 0xE003_4100
+    private let onChange: @MainActor () -> Void
+    private var notification: io_object_t = 0
+
+    init(onChange: @escaping @MainActor () -> Void) {
+        self.onChange = onChange
+        let rootDomain = IOServiceGetMatchingService(kIOMainPortDefault, IOServiceMatching("IOPMrootDomain"))
+        guard rootDomain != 0 else { return }
+        defer { IOObjectRelease(rootDomain) }
+        guard let port = IONotificationPortCreate(kIOMainPortDefault) else { return }
+        CFRunLoopAddSource(CFRunLoopGetMain(), IONotificationPortGetRunLoopSource(port).takeUnretainedValue(),
+                           .commonModes)
+        let context = Unmanaged.passUnretained(self).toOpaque()
+        let result = IOServiceAddInterestNotification(port, rootDomain, kIOGeneralInterest, { context, _, message, _ in
+            guard let context, message == LidMonitor.clamshellChange else { return }
+            let monitor = Unmanaged<LidMonitor>.fromOpaque(context).takeUnretainedValue()
+            // Fires on main run loop
+            MainActor.assumeIsolated { monitor.onChange() }
+        }, context, &notification)
+        if result != KERN_SUCCESS { logger.error("Couldn't watch the lid: \(result)") }
+    }
+}

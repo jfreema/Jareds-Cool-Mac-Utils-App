@@ -28,6 +28,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let stayAwake: ToggleRow
         let power: ToggleRow
         let online: ToggleRow
+        let lowPower: ToggleRow
         let action: NSMenuItem
         let snap: ToggleRow
         let thirds: ToggleRow
@@ -170,9 +171,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let online = ToggleRow("Only While Connected to the Internet", indented: true) { [weak self] on in
             self?.controller.setRequiresInternet(on)
         }
+        let lowPower = ToggleRow("Low Power Mode with Lid Closed", indented: true) { [weak self] on in
+            self?.controller.setUsesLowPower(on)
+        }
         menu.addItem(viewItem(stayAwake))
         menu.addItem(viewItem(power))
         menu.addItem(viewItem(online))
+        menu.addItem(viewItem(lowPower))
         // Sleep Now, Finish Setup… or Turn Sleep Back On…, when the status calls for one
         let action = NSMenuItem(title: "", action: nil, keyEquivalent: "")
         action.target = self
@@ -194,8 +199,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         menu.addItem(NSMenuItem(title: "Quit Yafie",
                                 action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
 
-        openMenu = OpenMenu(summary: summary, stayAwake: stayAwake, power: power, online: online, action: action,
-                            snap: snap, thirds: thirds, snapAction: snapAction, preview: preview,
+        openMenu = OpenMenu(summary: summary, stayAwake: stayAwake, power: power, online: online, lowPower: lowPower,
+                            action: action, snap: snap, thirds: thirds, snapAction: snapAction, preview: preview,
                             previewAction: previewAction, snip: snip, snipAction: snipAction, login: login)
         refreshMenu()
     }
@@ -216,14 +221,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         menu.stayAwake.isOn = controller.isEnabled
         menu.power.isOn = controller.requiresPower
         menu.online.isOn = controller.requiresInternet
+        menu.lowPower.isOn = controller.usesLowPower
         // Only mean something while the main switch is on
         menu.power.isEnabled = controller.isEnabled
         menu.online.isEnabled = controller.isEnabled
+        menu.lowPower.isEnabled = controller.isEnabled
         menu.login.isOn = SMAppService.mainApp.status == .enabled
 
         let action: (title: String, selector: Selector)? = switch status {
         case .active: ("Sleep Now", #selector(sleepNow))
-        case .needsSetup: ("Finish Setup…", #selector(finishSetup))
+        case .needsSetup, .lowPowerNeedsSetup: ("Finish Setup…", #selector(finishSetup))
         case .restoreFailed: ("Turn Sleep Back On…", #selector(retryRestore))
         case .off, .waitingForPower, .lowBattery, .waitingForInternet: nil
         }
@@ -396,6 +403,7 @@ private extension LidAwakeController.Status {
         case .active(let onBattery):
             onBattery ? "On battery: stays awake with the lid closed" : "Plugged in: stays awake with the lid closed"
         case .needsSetup: "Needs your password once to finish setup"
+        case .lowPowerNeedsSetup: "Needs your password once more for Low Power Mode"
         case .restoreFailed: "Couldn't turn sleep back on"
         }
     }
@@ -405,7 +413,8 @@ private extension LidAwakeController.Status {
         switch self {
         case .off, .waitingForPower, .lowBattery, .waitingForInternet: NSImage(named: "MenuIconOutline")
         case .active: NSImage(named: "MenuIcon")
-        case .needsSetup, .restoreFailed: NSImage(systemSymbolName: "exclamationmark.triangle", accessibilityDescription: nil)
+        case .needsSetup, .lowPowerNeedsSetup, .restoreFailed:
+            NSImage(systemSymbolName: "exclamationmark.triangle", accessibilityDescription: nil)
         }
     }
 }

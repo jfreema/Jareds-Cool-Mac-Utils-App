@@ -7,7 +7,8 @@ let logger = Logger(subsystem: Bundle.main.bundleIdentifier ?? "yafie", category
 @MainActor
 final class LidAwakeController {
     enum Status: Equatable {
-        case off, waitingForPower, lowBattery, waitingForInternet, active(onBattery: Bool), needsSetup, restoreFailed
+        case off, waitingForPower, lowBattery, waitingForInternet, active(onBattery: Bool), needsSetup,
+             lowPowerNeedsSetup, restoreFailed
     }
 
     /// On battery, the Mac sleeps as usual from this charge down, in percent
@@ -26,6 +27,10 @@ final class LidAwakeController {
     private(set) var requiresInternet = UserDefaults.standard.bool(forKey: Keys.requiresInternet) {
         didSet { UserDefaults.standard.set(requiresInternet, forKey: Keys.requiresInternet) }
     }
+    /// Low Power Mode while it keeps the Mac awake with the lid closed, which starts out on
+    private(set) var usesLowPower = UserDefaults.standard.object(forKey: Keys.usesLowPower) as? Bool ?? true {
+        didSet { UserDefaults.standard.set(usesLowPower, forKey: Keys.usesLowPower) }
+    }
     private var isOnACPower = PowerSource.isOnACPower
     private var batteryLevel = PowerSource.batteryLevel
     private lazy var connectivity = ConnectivityMonitor { [weak self] in self?.changed() }
@@ -40,6 +45,18 @@ final class LidAwakeController {
             watchdog.ownsSleepDisabled = ownsSleepDisabled
         }
     }
+    /// Low Power Mode as it was before Yafie turned it on, ours to put back
+    private var savedLowPower = LowPowerSetting(UserDefaults.standard.string(forKey: Keys.savedLowPower) ?? "") {
+        didSet {
+            UserDefaults.standard.set(savedLowPower?.description, forKey: Keys.savedLowPower)
+            watchdog.savedLowPower = savedLowPower
+        }
+    }
+    /// The sudoers rule covers Low Power Mode, which rules from before it don't. Nil until checked.
+    private var canSetLowPower: Bool?
+    /// Done for this lid closing
+    private var lowPowerApplied = false
+    private var writingLowPower = false
     private let watchdog = Watchdog()
     /// nil if unknown or overridden
     private var lastWritten: Bool?
@@ -54,6 +71,7 @@ final class LidAwakeController {
     private var sleepRequestGeneration = 0
     private var started = false
     private var powerMonitor: PowerSourceMonitor?
+    private var lidMonitor: LidMonitor?
     private var recheckTimer: Timer?
 
     private enum Keys {
@@ -61,12 +79,15 @@ final class LidAwakeController {
         static let requiresPower = "requiresPower"
         static let requiresInternet = "requiresInternet"
         static let ownsSleepDisabled = "ownsSleepDisabled"
+        static let usesLowPower = "usesLowPower"
+        static let savedLowPower = "savedLowPower"
     }
 
     var status: Status {
         if restoreFailed { return .restoreFailed }
         guard isEnabled else { return .off }
         if needsSetup { return .needsSetup }
+        if lowPowerNeedsSetup { return .lowPowerNeedsSetup }
         if isWaitingForPower { return .waitingForPower }
         if isBatteryLow { return .lowBattery }
         return isOffline ? .waitingForInternet : .active(onBattery: !isOnACPower)
@@ -75,17 +96,26 @@ final class LidAwakeController {
     private var isWaitingForPower: Bool { requiresPower && !isOnACPower }
     private var isBatteryLow: Bool { !isOnACPower && (batteryLevel ?? 100) <= Self.lowBattery }
     private var isOffline: Bool { requiresInternet && !connectivity.isOnline }
+    /// A rule from before Low Power Mode, so the menu asks for the password once more
+    private var lowPowerNeedsSetup: Bool { usesLowPower && canSetLowPower == false }
 
     private var wantsSleepDisabled: Bool {
         isEnabled && !isWaitingForPower && !isBatteryLow && !isOffline && !needsSetup && !pausedUntilWake
+    }
+
+    /// Only where closing the lid would sleep the Mac without Yafie, so not with an external display in use
+    private var wantsLowPower: Bool {
+        usesLowPower && wantsSleepDisabled && canSetLowPower != false
+            && PowerManager.isLidClosed == true && PowerManager.lidClosingCausesSleep != false
     }
 
     // MARK: Lifecycle
 
     func start() {
         started = true
-        watchdog.start(ownsSleepDisabled: ownsSleepDisabled)
+        watchdog.start(ownsSleepDisabled: ownsSleepDisabled, savedLowPower: savedLowPower)
         powerMonitor = PowerSourceMonitor { [weak self] in self?.powerSourceMayHaveChanged() }
+        lidMonitor = LidMonitor { [weak self] in self?.changed() }
         let notifications = NSWorkspace.shared.notificationCenter
         _ = notifications.addObserver(forName: NSWorkspace.didWakeNotification,
                                       object: nil, queue: .main) { [weak self] _ in
@@ -102,12 +132,25 @@ final class LidAwakeController {
         recheckTimer = timer
         // Also cleans up after crashes
         changed()
+        // Rules from before Low Power Mode don't cover it
+        if FileManager.default.fileExists(atPath: SleepSetting.rulePath) {
+            Task {
+                await checkLowPower()
+                changed()
+            }
+        }
     }
 
     /// Synchronous, the app is exiting
     func stop() {
         terminating = true
-        guard started, ownsSleepDisabled else { return }
+        guard started else { return }
+        // First, since putting sleep back can sleep the Mac
+        if let savedLowPower, LowPowerSetting.applySynchronously(savedLowPower) {
+            self.savedLowPower = nil
+            logger.notice("Put Low Power Mode back before quitting")
+        }
+        guard ownsSleepDisabled else { return }
         sleepRequestGeneration += 1
         if SleepSetting.setSynchronously(disabled: false) {
             ownsSleepDisabled = false
@@ -138,8 +181,10 @@ final class LidAwakeController {
         changed()
     }
 
-    /// No sudoers rule yet, so turning on asks for a password
-    var needsPasswordToEnable: Bool { !FileManager.default.fileExists(atPath: SleepSetting.rulePath) }
+    /// No sudoers rule yet, or one from before Low Power Mode, so turning on asks for a password
+    var needsPasswordToEnable: Bool {
+        !FileManager.default.fileExists(atPath: SleepSetting.rulePath) || (usesLowPower && canSetLowPower != true)
+    }
 
     func setRequiresPower(_ required: Bool) {
         requiresPower = required
@@ -148,6 +193,12 @@ final class LidAwakeController {
 
     func setRequiresInternet(_ required: Bool) {
         requiresInternet = required
+        changed()
+    }
+
+    /// With a rule from before Low Power Mode, the menu then shows Finish Setup…
+    func setUsesLowPower(_ on: Bool) {
+        usesLowPower = on
         changed()
     }
 
@@ -169,9 +220,10 @@ final class LidAwakeController {
             onChange?()  // the switch catches up, even if setup was cancelled
         }
 
-        let ready = await SleepSetting.isPasswordFree()
+        var ready = await SleepSetting.isPasswordFree()
+        if ready, usesLowPower { ready = await checkLowPower() }
         if !ready {
-            let prompt = "Yafie needs your password once, so it can turn lid sleep off and back on "
+            let prompt = "Yafie needs your password once, so it can change lid sleep and Low Power Mode "
                 + "without asking again."
             switch Administrator.run(SleepSetting.installRuleCommand, prompt: prompt) {
             case .done:
@@ -186,6 +238,12 @@ final class LidAwakeController {
                 Alert.show("Setup didn't finish",
                            "The permission was added, but changing the sleep setting still asks for a password.")
                 return
+            }
+            // Stays awake anyway
+            if !(await checkLowPower()), usesLowPower {
+                usesLowPower = false
+                Alert.show("Low Power Mode with Lid Closed is off",
+                           "The permission was added, but changing Low Power Mode still asks for a password.")
             }
         }
         isEnabled = true
@@ -231,6 +289,7 @@ final class LidAwakeController {
 
     private func changed() {
         connectivity.isWatching = isEnabled && requiresInternet && !isWaitingForPower
+        reconcileLowPower()  // first, so it's back before a sleep
         reconcile()
         onChange?()
     }
@@ -328,5 +387,71 @@ final class LidAwakeController {
             guard generation == sleepRequestGeneration, !terminating else { return }
             requestSleep(onlyForClosedLid: onlyForClosedLid, attempt: attempt + 1)
         }
+    }
+
+    // MARK: Low Power Mode
+
+    /// Match Low Power Mode to the lid
+    private func reconcileLowPower() {
+        guard started, !terminating, !writingLowPower else { return }
+        if wantsLowPower {
+            if !lowPowerApplied { turnOnLowPower() }
+        } else {
+            lowPowerApplied = false
+            // After a failure, waits for setup
+            if savedLowPower != nil, canSetLowPower != false { putLowPowerBack() }
+        }
+    }
+
+    private func turnOnLowPower() {
+        lowPowerApplied = true
+        // Still on from before, maybe a crash
+        guard savedLowPower == nil else { return }
+        writingLowPower = true
+        Task {
+            // Nothing to do without Low Power Mode, or with it on already
+            if let off = await LowPowerSetting.current()?.whereOff, !terminating {
+                savedLowPower = off  // before the write, crash-safe
+                if await LowPowerSetting.apply(off.inLowPower) {
+                    logger.notice("Low Power Mode is on, with the lid closed")
+                } else {
+                    logger.error("Couldn't turn on Low Power Mode without a password")
+                    savedLowPower = nil  // sudo refuses them all alike, so none took
+                    canSetLowPower = false  // the menu asks for setup
+                    lowPowerApplied = false
+                }
+            }
+            writingLowPower = false
+            guard !terminating else { return }
+            changed()  // catch up
+        }
+    }
+
+    private func putLowPowerBack() {
+        guard let saved = savedLowPower else { return }
+        writingLowPower = true
+        Task {
+            let succeeded = await LowPowerSetting.apply(saved)
+            writingLowPower = false
+            guard !terminating else { return }
+            if succeeded {
+                savedLowPower = nil
+                logger.notice("Low Power Mode is back as it was")
+            } else {
+                logger.error("Couldn't put Low Power Mode back without a password")
+                canSetLowPower = false  // the menu asks for setup
+            }
+            changed()  // catch up
+        }
+    }
+
+    /// Whether the sudoers rule covers Low Power Mode
+    @discardableResult
+    private func checkLowPower() async -> Bool {
+        // Nothing to change without a lid
+        var ready = true
+        if PowerManager.isLidClosed != nil { ready = await LowPowerSetting.isPasswordFree() }
+        canSetLowPower = ready
+        return ready
     }
 }

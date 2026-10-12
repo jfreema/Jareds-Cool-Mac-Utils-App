@@ -9,10 +9,13 @@
 - **Check whether sleep is off right now:** `pmset -g | grep SleepDisabled` (`1` means off).
 - **Turn sleep back on by hand:** `sudo pmset disablesleep 0`
 - **Mac won't sleep after a crash or power loss.** If macOS crashes or loses power while sleep is off, the setting stays off through the restart until Yafie next starts and turns it back on. Open Yafie, or turn sleep back on by hand (above).
+- **Warning triangle after updating to 1.0.6.** **Low Power Mode with Lid Closed** needs your password once more. Click Yafie and choose **Finish Setup…**, or turn that option off.
+- **Check whether Low Power Mode is on right now:** `pmset -g | grep powermode` (`1` means on).
+- **Low Power Mode stays on after a crash or power loss.** Like sleep, it goes back to your setting the next time Yafie starts. Or turn it off in **System Settings → Battery**.
 - **Another app with a closed-lid mode.** Don't use it at the same time as Yafie. Both apps change the same setting.
 - **Sleeps even though you're online.** With **Only While Connected to the Internet** on, Yafie counts the Mac as offline when `https://captive.apple.com` doesn't load for about a minute, for example on a network that blocks it. Turn that option off.
 - **Sleeps on battery.** **Only While Connected to Power** is on, or the battery is at 10% or less.
-- **Two Yafie processes in Activity Monitor.** The one without an icon is the watchdog, which turns sleep back on if the app crashes. It ends by itself when the app quits.
+- **Two Yafie processes in Activity Monitor.** The one without an icon is the watchdog, which turns sleep back on, and puts Low Power Mode back, if the app crashes. It ends by itself when the app quits.
 
 ## Guitar tuner
 

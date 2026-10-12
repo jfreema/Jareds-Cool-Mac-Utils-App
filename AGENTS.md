@@ -29,7 +29,7 @@ The app is one flat folder, `Sources/Yafie`, and the tests are in `Tests/YafieTe
 | Area | Files |
 |---|---|
 | Menu, alerts, launch | `AppDelegate`, `Yafie` (entry point, one copy at a time), `ToggleRow`, `MenuSwitch` |
-| Stay awake | `LidAwakeController`, `SleepSetting` (`pmset` through a sudoers rule), `PowerManager`, `PowerSource`, `Connectivity`, `Watchdog` (a second process that turns sleep back on if Yafie dies) |
+| Stay awake | `LidAwakeController`, `SleepSetting` (`pmset` through a sudoers rule), `LowPowerSetting` (Low Power Mode with the lid closed, through the same rule), `PowerManager` (and `LidMonitor`), `PowerSource`, `Connectivity`, `Watchdog` (a second process that turns sleep back on, and puts Low Power Mode back, if Yafie dies) |
 | Window snapping | `WindowSnapper`, `SnapLayout` (pure geometry) |
 | App preview | `AppPreview`, `DockWatcher` (the icon under the pointer), `AppWindows` (windows and their pictures), `PreviewPanel`, `PreviewLayout` (pure geometry) |
 | Screenshot tool | `ScreenSnipper`, `SnipDrawing` (pure drawing and layout), `SnipEditor`, `TextRecognizer` (Copy Text, with Vision) |
@@ -42,6 +42,7 @@ Put logic that can be pure, like geometry, drawing and parsing, in pure types wi
 ## Things that bite
 
 - **The main thread runs lid sleep, so never block it.** Accessibility calls run on a queue with a timeout. Core Audio runs in child processes (`--tuner-listen`, `--drum-play`), because AVAudioEngine can hang for good after an audio device changes.
+- **The sudoers rule allows only the `pmset` commands Yafie runs** (`SleepSetting.allowedCommands`). A new command needs a new rule, so everyone has to enter their password again: Yafie tests the rule with a real `sudo -n` write and shows **Finish Setup…** if it's old, as it did for Low Power Mode. `sudo -l` can't tell, since it says yes to anything an admin may run with a password. `SleepSettingTests` checks that every command matches the rule.
 - **App Preview reads the Dock through Accessibility.** The Dock selects the icon under the pointer and posts `AXSelectedChildrenChanged` on its list, as DockDoor relies on too. Windows are matched to their pictures with the private `_AXUIElementGetWindow`, found with `dlsym`, since two windows can share a frame and title. Its panel is non-activating and must never take the focus.
 - **The drum player only plays.** It never touches an input, so it can't switch a Bluetooth headset to call mode. Its clock runs on its audio thread, a sample at a time, so the metronome and loop stay in time. The app writes its commands to a pipe set never to wait and never to raise SIGPIPE, so a stuck or dead player can't block or kill Yafie.
 - **Trackpad drumming uses `NSTouch`**, so taps reach the pads only while the drum window is key and the pointer is over them. A tap can also arrive as a click, which the pads ignore.

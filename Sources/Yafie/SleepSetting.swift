@@ -1,16 +1,27 @@
 import Foundation
 
-/// `pmset disablesleep` via sudoers rule
+/// `pmset disablesleep` via sudoers rule, which covers LowPowerSetting too
 enum SleepSetting {
     static let rulePath = "/etc/sudoers.d/yafie"
 
-    /// Keeps writes in order
-    private static let queue = DispatchQueue(label: "yafie.sleep-setting")
+    /// What the rule lets Yafie run without a password. sudo matches each like a shell pattern.
+    static let allowedCommands = [
+        "/usr/bin/pmset disablesleep 1", "/usr/bin/pmset disablesleep 0",
+        "/usr/bin/pmset -[bc] lowpowermode [012]", "/usr/bin/pmset -[bc] powermode [012]",
+    ]
+
+    /// Keeps writes in order, Low Power Mode's too
+    static let queue = DispatchQueue(label: "yafie.sleep-setting")
+
+    /// Runs after queued writes
+    static func queued<T: Sendable>(_ work: @escaping @Sendable () -> T) async -> T {
+        await withCheckedContinuation { continuation in
+            queue.async { continuation.resume(returning: work()) }
+        }
+    }
 
     static func set(disabled: Bool) async -> Bool {
-        await withCheckedContinuation { continuation in
-            queue.async { continuation.resume(returning: write(disabled)) }
-        }
+        await queued { write(disabled) }
     }
 
     /// Runs after queued writes
@@ -20,20 +31,20 @@ enum SleepSetting {
 
     /// Tests by rewriting current value
     static func isPasswordFree() async -> Bool {
-        await withCheckedContinuation { continuation in
-            queue.async {
-                guard FileManager.default.fileExists(atPath: rulePath),
-                      let current = configuredValue() else {
-                    return continuation.resume(returning: false)
-                }
-                continuation.resume(returning: write(current))
+        await queued {
+            guard FileManager.default.fileExists(atPath: rulePath), let current = configuredValue() else {
+                return false
             }
+            return write(current)
         }
+    }
+
+    static var rule: String {
+        "#\(getuid()) ALL=(root) NOPASSWD: " + allowedCommands.joined(separator: ", ")
     }
 
     /// Bad sudoers file breaks sudo
     static var installRuleCommand: String {
-        let rule = "#\(getuid()) ALL=(root) NOPASSWD: /usr/bin/pmset disablesleep 1, /usr/bin/pmset disablesleep 0"
         let staged = rulePath + ".new"  // sudo skips dotted names
         return "/bin/mkdir -p /etc/sudoers.d"
             + " && /usr/bin/printf '%s\\n' '\(rule)' > \(staged)"

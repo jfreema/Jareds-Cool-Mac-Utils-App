@@ -1,6 +1,6 @@
 import Foundation
 
-/// Restores sleep if app dies
+/// Restores sleep, and Low Power Mode, if app dies
 @MainActor
 final class Watchdog {
     static let argument = "--watchdog"
@@ -8,11 +8,16 @@ final class Watchdog {
     var ownsSleepDisabled = false {
         didSet { send() }
     }
+    /// What to put Low Power Mode back to
+    var savedLowPower: LowPowerSetting? {
+        didSet { send() }
+    }
     private var process: Process?
     private var pipe: FileHandle?
 
-    func start(ownsSleepDisabled: Bool) {
+    func start(ownsSleepDisabled: Bool, savedLowPower: LowPowerSetting?) {
         self.ownsSleepDisabled = ownsSleepDisabled
+        self.savedLowPower = savedLowPower
         launch()
     }
 
@@ -52,8 +57,9 @@ final class Watchdog {
     }
 
     private func send() {
-        // Respawn resends state
-        try? pipe?.write(contentsOf: Data((ownsSleepDisabled ? "1\n" : "0\n").utf8))
+        // Respawn resends state, like "1 lowpowermode -b 0 -c 0"
+        let line = [ownsSleepDisabled ? "1" : "0", savedLowPower?.description].compactMap { $0 }.joined(separator: " ")
+        try? pipe?.write(contentsOf: Data((line + "\n").utf8))
     }
 
     /// Child side, blocks until EOF
@@ -63,14 +69,26 @@ final class Watchdog {
             signal(signalNumber, SIG_IGN)
         }
         var owned = false
+        var savedLowPower: LowPowerSetting?
         while let line = readLine() {
-            owned = line == "1"
+            owned = line.hasPrefix("1")
+            savedLowPower = LowPowerSetting(line.dropFirst(2))
         }
-        guard owned else { return }
+        guard owned || savedLowPower != nil else { return }
 
-        logger.notice("Yafie quit without turning sleep back on")
         // Let in-flight writes land
         Thread.sleep(forTimeInterval: 1)
+        // First, since sleep may follow
+        if let savedLowPower {
+            logger.notice("Yafie quit without putting Low Power Mode back")
+            if LowPowerSetting.applySynchronously(savedLowPower) {
+                logger.notice("The watchdog put Low Power Mode back")
+            } else {
+                logger.error("The watchdog couldn't put Low Power Mode back")
+            }
+        }
+        guard owned else { return }
+        logger.notice("Yafie quit without turning sleep back on")
         guard SleepSetting.setSynchronously(disabled: false) else {
             logger.error("The watchdog couldn't turn sleep back on")
             return

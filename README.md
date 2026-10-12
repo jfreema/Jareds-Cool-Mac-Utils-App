@@ -154,12 +154,13 @@ Bluetooth headphones play everything a moment late, so you hear each tap after y
 
 Keeps a MacBook awake with its lid closed, plugged in or on battery.
 
-**Turn it on:** click Yafie in the menu bar, turn on **Stay Awake with Lid Closed**, and enter your password once. The two options under it narrow it down:
+**Turn it on:** click Yafie in the menu bar, turn on **Stay Awake with Lid Closed**, and enter your password once. The options under it:
 
 - **Only While Connected to Power** keeps it awake only while it's plugged in. Unplug it and it sleeps as usual, right away if the lid is shut. This one starts out on, so turn it off to stay awake on battery too.
 - **Only While Connected to the Internet** keeps it awake only while it's online.
+- **Low Power Mode with Lid Closed** turns on Low Power Mode while the lid is shut, so the Mac runs cooler, if slower. Open the lid and your own setting comes back. It leaves Low Power Mode alone while an external display is in use. This one starts out on.
 
-**While it's on**, the Mac won't sleep even when idle, though the display still turns off. Choose **Sleep Now** to sleep anyway. On battery, it sleeps as usual once the battery is down to 10%. Don't leave it in a bag while it's awake: with the lid closed, it can get hot.
+**While it's on**, the Mac won't sleep even when idle, though the display still turns off. Choose **Sleep Now** to sleep anyway. On battery, it sleeps as usual once the battery is down to 10%. Don't leave it in a bag while it's awake: with the lid closed, it can get hot, even in Low Power Mode.
 
 Its menu bar icon shows what it's doing:
 
@@ -172,11 +173,13 @@ Its menu bar icon shows what it's doing:
 <details>
 <summary>How it works</summary>
 
-Yafie turns sleep off with `pmset disablesleep 1` and back on with `pmset disablesleep 0`. If the lid is closed at that point, it also puts the Mac to sleep, unless an external display is in use. The one-time password adds `/etc/sudoers.d/yafie`, which lets your account run only those two commands without a password.
+Yafie turns sleep off with `pmset disablesleep 1` and back on with `pmset disablesleep 0`. If the lid is closed at that point, it also puts the Mac to sleep, unless an external display is in use. The one-time password adds `/etc/sudoers.d/yafie`, which lets your account run only those two commands, and the ones for Low Power Mode, without a password.
+
+Low Power Mode is `pmset lowpowermode`, or `pmset powermode` on Macs that have High Power Mode too. macOS keeps one setting for battery and one for the power adapter. Yafie only turns on the ones that are off, and puts just those back.
 
 Online means a Wi-Fi, Ethernet or cellular connection (a VPN alone doesn't count) where `captive.apple.com` loads. Yafie checks once a minute.
 
-If Yafie quits or crashes, sleep comes back on within a second.
+If Yafie quits or crashes, sleep comes back on, and Low Power Mode goes back to your setting, within a second.
 
 </details>
 
