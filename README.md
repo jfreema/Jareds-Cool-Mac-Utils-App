@@ -142,6 +142,7 @@ Tap out a beat on the trackpad, with a metronome, and loop a bar or 4 bars of it
 - **Play** starts the metronome, and **Stop** stops it. Space does both. Set **Tempo** from 40 to 240 beats a minute, or turn **Metronome** off.
 - **Record** records what you play for one pass of the **Loop**, a bar or 4 bars, then plays it over and over. From a stop, a bar's count-in comes first. Record again to add more, or **Clear** to start over.
 - **Quantize** snaps the loop's hits to the nearest quarter (1/4), eighth (1/8) or sixteenth note (1/16), which starts out chosen. **None** plays them as you played them. Change it any time: the loop keeps every hit as you played it, so all of them move right away.
+- **Feel** adds **Light Swing** or **Strong Swing** to alternating eighths or sixteenths. **Laid Back** delays snare backbeats; **Loose Garage** adds repeating pushes and pulls across the drums. **Amount** sets the strength. Change them while the loop plays: your original timing stays saved. **Straight**, or Amount at 0%, uses ordinary quantize; Quantize **None** bypasses Feel. Live taps and the metronome stay unchanged.
 
 Bluetooth headphones play everything a moment late, so you hear each tap after you play it. Wired headphones and the Mac's speakers don't lag. With Bluetooth:
 

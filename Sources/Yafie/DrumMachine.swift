@@ -117,6 +117,20 @@ final class DrumMachineModel {
             send(.quantize(quantize))
         }
     }
+    var feel: DrumFeel {
+        didSet {
+            defaults.set(feel.rawValue, forKey: Keys.feel)
+            send(.feel(feel))
+        }
+    }
+    private(set) var feelAmount: Double
+
+    func setFeelAmount(_ value: Double) {
+        feelAmount = DrumSequencer.clampedFeelAmount(value).rounded()
+        defaults.set(feelAmount, forKey: Keys.feelAmount)
+        send(.feelAmount(feelAmount))
+    }
+
     /// 1 or 4
     var bars: Int {
         didSet {
@@ -139,6 +153,8 @@ final class DrumMachineModel {
         static let muteTaps = "drumMuteTaps"
         static let bluetoothOffset = "drumBluetoothOffset"
         static let quantize = "drumQuantize"
+        static let feel = "drumFeel"
+        static let feelAmount = "drumFeelAmount"
         static let bars = "drumBars"
     }
 
@@ -149,6 +165,8 @@ final class DrumMachineModel {
         areTapsMuted = defaults.bool(forKey: Keys.muteTaps)
         bluetoothOffset = Self.steppedOffset(defaults.double(forKey: Keys.bluetoothOffset))
         quantize = defaults.string(forKey: Keys.quantize).flatMap(DrumQuantize.init) ?? .sixteenth
+        feel = defaults.string(forKey: Keys.feel).flatMap(DrumFeel.init) ?? .straight
+        feelAmount = DrumSequencer.clampedFeelAmount(defaults.object(forKey: Keys.feelAmount) as? Double ?? 100)
         bars = defaults.integer(forKey: Keys.bars) == 4 ? 4 : 1
     }
 
@@ -225,6 +243,8 @@ final class DrumMachineModel {
         send(.bluetoothOffset(bluetoothOffset))
         send(.bars(bars))
         send(.quantize(quantize))
+        send(.feel(feel))
+        send(.feelAmount(feelAmount))
         send(.load(pattern))
         if isPlaying { send(.play) }
     }
@@ -252,7 +272,7 @@ final class DrumMachineModel {
 
 /// The pads over the controls. All its state is in the model: the Command Line Tools can't build SwiftUI's @State.
 struct DrumMachineView: View {
-    static let size = CGSize(width: 520, height: 500)
+    static let size = CGSize(width: 520, height: 540)
 
     let model: DrumMachineModel
     let retry: () -> Void
@@ -369,6 +389,23 @@ private struct DrumControls: View {
                 Toggle("Metronome", isOn: Binding(get: { model.isMetronomeOn }, set: { model.isMetronomeOn = $0 }))
                 Spacer(minLength: 0)
             }
+            HStack(spacing: 10) {
+                Picker("Feel", selection: Binding(get: { model.feel }, set: { model.feel = $0 })) {
+                    ForEach(DrumFeel.allCases, id: \.self) { feel in
+                        Text(feel.name).tag(feel)
+                    }
+                }
+                .pickerStyle(.menu)
+                .fixedSize()
+                .help("Swing alternates subdivisions; Laid Back delays backbeats; Loose Garage pushes and pulls")
+                Text("Amount")
+                Slider(value: Binding(get: { model.feelAmount }, set: { model.setFeelAmount($0) }), in: 0...100)
+                Text("\(Int(model.feelAmount))%")
+                    .monospacedDigit()
+                    .frame(width: 44, alignment: .trailing)
+            }
+            .disabled(model.quantize == .none)
+            .help("Feel changes the loop, leaving live taps and the metronome steady. Quantize None bypasses it")
             HStack(spacing: 10) {
                 Text("Tempo")
                 Slider(value: Binding(get: { model.tempo }, set: { model.setTempo($0) }), in: DrumSequencer.tempos)

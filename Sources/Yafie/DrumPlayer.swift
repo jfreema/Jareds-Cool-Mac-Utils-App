@@ -140,6 +140,8 @@ final class DrumCore: @unchecked Sendable {
             case .muteTaps(let muted): sequencer.areTapsMuted = muted
             case .bluetoothOffset(let offset): sequencer.bluetoothOffset = offset
             case .quantize(let quantize): sequencer.quantize = quantize
+            case .feel(let feel): sequencer.feel = feel
+            case .feelAmount(let amount): sequencer.feelAmount = amount
             case .bars(let bars): sequencer.setBars(bars)
             case .play: sequencer.play()
             case .stop: sequencer.stop()
@@ -185,6 +187,8 @@ enum DrumCommand: Equatable, Sendable {
     /// In milliseconds
     case bluetoothOffset(Double)
     case quantize(DrumQuantize)
+    case feel(DrumFeel)
+    case feelAmount(Double)
     case bars(Int)
     case play, stop, record, clear
     /// The loop, after the player started over
@@ -198,6 +202,8 @@ enum DrumCommand: Equatable, Sendable {
         case .muteTaps(let muted): "mutetaps \(muted ? "on" : "off")"
         case .bluetoothOffset(let offset): "btoffset \(offset)"
         case .quantize(let quantize): "quantize \(quantize.rawValue)"
+        case .feel(let feel): "feel \(feel.rawValue)"
+        case .feelAmount(let amount): "feelamount \(amount)"
         case .bars(let bars): "bars \(bars)"
         case .play: "play"
         case .stop: "stop"
@@ -229,6 +235,12 @@ enum DrumCommand: Equatable, Sendable {
         case ("quantize", 2):
             guard let quantize = DrumQuantize(rawValue: parts[1]) else { return nil }
             self = .quantize(quantize)
+        case ("feel", 2):
+            guard let feel = DrumFeel(rawValue: parts[1]) else { return nil }
+            self = .feel(feel)
+        case ("feelamount", 2):
+            guard let amount = Double(parts[1]), amount.isFinite, (0...100).contains(amount) else { return nil }
+            self = .feelAmount(amount)
         case ("bars", 2):
             guard let bars = Int(parts[1]), bars == 1 || bars == 4 else { return nil }
             self = .bars(bars)

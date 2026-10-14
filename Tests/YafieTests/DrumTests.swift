@@ -268,6 +268,82 @@ struct DrumSequencerTests {
         #expect(run(&sequencer, for: Self.bar).sounds.map(\.frame) == [168 * 250])
     }
 
+    @Test func swingFollowsTheSubdivisionAndLeavesBeatsSteady() {
+        var sequencer = sequencer()
+        sequencer.feel = .strongSwing
+        #expect(sequencer.snapped(DrumNote(pad: .hiHat, tick: 24)).tick == 32)
+        #expect(sequencer.snapped(DrumNote(pad: .hiHat, tick: 48)).tick == 48)
+        sequencer.quantize = .eighth
+        #expect(sequencer.snapped(DrumNote(pad: .hiHat, tick: 48)).tick == 64)
+        #expect(sequencer.snapped(DrumNote(pad: .kick, tick: 96)).tick == 96)
+        sequencer.feel = .lightSwing
+        #expect(sequencer.snapped(DrumNote(pad: .hiHat, tick: 48)).tick == 58)
+        sequencer.quantize = .quarter
+        #expect(sequencer.snapped(DrumNote(pad: .snare, tick: 96)).tick == 96)
+    }
+
+    @Test func feelChangesPlaybackWithoutChangingTheRecording() {
+        var sequencer = sequencer()
+        sequencer.isMetronomeOn = false
+        let note = DrumNote(pad: .hiHat, tick: 24)
+        sequencer.load([note])
+        sequencer.play()
+        sequencer.feel = .strongSwing
+        #expect(run(&sequencer, for: Self.bar).sounds.map(\.frame) == [32 * 250])
+        sequencer.feelAmount = 50
+        #expect(run(&sequencer, for: Self.bar).sounds.map(\.frame) == [28 * 250])
+        sequencer.feelAmount = 0
+        #expect(run(&sequencer, for: Self.bar).sounds.map(\.frame) == [24 * 250])
+        #expect(sequencer.pattern == [note])
+    }
+
+    @Test func laidBackOnlyDelaysSnareBackbeats() {
+        var sequencer = sequencer()
+        sequencer.feel = .laidBack
+        #expect(sequencer.snapped(DrumNote(pad: .snare, tick: 96)).tick == 100)
+        #expect(sequencer.snapped(DrumNote(pad: .snare, tick: 288)).tick == 292)
+        #expect(sequencer.snapped(DrumNote(pad: .kick, tick: 96)).tick == 96)
+        #expect(sequencer.snapped(DrumNote(pad: .snare, tick: 48)).tick == 48)
+    }
+
+    @Test func garageRepeatsAcrossBarsAndBluetoothCorrectionComesFirst() {
+        var sequencer = sequencer()
+        sequencer.feel = .looseGarage
+        sequencer.setBars(4)
+        #expect(sequencer.snapped(DrumNote(pad: .kick, tick: 24)).tick == 22)
+        #expect(sequencer.snapped(DrumNote(pad: .kick, tick: 408)).tick == 406)
+        #expect(sequencer.snapped(DrumNote(pad: .hiHat, tick: 0)).tick == 0)
+        sequencer.bluetoothOffset = 125 // 24 ticks at 120 BPM
+        #expect(sequencer.snapped(DrumNote(pad: .kick, tick: 48, overBluetooth: true)).tick == 22)
+        sequencer.quantize = .none
+        #expect(sequencer.snapped(DrumNote(pad: .kick, tick: 49, overBluetooth: true)).tick == 25)
+    }
+
+    @Test func swungLastSubdivisionPlaysOnceAcrossTheLoopBoundary() {
+        var sequencer = sequencer()
+        sequencer.isMetronomeOn = false
+        sequencer.feel = .strongSwing
+        sequencer.load([DrumNote(pad: .hiHat, tick: 360)])
+        sequencer.play()
+        #expect(run(&sequencer, for: 2 * Self.bar).sounds.map(\.frame) == [368 * 250, 752 * 250])
+        #expect(sequencer.snapped(DrumNote(pad: .hiHat, tick: 383)).tick == 0)
+    }
+
+    @Test func swungLiveHitDoesNotPlayTwice() {
+        var sequencer = sequencer()
+        sequencer.feel = .strongSwing
+        sequencer.isMetronomeOn = false
+        sequencer.play()
+        sequencer.record()
+        _ = run(&sequencer, for: 24 * 250)
+        var events: [DrumSequencer.Event] = []
+        var reports: [DrumSequencer.Report] = []
+        sequencer.hit(.hiHat, events: &events, reports: &reports)
+        #expect(events.count == 1)
+        #expect(run(&sequencer, for: Self.bar).sounds.isEmpty)
+        #expect(run(&sequencer, for: Self.bar).sounds.map(\.frame) == [8 * 250])
+    }
+
     @Test func aHitPlayedAgainAsTheNextPassStartsIsKeptOnce() {
         var sequencer = sequencer()
         sequencer.play()
@@ -352,7 +428,8 @@ struct DrumKitTests {
 
 struct DrumLineTests {
     @Test(arguments: [DrumCommand.hit(.hiHat), .tempo(92), .metronome(false), .bars(4), .play, .stop, .record, .clear,
-                      .quantize(.none), .quantize(.eighth), .muteTaps(true), .muteTaps(false), .bluetoothOffset(125),
+                      .quantize(.none), .quantize(.eighth), .feel(.strongSwing), .feelAmount(50),
+                      .muteTaps(true), .muteTaps(false), .bluetoothOffset(125),
                       .load([DrumNote(pad: .kick, tick: 0), DrumNote(pad: .snare, tick: 288)]), .load([]),
                       .load([DrumNote(pad: .kick, tick: 0, overBluetooth: true), DrumNote(pad: .kick, tick: 0)])])
     func commandsRoundTrip(command: DrumCommand) {
@@ -369,7 +446,7 @@ struct DrumLineTests {
 
     @Test(arguments: ["", "hit", "hit cowbell", "bars 2", "tempo fast", "metronome maybe", "quantize 1/3", "load kick",
                       "play now", "mutetaps", "mutetaps maybe", "btoffset", "btoffset lots", "btoffset 900",
-                      "load kick:0:wifi"])
+                      "load kick:0:wifi", "feel unknown", "feelamount nan", "feelamount -1", "feelamount 101"])
     func ignoresGarbageCommands(line: String) {
         #expect(DrumCommand(line: line) == nil)
     }
@@ -422,7 +499,19 @@ struct DrumMachineModelTests {
         model.togglePlay()
         model.playerStarted()
         #expect(sent() == [.play, .tempo(100), .metronome(true), .muteTaps(false), .bluetoothOffset(0), .bars(1),
-                           .quantize(.sixteenth), .load([DrumNote(pad: .snare, tick: 96)]), .play])
+                           .quantize(.sixteenth), .feel(.straight), .feelAmount(100),
+                           .load([DrumNote(pad: .snare, tick: 96)]), .play])
+    }
+
+    @Test func feelIsRememberedAndSentToThePlayer() {
+        let (model, sent) = model()
+        model.feel = .laidBack
+        model.setFeelAmount(42)
+        let restored = DrumMachineModel(defaults: defaults)
+        #expect(restored.feel == .laidBack && restored.feelAmount == 42)
+        #expect(sent() == [.feel(.laidBack), .feelAmount(42)])
+        model.setFeelAmount(200)
+        #expect(model.feelAmount == 100)
     }
 
     @Test func theBluetoothOffsetGoesIn5msStepsFrom0To400() {

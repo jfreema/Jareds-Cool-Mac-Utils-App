@@ -58,6 +58,41 @@ enum DrumQuantize: String, CaseIterable, Sendable {
     var name: String { self == .none ? "None" : rawValue }
 }
 
+enum DrumFeel: String, CaseIterable, Sendable {
+    case straight, lightSwing, strongSwing, laidBack, looseGarage
+
+    var name: String {
+        switch self {
+        case .straight: "Straight"
+        case .lightSwing: "Light Swing"
+        case .strongSwing: "Strong Swing"
+        case .laidBack: "Laid Back"
+        case .looseGarage: "Loose Garage"
+        }
+    }
+
+    /// Repeats each bar; the downbeat stays grounded. Swing follows the selected subdivision.
+    func offset(pad: DrumPad, tick: Int, grid: Int) -> Double {
+        let step = (tick % DrumSequencer.ticksPerBar + DrumSequencer.ticksPerBar)
+            % DrumSequencer.ticksPerBar / (DrumSequencer.ticksPerBeat / 4)
+        switch self {
+        case .straight: return 0
+        case .lightSwing, .strongSwing:
+            guard grid < DrumSequencer.ticksPerBeat, tick / grid % 2 != 0 else { return 0 }
+            return Double(grid) * (self == .lightSwing ? 0.2 : 1.0 / 3.0)
+        case .laidBack:
+            return pad == .snare && (step == 4 || step == 12) ? 4 : 0
+        case .looseGarage:
+            guard step != 0 else { return 0 }
+            switch pad {
+            case .kick: return step % 4 == 0 ? 0 : -2
+            case .snare: return step % 4 == 0 ? 3 : 1
+            case .hiHat: return step % 2 == 0 ? -1 : 2
+            }
+        }
+    }
+}
+
 /// The drum machine's clock: the metronome, and a loop of a bar or four, counted in ticks, 96 to a beat, as MIDI
 /// sequencers count. That's fine enough to keep a hit where it was played. Pure, so it's tested. The player's audio
 /// thread moves it on a buffer at a time.
@@ -111,6 +146,19 @@ struct DrumSequencer {
     var areTapsMuted = false
     var quantize = DrumQuantize.sixteenth {
         didSet { snapAll() }
+    }
+    var feel = DrumFeel.straight {
+        didSet { snapAll() }
+    }
+    var feelAmount: Double = 100 {
+        didSet {
+            feelAmount = Self.clampedFeelAmount(feelAmount)
+            snapAll()
+        }
+    }
+
+    static func clampedFeelAmount(_ value: Double) -> Double {
+        value.isFinite ? min(max(value, 0), 100) : 100
     }
     /// Frames from making a sound to hearing it, as macOS reports it
     var latency: Double = 0
@@ -223,13 +271,16 @@ struct DrumSequencer {
 
     /// Where a hit sounds: where it was heard, on the quantize grid's nearest line, in the loop
     func snapped(_ note: DrumNote) -> DrumNote {
-        DrumNote(pad: note.pad, tick: wrapped(snapped(heard(note.tick, overBluetooth: note.overBluetooth))))
+        let tick = heard(note.tick, overBluetooth: note.overBluetooth)
+        return DrumNote(pad: note.pad, tick: wrapped(snapped(tick, pad: note.pad)))
     }
 
     /// Halfway between two lines goes to the later one, before the loop's start too
-    private func snapped(_ tick: Int) -> Int {
+    private func snapped(_ tick: Int, pad: DrumPad) -> Int {
         guard let grid = quantize.ticks else { return tick }
-        return Int((Double(tick) / Double(grid) + 0.5).rounded(.down)) * grid
+        let straight = Int((Double(tick) / Double(grid) + 0.5).rounded(.down)) * grid
+        let offset = feel.offset(pad: pad, tick: straight, grid: grid) * feelAmount / 100
+        return straight + Int(offset.rounded())
     }
 
     /// Where a hit was heard: one played along to Bluetooth, earlier by the offset
@@ -264,7 +315,7 @@ struct DrumSequencer {
         sounding.insert(snapped(note))
         reports.append(.recorded(note))
         // Snapped forward to a tick still to come, it would sound again a moment later. Muted, it sounds only then.
-        let sounds = snapped(at)
+        let sounds = snapped(at, pad: pad)
         if !areTapsMuted, sounds >= next, heardLive.count < heardLive.capacity { heardLive.append((pad, sounds)) }
     }
 

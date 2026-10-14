@@ -26,6 +26,8 @@
 - **A third Yafie process in Activity Monitor while the tuner is open.** That's the tuner's listener. It listens in a process of its own, so a stuck audio device can't freeze Yafie, and it ends when you close the tuner.
 ## Drum machine
 
+- **Feel makes no difference.** Quantize **None** bypasses it. Choose a grid, a feel other than **Straight**, and raise **Amount**. Swing needs eighths or sixteenths with hits on alternating subdivisions; Laid Back affects snare hits on beats 2 and 4.
+
 - **Tapping the trackpad doesn't play the drums.** Click the drum machine to bring it to the front, and keep the pointer over its pads: the trackpad's taps go to the window under the pointer.
 - **Hits sound late.** Bluetooth headphones and speakers add a delay that no app can take out. Turn on **Mute Taps** to play along to the metronome and the loop without hearing your taps late, or use wired headphones or the Mac's own speakers.
 - **Taps light up the pads but make no sound.** **Mute Taps** is on. Turn it off to hear them.
