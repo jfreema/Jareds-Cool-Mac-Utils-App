@@ -46,8 +46,8 @@ struct DrumSequencerTests {
         let (sounds, reports) = run(&sequencer, for: 2 * Self.bar)
         #expect(sounds.map(\.frame) == (0..<8).map { $0 * Self.beat })
         #expect(sounds.map(\.sound) == [.accent, .click, .click, .click, .accent, .click, .click, .click])
-        #expect(reports.first == .beat(bar: 1, beat: 1, phase: .playing))
-        #expect(reports.last == .beat(bar: 1, beat: 4, phase: .playing))
+        #expect(reports.first == .beat(bar: 1, beat: 1, phase: .playing, pass: 0))
+        #expect(reports.last == .beat(bar: 1, beat: 4, phase: .playing, pass: 0))
     }
 
     @Test func theMetronomeCanBeQuiet() {
@@ -64,8 +64,8 @@ struct DrumSequencerTests {
         let (sounds, reports) = run(&sequencer, for: Self.bar + Self.beat)
         // The count-in clicks even with the metronome off
         #expect(sounds.map(\.sound) == [.accent, .click, .click, .click])
-        #expect(Array(reports.prefix(4)) == (1...4).map { .beat(bar: 0, beat: $0, phase: .countIn) })
-        #expect(reports.last == .beat(bar: 1, beat: 1, phase: .recording))
+        #expect(Array(reports.prefix(4)) == (1...4).map { .beat(bar: 0, beat: $0, phase: .countIn, pass: 0) })
+        #expect(reports.last == .beat(bar: 1, beat: 1, phase: .recording, pass: 1))
         #expect(sequencer.isRecording)
     }
 
@@ -184,28 +184,57 @@ struct DrumSequencerTests {
         sequencer.isBluetooth = true
         sequencer.bluetoothOffset = 125  // and 24 more
         sequencer.record()
-        // The count-in and the pass are over at tick 384, but they're heard 48 ticks later
-        _ = run(&sequencer, for: (384 + 420) * 250)
+        // The count-in and both passes are over at tick 768, but they're heard 48 ticks later
+        _ = run(&sequencer, for: (384 + 804) * 250)
         #expect(sequencer.isRecording)
         var events: [DrumSequencer.Event] = []
         var reports: [DrumSequencer.Report] = []
-        // Tick 420 made, 396 heard as far as macOS knows, and 372 heard in fact: late in the pass
+        // Tick 804 made, 780 heard as far as macOS knows, and 756 heard in fact: late in the second pass
         sequencer.hit(.hiHat, events: &events, reports: &reports)
         #expect(reports == [.recorded(DrumNote(pad: .hiHat, tick: 12, overBluetooth: true))])
-        #expect(run(&sequencer, for: Self.bar).sounds.map(\.frame) == [(384 + 372 - 420) * 250])
+        #expect(run(&sequencer, for: Self.bar).sounds.map(\.frame) == [(768 + 372 - 804) * 250])
     }
 
-    @Test func recordingStopsAfterOnePass() {
+    @Test func recordingStopsAfterTwoPasses() {
         var sequencer = sequencer()
         sequencer.play()
         sequencer.record()
         _ = run(&sequencer, for: Self.bar + 2 * Self.sixteenth)
+        #expect(sequencer.isRecording)
+        _ = run(&sequencer, for: Self.bar)
         #expect(!sequencer.isRecording)
         var events: [DrumSequencer.Event] = []
         var reports: [DrumSequencer.Report] = []
         sequencer.hit(.kick, events: &events, reports: &reports)
         #expect(reports.isEmpty && sequencer.pattern.isEmpty)
         #expect(events.count == 1)  // still played
+    }
+
+    @Test func theSecondPassPlaysTheFirstAndAddsToIt() {
+        var sequencer = sequencer()
+        sequencer.isMetronomeOn = false
+        sequencer.play()
+        sequencer.record()
+        var events: [DrumSequencer.Event] = []
+        var reports: [DrumSequencer.Report] = []
+        sequencer.hit(.kick, events: &events, reports: &reports)  // on the first beat
+        let played = run(&sequencer, for: Self.bar + 2 * Self.sixteenth).reports  // an eighth into the second pass
+        sequencer.hit(.hiHat, events: &events, reports: &reports)
+        // The loop played the kick as the second pass started, and has the hi-hat as well as the kick
+        #expect(played.filter { $0 == .played(.kick) }.count == 1)
+        #expect(sequencer.pattern == [DrumNote(pad: .kick, tick: 0), DrumNote(pad: .hiHat, tick: 48)])
+        #expect(sequencer.isRecording)
+    }
+
+    @Test func theBeatsSayWhichPassIsRecording() {
+        var sequencer = sequencer()
+        sequencer.isMetronomeOn = false
+        sequencer.record()
+        let beats = run(&sequencer, for: 4 * Self.bar).reports.compactMap { report in
+            if case let .beat(_, beat, phase, pass) = report, beat == 1 { (phase, pass) } else { nil }
+        }
+        #expect(beats.map { $0.0 } == [.countIn, .recording, .recording, .playing])
+        #expect(beats.map { $0.1 } == [0, 1, 2, 0])
     }
 
     @Test func fourBarsRepeatTheBarAndOneKeepsTheFirst() {
@@ -436,7 +465,8 @@ struct DrumLineTests {
         #expect(DrumCommand(line: command.line) == command)
     }
 
-    @Test(arguments: [DrumMessage.ready(sampleRate: 48000), .beat(bar: 0, beat: 3, phase: .countIn),
+    @Test(arguments: [DrumMessage.ready(sampleRate: 48000), .beat(bar: 0, beat: 3, phase: .countIn, pass: 0),
+                      .beat(bar: 2, beat: 1, phase: .recording, pass: 2),
                       .played(.snare), .recorded(DrumNote(pad: .hiHat, tick: 1512)), .alive, .changed,
                       .recorded(DrumNote(pad: .kick, tick: 7, overBluetooth: true)),
                       .failed("There's no sound output.")])
@@ -451,7 +481,8 @@ struct DrumLineTests {
         #expect(DrumCommand(line: line) == nil)
     }
 
-    @Test(arguments: ["", "beat 1 2", "beat 1 2 dance", "recorded kick", "recorded kick 7 wifi", "played", "ready"])
+    @Test(arguments: ["", "beat 1 2", "beat 1 2 dance 1", "beat 1 2 record", "beat 1 2 record x", "recorded kick",
+                      "recorded kick 7 wifi", "played", "ready"])
     func ignoresGarbageMessages(line: String) {
         #expect(DrumMessage(line: line) == nil)
     }
@@ -535,11 +566,13 @@ struct DrumMachineModelTests {
 
     @Test func beatsShowOnlyWhilePlaying() {
         let (model, _) = model()
-        model.received(.beat(bar: 1, beat: 2, phase: .playing))
+        model.received(.beat(bar: 1, beat: 2, phase: .playing, pass: 0))
         #expect(model.beat == nil)
         model.record()
-        model.received(.beat(bar: 0, beat: 1, phase: .countIn))
+        model.received(.beat(bar: 0, beat: 1, phase: .countIn, pass: 0))
         #expect(model.phase == .countIn)
+        model.received(.beat(bar: 1, beat: 1, phase: .recording, pass: 2))
+        #expect(model.beat?.pass == 2)
         model.togglePlay()
         #expect(model.beat == nil && !model.isPlaying)
     }

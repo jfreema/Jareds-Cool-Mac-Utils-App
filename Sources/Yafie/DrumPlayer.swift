@@ -266,7 +266,7 @@ enum DrumCommand: Equatable, Sendable {
 /// What the player tells the app, a line each
 enum DrumMessage: Equatable, Sendable {
     case ready(sampleRate: Double)
-    case beat(bar: Int, beat: Int, phase: DrumSequencer.Phase)
+    case beat(bar: Int, beat: Int, phase: DrumSequencer.Phase, pass: Int)
     case played(DrumPad)
     case recorded(DrumNote)
     /// Nothing else to say for a while
@@ -276,7 +276,7 @@ enum DrumMessage: Equatable, Sendable {
 
     init(_ report: DrumSequencer.Report) {
         switch report {
-        case let .beat(bar, beat, phase): self = .beat(bar: bar, beat: beat, phase: phase)
+        case let .beat(bar, beat, phase, pass): self = .beat(bar: bar, beat: beat, phase: phase, pass: pass)
         case .played(let pad): self = .played(pad)
         case .recorded(let note): self = .recorded(note)
         }
@@ -285,7 +285,7 @@ enum DrumMessage: Equatable, Sendable {
     var line: String {
         switch self {
         case .ready(let sampleRate): "ready \(sampleRate)"
-        case let .beat(bar, beat, phase): "beat \(bar) \(beat) \(phase.rawValue)"
+        case let .beat(bar, beat, phase, pass): "beat \(bar) \(beat) \(phase.rawValue) \(pass)"
         case .played(let pad): "played \(pad.rawValue)"
         case .recorded(let note): "recorded \(note.pad.rawValue) \(note.tick)" + (note.overBluetooth ? " bt" : "")
         case .alive: "alive"
@@ -300,10 +300,10 @@ enum DrumMessage: Equatable, Sendable {
         case ("ready", 2):
             guard let sampleRate = Double(parts[1]) else { return nil }
             self = .ready(sampleRate: sampleRate)
-        case ("beat", 4):
-            guard let bar = Int(parts[1]), let beat = Int(parts[2]), let phase = DrumSequencer.Phase(rawValue: parts[3])
-            else { return nil }
-            self = .beat(bar: bar, beat: beat, phase: phase)
+        case ("beat", 5):
+            guard let bar = Int(parts[1]), let beat = Int(parts[2]),
+                  let phase = DrumSequencer.Phase(rawValue: parts[3]), let pass = Int(parts[4]) else { return nil }
+            self = .beat(bar: bar, beat: beat, phase: phase, pass: pass)
         case ("played", 2):
             guard let pad = DrumPad(rawValue: parts[1]) else { return nil }
             self = .played(pad)

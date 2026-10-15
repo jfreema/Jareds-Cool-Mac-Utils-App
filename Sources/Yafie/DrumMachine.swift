@@ -82,6 +82,8 @@ final class DrumMachineModel {
         var bar: Int
         var beat: Int
         var phase: DrumSequencer.Phase
+        /// Of a recording, from 1
+        var pass: Int
     }
 
     var status = DrumAudio.Status.starting
@@ -211,7 +213,7 @@ final class DrumMachineModel {
         }
     }
 
-    /// Records one pass round the loop, after a bar's count-in when it's stopped
+    /// Records two passes round the loop, after a bar's count-in when it's stopped
     func record() {
         send(.record)
         isPlaying = true
@@ -224,8 +226,8 @@ final class DrumMachineModel {
 
     func received(_ message: DrumMessage) {
         switch message {
-        case let .beat(bar, beat, phase):
-            if isPlaying { self.beat = Beat(bar: bar, beat: beat, phase: phase) }
+        case let .beat(bar, beat, phase, pass):
+            if isPlaying { self.beat = Beat(bar: bar, beat: beat, phase: phase, pass: pass) }
         case .played(let pad):
             flash(pad)
         case .recorded(let note):
@@ -363,7 +365,7 @@ private struct DrumControls: View {
                     Label { Text("Record") } icon: { Image(systemName: "record.circle").foregroundStyle(.red) }
                 }
                     .disabled(model.phase == .countIn || model.phase == .recording)
-                    .help("Record one pass round the loop, with a bar's count-in when stopped")
+                    .help("Record two passes round the loop, with a bar's count-in when stopped")
                 Button("Clear") { model.clear() }
                     .disabled(model.pattern.isEmpty)
                     .help("Clear the loop")
@@ -459,7 +461,10 @@ private struct BeatLights: View {
         let bar = bars > 1 ? "Bar \(beat.bar) of \(bars)" : ""
         switch beat.phase {
         case .countIn: return "Count-in"
-        case .recording: return bars > 1 ? "Recording · \(bar)" : "Recording"
+        case .recording:
+            // Short enough for one line beside the lights
+            let pass = "\(beat.pass) of \(DrumSequencer.recordingPasses)"
+            return bars > 1 ? "Pass \(pass) · Bar \(beat.bar)" : "Recording \(pass)"
         case .playing: return bar
         }
     }

@@ -105,8 +105,9 @@ struct DrumSequencer {
 
     /// What the app hears about
     enum Report: Equatable, Sendable {
-        /// A beat starts. Bar 0 is the count-in.
-        case beat(bar: Int, beat: Int, phase: Phase)
+        /// A beat starts. Bar 0 is the count-in. While recording, pass is which time round the loop, from 1, and
+        /// otherwise 0.
+        case beat(bar: Int, beat: Int, phase: Phase, pass: Int)
         /// The loop played a hit
         case played(DrumPad)
         /// A hit joined the loop
@@ -126,6 +127,9 @@ struct DrumSequencer {
     /// Hits on one drum closer together than this, in ticks, are one hit played twice, like the last pass's first beat
     /// played again as the next pass starts
     static let sameHit = ticksPerBeat / 16
+    /// Times round the loop a recording takes, so a second part can go over the first: the kick and snare, say, then
+    /// the hi-hat
+    static let recordingPasses = 2
     private static let pads = DrumPad.allCases
 
     let sampleRate: Double
@@ -182,7 +186,7 @@ struct DrumSequencer {
     private var frames = 0
     /// The next tick to sound
     private var next = 0
-    /// One pass round the loop, being recorded
+    /// The passes round the loop being recorded
     private var recording: Range<Int>?
     /// Hits just played live and recorded at a tick still to come, so the loop doesn't play them a second time
     private var heardLive: [(pad: DrumPad, tick: Int)] = []
@@ -224,17 +228,18 @@ struct DrumSequencer {
         heardLive.removeAll(keepingCapacity: true)
     }
 
-    /// Records one pass round the loop: from what the player is hearing if it's playing, or else from the loop's start
-    /// after a bar's count-in
+    /// Records two passes round the loop: from what the player is hearing if it's playing, or else from the loop's
+    /// start after a bar's count-in
     mutating func record() {
-        // Not during a pass, though one waiting on its last hits makes way
+        // Not while recording, though a recording waiting on its last hits makes way
         if let recording, position < Double(recording.upperBound) { return }
+        let ticks = Self.recordingPasses * loopTicks
         if isPlaying {
             let start = Int(heardPosition.rounded(.down))
-            recording = start..<(start + loopTicks)
+            recording = start..<(start + ticks)
         } else {
             start(at: -Self.ticksPerBar)
-            recording = 0..<loopTicks
+            recording = 0..<ticks
         }
     }
 
@@ -347,15 +352,17 @@ struct DrumSequencer {
             // The count-in always clicks
             guard isBeat else { return }
             events.append(Event(sound: isBarStart ? .accent : .click, offset: offset))
-            reports.append(.beat(bar: 0, beat: (tick + Self.ticksPerBar) / Self.ticksPerBeat + 1, phase: .countIn))
+            reports.append(.beat(bar: 0, beat: (tick + Self.ticksPerBar) / Self.ticksPerBeat + 1, phase: .countIn,
+                                 pass: 0))
             return
         }
         let loopTick = tick % loopTicks
         if isBeat {
             if isMetronomeOn { events.append(Event(sound: isBarStart ? .accent : .click, offset: offset)) }
-            let phase: Phase = recording?.contains(tick) == true ? .recording : .playing
+            let pass = recording.flatMap { $0.contains(tick) ? (tick - $0.lowerBound) / loopTicks + 1 : nil }
             reports.append(.beat(bar: loopTick / Self.ticksPerBar + 1,
-                                 beat: loopTick % Self.ticksPerBar / Self.ticksPerBeat + 1, phase: phase))
+                                 beat: loopTick % Self.ticksPerBar / Self.ticksPerBeat + 1,
+                                 phase: pass == nil ? .playing : .recording, pass: pass ?? 0))
         }
         for pad in Self.pads where sounding.contains(DrumNote(pad: pad, tick: loopTick)) {
             if let live = heardLive.firstIndex(where: { $0.pad == pad && $0.tick == tick }) {
