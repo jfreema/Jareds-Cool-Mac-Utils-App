@@ -16,9 +16,9 @@ private let fullCard = PreviewLayout.cardSize(scale: 1)
 struct PreviewLayoutTests {
     @Test func oneWindowSitsCenteredAboveItsIcon() {
         let placement = PreviewLayout.place(1, by: bottomIcon, edge: .bottom, in: belowDock)
-        #expect(fullCard == CGSize(width: 256, height: 186))
-        #expect(placement.panel == CGRect(x: 600, y: 84, width: 272, height: 202))
-        #expect(placement.cards == [CGRect(x: 8, y: 8, width: 256, height: 186)])
+        #expect(fullCard == CGSize(width: 220, height: 164))
+        #expect(placement.panel == CGRect(x: 618, y: 84, width: 236, height: 180))
+        #expect(placement.cards == [CGRect(x: 8, y: 8, width: 220, height: 164)])
     }
 
     @Test func staysOnTheScreen() {
@@ -31,11 +31,11 @@ struct PreviewLayoutTests {
 
     @Test func manyWindowsWrapIntoRowsFromTheTopLeft() {
         let placement = PreviewLayout.place(7, by: bottomIcon, edge: .bottom, in: belowDock)
-        // Five cards fit across 1440 points
-        #expect(placement.panel.size == CGSize(width: 5 * 264 + 8, height: 2 * 194 + 8))
-        #expect(placement.cards[0].origin == CGPoint(x: 8, y: 202))
-        #expect(placement.cards[4].origin == CGPoint(x: 8 + 4 * 264, y: 202))
-        #expect(placement.cards[5].origin == CGPoint(x: 8, y: 8))
+        // Six cards fit across 1440 points
+        #expect(placement.panel.size == CGSize(width: 6 * 228 + 8, height: 2 * 172 + 8))
+        #expect(placement.cards[0].origin == CGPoint(x: 8, y: 180))
+        #expect(placement.cards[5].origin == CGPoint(x: 8 + 5 * 228, y: 180))
+        #expect(placement.cards[6].origin == CGPoint(x: 8, y: 8))
         #expect(placement.cards.allSatisfy { $0.size == fullCard })
     }
 
@@ -52,22 +52,22 @@ struct PreviewLayoutTests {
 
     @Test func besideASideDock() {
         let left = PreviewLayout.place(2, by: leftIcon, edge: .left, in: besideLeftDock)
-        #expect(left.panel == CGRect(x: 84, y: 238, width: 272, height: 396))
-        #expect(left.cards.map(\.origin) == [CGPoint(x: 8, y: 202), CGPoint(x: 8, y: 8)])
+        #expect(left.panel == CGRect(x: 84, y: 260, width: 236, height: 352))
+        #expect(left.cards.map(\.origin) == [CGPoint(x: 8, y: 180), CGPoint(x: 8, y: 8)])
         let right = PreviewLayout.place(2, by: rightIcon, edge: .right, in: besideRightDock)
-        #expect(right.panel == CGRect(x: 1084, y: 238, width: 272, height: 396))
+        #expect(right.panel == CGRect(x: 1120, y: 260, width: 236, height: 352))
     }
 
     @Test func sideDockColumnsStartNextToTheDock() {
         // Four cards fit down 875 points, so six take two columns
         let right = PreviewLayout.place(6, by: rightIcon, edge: .right, in: besideRightDock)
-        #expect(right.panel.width == 536)  // two columns
-        #expect(right.cards[0].origin == CGPoint(x: 272, y: right.panel.height - 194))
-        #expect(right.cards[3].origin == CGPoint(x: 272, y: 8))
-        #expect(right.cards[4].origin == CGPoint(x: 8, y: right.panel.height - 194))
+        #expect(right.panel.width == 464)  // two columns
+        #expect(right.cards[0].origin == CGPoint(x: 236, y: right.panel.height - 172))
+        #expect(right.cards[3].origin == CGPoint(x: 236, y: 8))
+        #expect(right.cards[4].origin == CGPoint(x: 8, y: right.panel.height - 172))
         let left = PreviewLayout.place(6, by: leftIcon, edge: .left, in: besideLeftDock)
         #expect(left.cards[0].minX == 8)
-        #expect(left.cards[4].minX == 272)
+        #expect(left.cards[4].minX == 236)
     }
 
     @Test func picturesKeepTheirWindowsShape() {
@@ -86,8 +86,8 @@ struct PreviewLayoutTests {
     }
 
     @Test func cardsHoldAPictureAboveATitle() {
-        #expect(PreviewLayout.pictureArea(in: fullCard) == CGRect(x: 8, y: 28, width: 240, height: 150))
-        #expect(PreviewLayout.titleArea(in: fullCard) == CGRect(x: 8, y: 8, width: 240, height: 16))
+        #expect(PreviewLayout.pictureArea(in: fullCard) == CGRect(x: 8, y: 28, width: 204, height: 128))
+        #expect(PreviewLayout.titleArea(in: fullCard) == CGRect(x: 8, y: 8, width: 204, height: 16))
     }
 
     @Test func staysOpenOnTheWayFromTheIconToThePanel() {

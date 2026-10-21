@@ -25,8 +25,8 @@ enum PreviewLayout {
         var cards: [CGRect]
     }
 
-    /// A window's picture at full size, 16:10
-    static let picture = CGSize(width: 240, height: 150)
+    /// A window's picture at full size, about 16:10
+    static let picture = CGSize(width: 204, height: 128)
     /// Around a card's picture and title
     static let padding: CGFloat = 8
     static let titleHeight: CGFloat = 16
