@@ -6,7 +6,7 @@ import os
 
 private let cleanLogger = Logger(subsystem: Bundle.main.bundleIdentifier ?? "yafie", category: "clean")
 
-/// Turns the keyboard and trackpad off while you wipe them, for 5 minutes or until both ⌘ keys are held down for 2
+/// Turns the keyboard and trackpad off while you wipe them, for 5 minutes or until both ⌘ keys are held down for 1.5
 /// seconds. A window in the middle of the screen counts down.
 @MainActor
 final class KeyboardCleaner {
@@ -32,7 +32,7 @@ final class KeyboardCleaner {
         let previousApp = frontmost?.processIdentifier == ProcessInfo.processInfo.processIdentifier ? nil : frontmost
         guard Alert.confirm("Turn off the keyboard and trackpad?",
                             "They stay off for 5 minutes while you clean them. To turn them back on sooner, hold down "
-                                + "both ⌘ keys for 2 seconds.",
+                                + "both ⌘ keys for 1.5 seconds.",
                             button: "Turn Off", cancel: "Cancel") else {
             return NSApp.handFocus(back: previousApp)
         }
@@ -61,7 +61,7 @@ final class KeyboardCleaner {
         }
         NSApp.activateRegardless()
         panel.makeKeyAndOrderFront(nil)
-        let message = "Keyboard and trackpad off for 5 minutes. Hold down both Command keys for 2 seconds to turn "
+        let message = "Keyboard and trackpad off for 5 minutes. Hold down both Command keys for 1.5 seconds to turn "
             + "them back on."
         NSAccessibility.post(element: panel, notification: .announcementRequested,
                              userInfo: [.announcement: message, .priority: NSAccessibilityPriorityLevel.high.rawValue])
@@ -199,10 +199,10 @@ enum InputBlocker {
 
 // MARK: Session
 
-/// When cleaning ends: after 5 minutes, or once both ⌘ keys have been held down for 2 seconds
+/// When cleaning ends: after 5 minutes, or once both ⌘ keys have been held down for 1.5 seconds
 struct CleaningSession: Equatable {
     static let duration: TimeInterval = 5 * 60
-    static let hold: TimeInterval = 2
+    static let hold: TimeInterval = 1.5
 
     let start: Date
     /// When both ⌘ keys went down, while they're still down
@@ -268,7 +268,7 @@ struct CleaningView: View {
                     .font(.system(size: 15))
                     .monospacedDigit()
             }
-            Text("Hold down both ⌘ keys for 2 seconds to turn them on now.")
+            Text("Hold down both ⌘ keys for 1.5 seconds to turn them on now.")
                 .font(.system(size: 13))
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)

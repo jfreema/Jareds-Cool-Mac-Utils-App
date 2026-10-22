@@ -160,7 +160,7 @@ Turns off the keyboard and trackpad for 5 minutes, so you can wipe them without 
 
 **Turn it on:** it needs the Accessibility permission, as [window snapping](#window-snapping) does. With snapping or app previews on, Yafie has it already. Otherwise, choose **Clean Keyboard and Trackpad…** in Yafie's menu, click **Open System Settings** when macOS asks, and turn on **Yafie.app**.
 
-**Use it:** choose **Clean Keyboard and Trackpad…** in Yafie's menu, then click **Turn Off**. A window in the middle of the screen counts down until they come back on. To turn them back on sooner, hold down both ⌘ keys, left and right, for 2 seconds.
+**Use it:** choose **Clean Keyboard and Trackpad…** in Yafie's menu, then click **Turn Off**. A window in the middle of the screen counts down until they come back on. To turn them back on sooner, hold down both ⌘ keys, left and right, for 1.5 seconds.
 
 Every keyboard, trackpad and mouse is off, external ones too, but not the power button.
 

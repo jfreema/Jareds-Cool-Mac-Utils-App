@@ -39,7 +39,7 @@
 
 - **macOS asks for Accessibility instead.** Yafie doesn't have it yet. Click **Open System Settings**, turn on **Yafie.app**, then choose **Clean Keyboard and Trackpad…** again.
 - **Says Couldn't turn off the keyboard and trackpad.** macOS wouldn't let Yafie hold them back, which can happen when its Accessibility switch is on but out of date. Turn Yafie off and back on in **System Settings → Privacy & Security → Accessibility**, then try again.
-- **Stuck with the keyboard and trackpad off.** They come back on by themselves after 5 minutes. For sooner, hold down both ⌘ keys, left and right, together for 2 seconds. If Yafie quits or crashes, they come back on right away.
+- **Stuck with the keyboard and trackpad off.** They come back on by themselves after 5 minutes. For sooner, hold down both ⌘ keys, left and right, together for 1.5 seconds. If Yafie quits or crashes, they come back on right away.
 
 ## Window snapping
 
