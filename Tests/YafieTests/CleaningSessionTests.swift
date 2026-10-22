@@ -20,29 +20,29 @@ struct CleaningSessionTests {
         #expect(session.isOver(at: at(300)))
     }
 
-    @Test func holdingBothCommandKeysEndsItAfterThreeSeconds() {
+    @Test func holdingBothCommandKeysEndsItAfterTwoSeconds() {
         var session = CleaningSession(start: start)
         session.commandKeys(down: true, at: at(10))
-        #expect(session.deadline == at(13))
-        #expect(!session.isOver(at: at(12.9)))
-        #expect(session.isOver(at: at(13)))
+        #expect(session.deadline == at(12))
+        #expect(!session.isOver(at: at(11.9)))
+        #expect(session.isOver(at: at(12)))
     }
 
     @Test func lettingGoStartsTheHoldOver() {
         var session = CleaningSession(start: start)
         session.commandKeys(down: true, at: at(10))
-        session.commandKeys(down: false, at: at(12))
+        session.commandKeys(down: false, at: at(11))
         #expect(session.heldSince == nil)
         #expect(session.deadline == at(300))
         session.commandKeys(down: true, at: at(20))
-        #expect(session.deadline == at(23))
+        #expect(session.deadline == at(22))
     }
 
     @Test func theHoldCountsFromWhenBothWentDown() {
         var session = CleaningSession(start: start)
         session.commandKeys(down: true, at: at(10))
         session.commandKeys(down: true, at: at(11))
-        #expect(session.deadline == at(13))
+        #expect(session.deadline == at(12))
     }
 
     @Test func aHoldNearTheEndDoesNotPushItBack() {

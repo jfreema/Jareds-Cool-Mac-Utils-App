@@ -6,7 +6,7 @@ import os
 
 private let cleanLogger = Logger(subsystem: Bundle.main.bundleIdentifier ?? "yafie", category: "clean")
 
-/// Turns the keyboard and trackpad off while you wipe them, for 5 minutes or until both ⌘ keys are held down for 3
+/// Turns the keyboard and trackpad off while you wipe them, for 5 minutes or until both ⌘ keys are held down for 2
 /// seconds. A window in the middle of the screen counts down.
 @MainActor
 final class KeyboardCleaner {
@@ -32,7 +32,7 @@ final class KeyboardCleaner {
         let previousApp = frontmost?.processIdentifier == ProcessInfo.processInfo.processIdentifier ? nil : frontmost
         guard Alert.confirm("Turn off the keyboard and trackpad?",
                             "They stay off for 5 minutes while you clean them. To turn them back on sooner, hold down "
-                                + "both ⌘ keys for 3 seconds.",
+                                + "both ⌘ keys for 2 seconds.",
                             button: "Turn Off", cancel: "Cancel") else {
             return NSApp.handFocus(back: previousApp)
         }
@@ -61,7 +61,7 @@ final class KeyboardCleaner {
         }
         NSApp.activateRegardless()
         panel.makeKeyAndOrderFront(nil)
-        let message = "Keyboard and trackpad off for 5 minutes. Hold down both Command keys for 3 seconds to turn "
+        let message = "Keyboard and trackpad off for 5 minutes. Hold down both Command keys for 2 seconds to turn "
             + "them back on."
         NSAccessibility.post(element: panel, notification: .announcementRequested,
                              userInfo: [.announcement: message, .priority: NSAccessibilityPriorityLevel.high.rawValue])
@@ -108,7 +108,8 @@ final class KeyboardCleaner {
         panel.backgroundColor = .clear
         panel.hasShadow = true
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .ignoresCycle]
-        let background = NSVisualEffectView()
+        // At its size from the start: grown from zero, it would grow the content by as much again
+        let background = NSVisualEffectView(frame: NSRect(origin: .zero, size: CleaningView.size))
         background.material = .popover
         background.blendingMode = .behindWindow
         background.state = .active
@@ -198,10 +199,10 @@ enum InputBlocker {
 
 // MARK: Session
 
-/// When cleaning ends: after 5 minutes, or once both ⌘ keys have been held down for 3 seconds
+/// When cleaning ends: after 5 minutes, or once both ⌘ keys have been held down for 2 seconds
 struct CleaningSession: Equatable {
     static let duration: TimeInterval = 5 * 60
-    static let hold: TimeInterval = 3
+    static let hold: TimeInterval = 2
 
     let start: Date
     /// When both ⌘ keys went down, while they're still down
@@ -248,7 +249,7 @@ final class CleaningModel {
 
 struct CleaningView: View {
     static let size = CGSize(width: 400, height: 250)
-    private static let barWidth: CGFloat = 200
+    private static let barWidth: CGFloat = 260
 
     let model: CleaningModel
 
@@ -267,7 +268,7 @@ struct CleaningView: View {
                     .font(.system(size: 15))
                     .monospacedDigit()
             }
-            Text("Hold down both ⌘ keys for 3 seconds to turn them on now.")
+            Text("Hold down both ⌘ keys for 2 seconds to turn them on now.")
                 .font(.system(size: 13))
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
@@ -276,7 +277,7 @@ struct CleaningView: View {
                 Capsule().fill(.quaternary)
                 Capsule().fill(Color.accentColor).frame(width: isHolding ? Self.barWidth : 0)
             }
-            .frame(width: Self.barWidth, height: 6)
+            .frame(width: Self.barWidth, height: 10)
             .animation(isHolding ? .linear(duration: CleaningSession.hold) : .easeOut(duration: 0.2), value: isHolding)
             .padding(.top, 6)
         }
