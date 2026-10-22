@@ -19,7 +19,10 @@
   </tr>
   <tr>
     <td width="50%"><b><a href="#drum-machine">Drum machine</a></b><br>Tap a beat on the trackpad, with a metronome and a loop to play along to.</td>
-    <td width="50%"><b><a href="#stay-awake-with-the-lid-closed">Stay awake with the lid closed</a></b><br>Keeps a MacBook running with its lid shut, plugged in or on battery.</td>
+    <td width="50%"><b><a href="#keyboard-cleaning">Keyboard cleaning</a></b><br>Turns off the keyboard and trackpad for a few minutes while you wipe them.</td>
+  </tr>
+  <tr>
+    <td colspan="2"><b><a href="#stay-awake-with-the-lid-closed">Stay awake with the lid closed</a></b><br>Keeps a MacBook running with its lid shut, plugged in or on battery.</td>
   </tr>
 </table>
 
@@ -148,6 +151,18 @@ Bluetooth headphones play everything a moment late, so you hear each tap after y
 
 - Turn on **Mute Taps**. Taps light up their pads and record without a sound, so you play along to the metronome and the loop instead.
 - Recording allows for the delay your headphones tell macOS about. If the loop still plays your hits late, they lag more than that: while the loop plays, move **Bluetooth Offset** until its hits land on the clicks. It moves every hit played over Bluetooth, and the ones you play later. Set **Quantize** to **None** first to hear them move smoothly.
+
+---
+
+## Keyboard cleaning
+
+Turns off the keyboard and trackpad for 5 minutes, so you can wipe them without typing or clicking anything.
+
+**Turn it on:** it needs the Accessibility permission, as [window snapping](#window-snapping) does. With snapping or app previews on, Yafie has it already. Otherwise, choose **Clean Keyboard and Trackpad…** in Yafie's menu, click **Open System Settings** when macOS asks, and turn on **Yafie.app**.
+
+**Use it:** choose **Clean Keyboard and Trackpad…** in Yafie's menu, then click **Turn Off**. A window in the middle of the screen counts down until they come back on. To turn them back on sooner, hold down both ⌘ keys, left and right, for 3 seconds.
+
+Every keyboard, trackpad and mouse is off, external ones too, but not the power button.
 
 ---
 

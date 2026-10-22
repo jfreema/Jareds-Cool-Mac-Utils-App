@@ -8,6 +8,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private let snapper = WindowSnapper()
     private let snipper = ScreenSnipper()
     private let previews = AppPreview()
+    private let cleaner = KeyboardCleaner()
     private lazy var drums = DrumMachineWindowController()
     private lazy var tuner: TunerWindowController = {
         let tuner = TunerWindowController()
@@ -157,6 +158,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         menu.addItem(.sectionHeader(title: "Tools"))
         menu.addItem(item("Guitar Tuner…", #selector(openTuner)))
         menu.addItem(item("Drum Machine…", #selector(openDrums)))
+        menu.addItem(item("Clean Keyboard and Trackpad…", #selector(cleanKeyboard)))
 
         menu.addItem(.separator())
         menu.addItem(.sectionHeader(title: "Stay Awake"))
@@ -350,6 +352,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
     @objc private func openTuner() { tuner.show() }
     @objc private func openDrums() { drums.show() }
+    // Once the menu's tracking has unwound, since it asks first
+    @objc private func cleanKeyboard() { Task { @MainActor in cleaner.start() } }
     @objc private func allowWindowSnapping() { snapper.openAccessibilitySettings() }
     @objc private func allowAppPreviews() { previews.openSettings() }
     @objc private func allowScreenSnipping() { snipper.openScreenRecordingSettings() }
@@ -460,13 +464,13 @@ enum Alert {
         alert.runModal()
     }
 
-    static func confirm(_ title: String, _ message: String, button: String) -> Bool {
+    static func confirm(_ title: String, _ message: String, button: String, cancel: String = "Not Now") -> Bool {
         NSApp.activateRegardless()
         let alert = NSAlert()
         alert.messageText = title
         alert.informativeText = message
         alert.addButton(withTitle: button)
-        alert.addButton(withTitle: "Not Now")
+        alert.addButton(withTitle: cancel)
         return alert.runModal() == .alertFirstButtonReturn
     }
 }

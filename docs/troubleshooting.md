@@ -35,6 +35,12 @@
 - **Says Couldn't play sound.** Check the output in **System Settings → Sound**, then click **Try Again**.
 - **A fourth Yafie process in Activity Monitor while the drum machine is open.** That's its player, which makes the sound in a process of its own, like the tuner's listener. It ends when you close the drum machine.
 
+## Keyboard cleaning
+
+- **macOS asks for Accessibility instead.** Yafie doesn't have it yet. Click **Open System Settings**, turn on **Yafie.app**, then choose **Clean Keyboard and Trackpad…** again.
+- **Says Couldn't turn off the keyboard and trackpad.** macOS wouldn't let Yafie hold them back, which can happen when its Accessibility switch is on but out of date. Turn Yafie off and back on in **System Settings → Privacy & Security → Accessibility**, then try again.
+- **Stuck with the keyboard and trackpad off.** They come back on by themselves after 5 minutes. For sooner, hold down both ⌘ keys, left and right, together for 3 seconds. If Yafie quits or crashes, they come back on right away.
+
 ## Window snapping
 
 - **The menu shows Allow Window Snapping….** Yafie doesn't have the Accessibility permission. Choose it, then turn Yafie on in the list that opens.

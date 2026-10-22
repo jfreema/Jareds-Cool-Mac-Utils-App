@@ -4,7 +4,7 @@ Notes for any coding agent working on Yafie.
 
 ## What Yafie is
 
-A macOS menu bar app with six features: stay awake with the lid closed, window snapping, app previews from the Dock, a screenshot tool, a guitar tuner and a drum machine. It's Swift 6 with SwiftPM, with no Xcode project and no third-party dependencies. It runs on macOS 14 or later, on Apple silicon or Intel. It's an accessory app (`LSUIElement`), with no Dock icon or menu bar except while a snip editor is open. [README.md](README.md) is the user guide.
+A macOS menu bar app with seven features: stay awake with the lid closed, window snapping, app previews from the Dock, a screenshot tool, a guitar tuner, a drum machine and keyboard cleaning. It's Swift 6 with SwiftPM, with no Xcode project and no third-party dependencies. It runs on macOS 14 or later, on Apple silicon or Intel. It's an accessory app (`LSUIElement`), with no Dock icon or menu bar except while a snip editor is open. [README.md](README.md) is the user guide.
 
 ## Build and test
 
@@ -20,7 +20,7 @@ swift test             # unit tests (Swift Testing)
 - **Linker warnings about missing search paths** come from the Command Line Tools. Ignore them.
 - **`./build.sh --install` quits and replaces the copy the user is running.** Ask first.
 - **A debug build won't start while the installed Yafie is running.** The second copy hands over to the first and quits, so quit Yafie first. These hooks work in debug builds only: `--tuner`, `--drums`, `--snip-editor <image file>` and `--update-now`.
-- **Logs:** `/usr/bin/log show --last 1h --predicate 'subsystem == "io.github.jfreema.yafie"'`. The categories are `lid`, `snap`, `preview`, `snip`, `tuner` and `drums`.
+- **Logs:** `/usr/bin/log show --last 1h --predicate 'subsystem == "io.github.jfreema.yafie"'`. The categories are `lid`, `snap`, `preview`, `snip`, `tuner`, `drums` and `clean`.
 
 ## Code
 
@@ -35,6 +35,7 @@ The app is one flat folder, `Sources/Yafie`, and the tests are in `Tests/YafieTe
 | Screenshot tool | `ScreenSnipper`, `SnipDrawing` (pure drawing and layout), `SnipEditor`, `TextRecognizer` (Copy Text, with Vision) |
 | Guitar tuner | `TunerAudio`, `TunerWindow`, `PitchDetector` |
 | Drum machine | `DrumMachine` (window, pads and model), `DrumAudio` (the player process, from the app's side), `DrumPlayer` (the player process), `DrumSequencer` (pure timing and recording), `DrumKit` (pure sounds and mixing) |
+| Keyboard cleaning | `KeyboardCleaner` (window, event tap and `CleaningSession`, the pure timing) |
 | Shared | `HotKeys` (every global shortcut), `Updater`, `Shell`, `Toast` (a brief message by the pointer) |
 
 Put logic that can be pure, like geometry, drawing and parsing, in pure types with unit tests. Tests use shell scripts as stand-ins for child processes, such as the tuner's listener and `screencapture`.
@@ -46,6 +47,7 @@ Put logic that can be pure, like geometry, drawing and parsing, in pure types wi
 - **App Preview reads the Dock through Accessibility.** The Dock selects the icon under the pointer and posts `AXSelectedChildrenChanged` on its list, as DockDoor relies on too. Windows are matched to their pictures with the private `_AXUIElementGetWindow`, found with `dlsym`, since two windows can share a frame and title. Its panel is non-activating and must never take the focus.
 - **The drum player only plays.** It never touches an input, so it can't switch a Bluetooth headset to call mode. Its clock runs on its audio thread, a sample at a time, so the metronome and loop stay in time. The app writes its commands to a pipe set never to wait and never to raise SIGPIPE, so a stuck or dead player can't block or kill Yafie.
 - **Trackpad drumming uses `NSTouch`**, so taps reach the pads only while the drum window is key and the pointer is over them. A tap can also arrive as a click, which the pads ignore.
+- **Keyboard cleaning drops every input event with an event tap**, where HID events enter the window server, so it needs Accessibility. The tap's source is on the main run loop on purpose: if the main thread hangs, macOS turns the tap off and input comes back, where a tap on its own thread could leave the Mac stuck. Secure input, like a focused password field, hides keystrokes from taps, so the cleaning window takes the keyboard, which ends other apps' secure input and catches any key that still gets past.
 - **Global shortcuts go through `HotKeys`**, which owns Yafie's one Carbon handler. A second handler would take other features' key presses.
 - **⌘Q in the snip editor closes the editors, not Yafie.** While an editor is open, Yafie looks like a regular app, but quitting it would also stop Stay Awake and window snapping. **Quit Yafie** is in the menu, without the shortcut.
 - **A menu item takes its key even when it's disabled.** So the snip editor's single-key shortcuts (R, L, A, H, T, 1 to 4, W) only exist while an editor has the keyboard and no text is being typed (`SnipMenu.setSingleKeys`). Otherwise those letters couldn't be typed in a text or a Save dialog's name.
