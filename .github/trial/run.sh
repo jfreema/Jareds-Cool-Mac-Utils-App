@@ -1,6 +1,6 @@
 #!/bin/zsh
-# How macOS 26 orders menu bar icons by "NSStatusItem Preferred Position": where the arrow lands for each value, next
-# to the stored values of the other icons
+# Where the arrow starts: left of the icons Control Center keeps spots for, and right of other apps' icons, which
+# macOS hides first
 set -u
 out="${1:-trial}"
 mkdir -p "$out"
@@ -48,36 +48,72 @@ shot() {
 }
 click() { [[ -n "$1" ]] && /tmp/probe click ${=1}; }
 key="NSStatusItem Preferred Position HiddenIconsArrow"
-positions() {
-    echo "--- $1" >> "$out/defaults.txt"
-    for domain in trial.crowd $id com.apple.controlcenter com.apple.Spotlight com.apple.systemuiserver; do
-        defaults read $domain 2>/dev/null | grep -i "position\|visible" | sed "s/^/$domain /" >> "$out/defaults.txt"
-    done
+step() {
+    /tmp/probe order "$1" | tee -a "$out/summary.txt"
+    echo "$1: arrow kept at $(defaults read $id "$key" 2>&1)" | tee -a "$out/summary.txt"
 }
+
+# Three of the crowd stand in for the system icons, with spots out of the order they're added in, so their order shows
+# whether macOS goes by the spots: 01 at 289, 03 at 239, 02 at 191. Control Center gets spots like theirs, as it keeps
+# for sound and Wi-Fi, and one further left that's turned off, which shouldn't count.
+defaults write trial.crowd "NSStatusItem Preferred Position Crowd01" -float 289
+defaults write trial.crowd "NSStatusItem Preferred Position Crowd02" -float 191
+defaults write trial.crowd "NSStatusItem Preferred Position Crowd03" -float 239
+defaults write com.apple.controlcenter "NSStatusItem Preferred Position TrialSound" -float 289
+defaults write com.apple.controlcenter "NSStatusItem Preferred Position TrialWiFi" -float 191
+defaults write com.apple.controlcenter "NSStatusItem Preferred Position TrialOff" -float 900
+defaults write com.apple.controlcenter "NSStatusItem VisibleCC TrialOff" -bool false
 
 /tmp/probe warp 600 500
 "$RUNNER_TEMP/crowd.app/Contents/MacOS/crowd" > "$out/crowd.txt" 2>&1 &
 sleep 4
 /tmp/probe order 01-crowd | tee -a "$out/summary.txt"
-positions 01-crowd
 
+# Turned on for the first time: expected at 290, between the crowd's other icons and Crowd01
 defaults write $id hiddenIcons -bool true
 launch
-sleep 5
-/tmp/probe order 02-arrow-seeded-0 | tee -a "$out/summary.txt"
-positions 02-arrow-seeded-0
-shot 02-arrow-seeded-0
+sleep 4
+step 02-new-arrow
+shot 02-new-arrow
 pkill -x jaredsmacutils
 sleep 1
-positions 03-after-quitting
 
-for p in 40 100 150 250 350 500 700; do
-    defaults write $id "$key" -float $p
-    launch
-    sleep 3
-    /tmp/probe order "pos-$p" | tee -a "$out/summary.txt"
-    echo "pos-$p stored after: $(defaults read $id "$key" 2>&1)" | tee -a "$out/summary.txt"
-    pkill -x jaredsmacutils
-    sleep 1
+# Where 1.1.10 started it: expected to move to 290 too
+defaults write $id "$key" -float 0
+launch
+sleep 4
+step 03-from-1.1.10
+pkill -x jaredsmacutils
+sleep 1
+
+# As if dragged between Crowd03 and Crowd02: expected to stay there
+defaults write $id "$key" -float 200
+launch
+sleep 4
+step 04-dragged
+pkill -x jaredsmacutils
+sleep 1
+
+# Back where it starts, with an app with Chrome's menus in front: the crowd's other icons go first
+defaults delete $id "$key"
+launch
+sleep 4
+"$RUNNER_TEMP/wide.app/Contents/MacOS/wide" > /dev/null 2>&1 &
+sleep 4
+step 05-wide-in-front
+shot 05-wide-in-front
+
+# And the arrow still brings them back
+arrow=$(/tmp/probe find HiddenIconsArrow)
+echo "arrow at: ${arrow:-not found by name}" | tee -a "$out/summary.txt"
+click "$arrow"
+sleep 1
+shot 06-arrow-clicked
+click "$arrow"
+sleep 1
+shot 07-arrow-clicked-again
+pkill -x jaredsmacutils
+for domain in trial.crowd $id com.apple.controlcenter; do
+    defaults read $domain 2>/dev/null | grep -i "position\|visible" | sed "s/^/$domain /" >> "$out/defaults.txt"
 done
-positions 99-end
+/usr/bin/log show --last 10m --info --style compact --predicate "subsystem == \"$id\"" > "$out/log.txt" 2>&1
