@@ -1,6 +1,7 @@
 #!/usr/bin/env swift
 // Draws the two art masters: ./Resources/draw-icon.swift, then ./Resources/make-icon.swift for the art built from them.
-// Resources/AppIcon.png: a cool J in sunglasses on an icy sea, 1024 pixels on Apple's macOS grid, with its shadow.
+// Resources/AppIcon.png: a cool J in sunglasses in the menu's bubble pop style, 1024 pixels on Apple's macOS grid,
+// with its shadow.
 // Resources/MenuIcon.png: the same J in sunglasses as the menu bar's glyph, black on clear.
 
 import AppKit
@@ -14,8 +15,15 @@ func color(_ hex: UInt32, _ alpha: CGFloat = 1) -> CGColor {
             blue: CGFloat(hex & 0xFF) / 255, alpha: alpha)
 }
 
-func gradient(_ stops: [(CGFloat, CGColor)]) -> CGGradient {
-    CGGradient(colorsSpace: sRGB, colors: stops.map(\.1) as CFArray, locations: stops.map(\.0))!
+/// The menu's colors, from BubbleStyle.swift
+enum Bubble {
+    static let blue = CGColor(srgbRed: 0.17, green: 0.37, blue: 0.94, alpha: 1)
+    static let ink = CGColor(srgbRed: 0.09, green: 0.12, blue: 0.24, alpha: 1)
+    static let hover = CGColor(srgbRed: 0.85, green: 0.90, blue: 1.0, alpha: 1)
+    static let yellow = CGColor(srgbRed: 0.98, green: 0.85, blue: 0.27, alpha: 1)
+    static let green = CGColor(srgbRed: 0.32, green: 0.79, blue: 0.43, alpha: 1)
+    static let orange = CGColor(srgbRed: 0.97, green: 0.53, blue: 0.22, alpha: 1)
+    static let red = CGColor(srgbRed: 0.91, green: 0.25, blue: 0.25, alpha: 1)
 }
 
 func degrees(_ value: CGFloat) -> CGFloat { value * .pi / 180 }
@@ -25,6 +33,10 @@ func degrees(_ value: CGFloat) -> CGFloat { value * .pi / 180 }
 /// Apple's macOS icon tile: an 824-pixel squircle on the 1024 grid
 let tile = CGRect(x: 100, y: 100, width: 824, height: 824)
 let tilePath = RoundedRectangle(cornerRadius: 185, style: .continuous).path(in: tile).cgPath
+/// The tile's blue face, inside a thick ink rim like the menu's
+let rim: CGFloat = 24
+let facePath = RoundedRectangle(cornerRadius: 185 - rim, style: .continuous).path(in: tile.insetBy(dx: rim, dy: rim))
+    .cgPath
 
 /// The J, as thick round-capped strokes like a balloon letter
 struct Letter {
@@ -78,6 +90,17 @@ struct Shades {
 
     var lenses: CGPath { lens(left: true).union(lens(left: false)) }
 
+    /// A streak of light slanting up across each lens
+    var shine: CGPath {
+        let path = CGMutablePath()
+        for x in [center.x - 140, center.x - 140 + lensWidth + bridge] {
+            path.addLines(between: [CGPoint(x: x, y: center.y - 80), CGPoint(x: x + 40, y: center.y - 80),
+                                    CGPoint(x: x + 150, y: center.y + 80), CGPoint(x: x + 110, y: center.y + 80)])
+            path.closeSubpath()
+        }
+        return path
+    }
+
     /// The frame around the lenses, and the brow bar and bridge between them
     var frame: CGPath {
         let rims = lenses.copy(strokingWithWidth: height * 0.18, lineCap: .round, lineJoin: .round, miterLimit: 10)
@@ -103,7 +126,7 @@ func smile(center: CGPoint, width: CGFloat, height: CGFloat) -> CGPath {
     return path
 }
 
-/// A four-pointed glint, its sides curving in toward the middle
+/// A chubby four-pointed sparkle, its sides curving in toward the middle
 func sparkle(at center: CGPoint, radius: CGFloat) -> CGPath {
     let tips = [CGPoint(x: center.x, y: center.y + radius), CGPoint(x: center.x + radius, y: center.y),
                 CGPoint(x: center.x, y: center.y - radius), CGPoint(x: center.x - radius, y: center.y)]
@@ -111,8 +134,8 @@ func sparkle(at center: CGPoint, radius: CGFloat) -> CGPath {
     path.move(to: tips[0])
     for index in 1...4 {
         let from = tips[index - 1], to = tips[index % 4]
-        let control = CGPoint(x: center.x + (from.x + to.x - 2 * center.x) * 0.14,
-                              y: center.y + (from.y + to.y - 2 * center.y) * 0.14)
+        let control = CGPoint(x: center.x + (from.x + to.x - 2 * center.x) * 0.22,
+                              y: center.y + (from.y + to.y - 2 * center.y) * 0.22)
         path.addQuadCurve(to: to, control: control)
     }
     path.closeSubpath()
@@ -121,43 +144,32 @@ func sparkle(at center: CGPoint, radius: CGFloat) -> CGPath {
 
 // MARK: Painting
 
-/// Fills a path with a soft blur, by drawing it far off the canvas and letting only its shadow land
-func blurred(_ ctx: CGContext, _ path: CGPath, _ fill: CGColor, blur: CGFloat, offset: CGSize = .zero) {
-    ctx.saveGState()
-    let away: CGFloat = 4000
-    ctx.setShadow(offset: CGSize(width: away + offset.width, height: offset.height), blur: blur, color: fill)
-    var shift = CGAffineTransform(translationX: -away, y: 0)
-    if let moved = path.copy(using: &shift) { ctx.addPath(moved) }
-    ctx.setFillColor(color(0x000000))
+func dot(_ center: CGPoint, radius: CGFloat) -> CGPath {
+    CGPath(ellipseIn: CGRect(x: center.x - radius, y: center.y - radius, width: radius * 2, height: radius * 2),
+           transform: nil)
+}
+
+func moved(_ path: CGPath, _ x: CGFloat, _ y: CGFloat) -> CGPath {
+    var shift = CGAffineTransform(translationX: x, y: y)
+    return path.copy(using: &shift)!
+}
+
+func fill(_ ctx: CGContext, _ path: CGPath, _ fill: CGColor) {
+    ctx.addPath(path)
+    ctx.setFillColor(fill)
     ctx.fillPath()
-    ctx.restoreGState()
 }
 
-/// Shading just inside a shape's edges, darkest away from the light
-func innerShadow(_ ctx: CGContext, _ shape: CGPath, _ shade: CGColor, blur: CGFloat, offset: CGSize) {
-    ctx.saveGState()
-    ctx.addPath(shape)
-    ctx.clip()
-    let hole = CGMutablePath()
-    hole.addRect(CGRect(x: -2000, y: -2000, width: 6000, height: 6000))
-    hole.addPath(shape)
-    ctx.setShadow(offset: offset, blur: blur, color: shade)
-    ctx.addPath(hole)
-    ctx.setFillColor(shade)
-    ctx.fillPath(using: .evenOdd)
-    ctx.restoreGState()
-}
-
-func wave(top: CGFloat, height: CGFloat, length: CGFloat, phase: CGFloat) -> CGPath {
-    let path = CGMutablePath()
-    path.move(to: CGPoint(x: 0, y: 0))
-    for x in stride(from: CGFloat(0), through: 1024, by: 4) {
-        let angle: CGFloat = 2 * .pi * x / length + phase
-        path.addLine(to: CGPoint(x: x, y: top + height * sin(angle)))
-    }
-    path.addLine(to: CGPoint(x: 1024, y: 0))
-    path.closeSubpath()
-    return path
+/// A shape the bubble pop way, like the menu's cards: an ink outline around it, on a hard ink shadow down and to the
+/// right. Returns the shape with its outline.
+@discardableResult
+func sticker(_ ctx: CGContext, _ shape: CGPath, _ face: CGColor, outline: CGFloat, lift: CGFloat) -> CGPath {
+    let ring = shape.copy(strokingWithWidth: outline * 2, lineCap: .round, lineJoin: .round, miterLimit: 10)
+    let body = shape.union(ring)
+    fill(ctx, moved(body, lift * 0.6, -lift), Bubble.ink)
+    fill(ctx, body, Bubble.ink)
+    fill(ctx, shape, face)
+    return body
 }
 
 let letter = Letter(stemX: 668, top: 732, bend: 482, radius: 165, weight: 182)
@@ -166,136 +178,52 @@ let mouthCenter = CGPoint(x: 662, y: 538)
 let mouth = smile(center: mouthCenter, width: 92, height: 54)
 
 func drawIcon(_ ctx: CGContext) {
-    // The tile, lifted off the desktop
+    // The tile, lifted off the desktop, in the menu's blue inside its ink rim
     ctx.saveGState()
     ctx.setShadow(offset: CGSize(width: 0, height: -10), blur: 28, color: color(0x000000, 0.42))
-    ctx.addPath(tilePath)
-    ctx.setFillColor(color(0x1E5FE6))
-    ctx.fillPath()
+    fill(ctx, tilePath, Bubble.ink)
     ctx.restoreGState()
+    fill(ctx, facePath, Bubble.blue)
 
     ctx.saveGState()
-    ctx.addPath(tilePath)
+    ctx.addPath(facePath)
     ctx.clip()
-    // Icy light from the top right, deep blue below
-    ctx.drawLinearGradient(gradient([(0, color(0x7DEBFF)), (0.42, color(0x2E8DFF)), (1, color(0x1230C4))]),
-                           start: CGPoint(x: 900, y: 940), end: CGPoint(x: 160, y: 90), options: [])
-    let glow = CGPoint(x: 820, y: 870)
-    ctx.drawRadialGradient(gradient([(0, color(0xFFFFFF, 0.5)), (1, color(0xFFFFFF, 0))]), startCenter: glow,
-                           startRadius: 0, endCenter: glow, endRadius: 460, options: [])
-    // Swells, each catching the light along its crest
-    let swells: [(top: CGFloat, height: CGFloat, length: CGFloat, phase: CGFloat)] =
-        [(590, 36, 980, 0.6), (450, 42, 860, 2.2), (310, 32, 1100, 4.0)]
-    for swell in swells {
-        let shape = wave(top: swell.top, height: swell.height, length: swell.length, phase: swell.phase)
-        ctx.saveGState()
-        ctx.addPath(shape)
-        ctx.clip()
-        ctx.drawLinearGradient(gradient([(0, color(0xFFFFFF, 0.26)), (0.35, color(0x2F7BFF, 0.12)),
-                                         (1, color(0x061C7A, 0.34))]),
-                               start: CGPoint(x: 0, y: swell.top + swell.height), end: CGPoint(x: 0, y: 100),
-                               options: [])
-        ctx.addPath(shape)
-        ctx.setLineWidth(5)
-        ctx.setStrokeColor(color(0xFFFFFF, 0.3))
-        ctx.strokePath()
-        ctx.restoreGState()
-    }
+    // Confetti in the tools' colors
+    sticker(ctx, sparkle(at: CGPoint(x: 280, y: 770), radius: 66), color(0xFFFFFF), outline: 12, lift: 12)
+    sticker(ctx, dot(CGPoint(x: 404, y: 846), radius: 22), Bubble.orange, outline: 12, lift: 12)
+    sticker(ctx, dot(CGPoint(x: 200, y: 640), radius: 20), Bubble.green, outline: 12, lift: 12)
 
-    // The J's shadow on the sea, then its body
+    // The J as a white sticker, shaded along its lower right
     let body = letter.outline
-    blurred(ctx, body, color(0x04155E, 0.55), blur: 34, offset: CGSize(width: 14, height: -26))
-    var down = CGAffineTransform(translationX: 0, y: -16)
-    let side = body.copy(using: &down)!
-    ctx.saveGState()
-    ctx.addPath(side)
-    ctx.clip()
-    ctx.drawLinearGradient(gradient([(0, color(0x9CC2F5)), (1, color(0x5F86D8))]), start: CGPoint(x: 0, y: 820),
-                           end: CGPoint(x: 0, y: 200), options: [])
-    ctx.restoreGState()
+    sticker(ctx, body, color(0xFFFFFF), outline: 18, lift: 34)
+    let shading: CGFloat = 28
+    fill(ctx, body.subtracting(moved(body, -shading * 0.6, shading)), Bubble.hover)
 
+    // The shades, with a hard shadow on the face
     ctx.saveGState()
     ctx.addPath(body)
     ctx.clip()
-    ctx.drawLinearGradient(gradient([(0, color(0xFFFFFF)), (0.55, color(0xF1F7FF)), (1, color(0xCFE2FF))]),
-                           start: CGPoint(x: 0, y: 820), end: CGPoint(x: 0, y: 210), options: [])
+    fill(ctx, moved(shades.frame, 8, -14), Bubble.ink.copy(alpha: 0.22)!)
     ctx.restoreGState()
-    innerShadow(ctx, body, color(0x2E62C9, 0.45), blur: 30, offset: CGSize(width: -14, height: 18))
-    // Gloss along the upper left of the stroke
-    ctx.saveGState()
-    ctx.addPath(body)
-    ctx.clip()
-    var gloss = CGAffineTransform(translationX: -letter.weight * 0.2, y: letter.weight * 0.1)
-    let shine = letter.spine.copy(using: &gloss)!
-        .copy(strokingWithWidth: letter.weight * 0.2, lineCap: .round, lineJoin: .round, miterLimit: 10)
-    blurred(ctx, shine, color(0xFFFFFF, 0.9), blur: 16)
-    ctx.restoreGState()
-
-    // The shades, with their shadow on the face
-    blurred(ctx, shades.frame, color(0x0B2A6B, 0.45), blur: 14, offset: CGSize(width: 4, height: -12))
-    ctx.addPath(shades.frame)
-    ctx.setFillColor(color(0x0A0C12))
-    ctx.fillPath()
+    fill(ctx, shades.frame, Bubble.ink)
     ctx.saveGState()
     ctx.addPath(shades.lenses)
     ctx.clip()
-    ctx.drawLinearGradient(gradient([(0, color(0x3A4150)), (0.5, color(0x11141B)), (1, color(0x020305))]),
-                           start: CGPoint(x: 0, y: shades.center.y + shades.height / 2),
-                           end: CGPoint(x: 0, y: shades.center.y - shades.height / 2), options: [])
-    // A streak of reflected sky across each lens
-    let streak = CGMutablePath()
-    streak.move(to: CGPoint(x: shades.center.x - 230, y: shades.center.y + 20))
-    streak.addLine(to: CGPoint(x: shades.center.x - 120, y: shades.center.y + 90))
-    streak.addLine(to: CGPoint(x: shades.center.x + 260, y: shades.center.y + 90))
-    streak.addLine(to: CGPoint(x: shades.center.x + 150, y: shades.center.y + 20))
-    streak.closeSubpath()
-    ctx.addPath(streak)
-    ctx.setFillColor(color(0xFFFFFF, 0.2))
-    ctx.fillPath()
+    fill(ctx, shades.shine, color(0xFFFFFF, 0.9))
     ctx.restoreGState()
-    // The brow bar catches the light
-    ctx.saveGState()
-    ctx.addPath(shades.frame)
-    ctx.clip()
-    ctx.drawLinearGradient(gradient([(0, color(0xFFFFFF, 0.28)), (0.18, color(0xFFFFFF, 0))]),
-                           start: CGPoint(x: 0, y: shades.center.y + shades.height * 0.66),
-                           end: CGPoint(x: 0, y: shades.center.y), options: [])
-    ctx.restoreGState()
-    // Hinge studs
-    for x in [shades.center.x - shades.width / 2 + 16, shades.center.x + shades.width / 2 - 16] {
-        ctx.addEllipse(in: CGRect(x: x - 7, y: shades.center.y + shades.height * 0.42 - 7, width: 14, height: 14))
-        ctx.setFillColor(color(0xC9D3E3))
-        ctx.fillPath()
-    }
 
     // A grin
-    ctx.addPath(mouth)
-    ctx.setFillColor(color(0x10204F))
-    ctx.fillPath()
+    fill(ctx, mouth, Bubble.ink)
     ctx.saveGState()
     ctx.addPath(mouth)
     ctx.clip()
     ctx.addEllipse(in: CGRect(x: mouthCenter.x - 30, y: mouthCenter.y - 44, width: 60, height: 38))
-    ctx.setFillColor(color(0x3C8DFF))
+    ctx.setFillColor(Bubble.red)
     ctx.fillPath()
     ctx.restoreGState()
 
     // A glint off the shades
-    let glint = sparkle(at: CGPoint(x: 778, y: 688), radius: 34)
-    blurred(ctx, glint, color(0xFFFFFF, 0.9), blur: 12)
-    ctx.addPath(glint)
-    ctx.setFillColor(color(0xFFFFFF))
-    ctx.fillPath()
-    ctx.restoreGState()
-
-    // A thin bright rim along the tile's top
-    ctx.saveGState()
-    ctx.addPath(tilePath)
-    ctx.clip()
-    ctx.addPath(tilePath)
-    ctx.setLineWidth(6)
-    ctx.setStrokeColor(color(0xFFFFFF, 0.28))
-    ctx.strokePath()
+    sticker(ctx, sparkle(at: CGPoint(x: 806, y: 730), radius: 50), Bubble.yellow, outline: 12, lift: 12)
     ctx.restoreGState()
 }
 

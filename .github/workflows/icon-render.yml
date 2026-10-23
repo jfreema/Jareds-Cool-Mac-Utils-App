@@ -1,0 +1,60 @@
+name: Icon render
+
+# Trial only, never merged to main: draws the art on a Mac and commits it back to this branch, with the icons as macOS
+# shows them in Finder.
+
+on:
+  push:
+    branches: [claude/project-thread-sq8asm]
+
+permissions:
+  contents: write
+
+jobs:
+  render:
+    runs-on: macos-26
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Draw the art
+        run: |
+          sw_vers
+          swift --version
+          ./Resources/draw-icon.swift
+          ./Resources/make-icon.swift
+
+      - name: See the icons as macOS shows them
+        run: |
+          git fetch --depth=1 origin main
+          mkdir -p trial/out
+          for name in old new; do
+            app="$RUNNER_TEMP/trial-$name.app"
+            mkdir -p "$app/Contents/MacOS" "$app/Contents/Resources"
+            cp /usr/bin/true "$app/Contents/MacOS/trial-$name"
+            if [[ $name == old ]]; then
+              git show FETCH_HEAD:Resources/AppIcon.icns > "$app/Contents/Resources/AppIcon.icns"
+            else
+              cp Resources/AppIcon.icns "$app/Contents/Resources/AppIcon.icns"
+            fi
+            cat > "$app/Contents/Info.plist" <<PLIST
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0"><dict>
+            <key>CFBundleExecutable</key><string>trial-$name</string>
+            <key>CFBundleIconFile</key><string>AppIcon</string>
+            <key>CFBundleIdentifier</key><string>io.github.jfreema.icontrial.$name</string>
+            <key>CFBundlePackageType</key><string>APPL</string>
+          </dict></plist>
+          PLIST
+            codesign --force --sign - "$app"
+            swift trial/shown-icon.swift "$app" "trial/out/$name-shown.png"
+          done
+
+      - name: Commit the art back to this branch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A Resources docs trial/out
+          git commit -m "Icon render from the Mac runner" || echo "Nothing changed"
+          git push origin HEAD:${{ github.ref_name }}
