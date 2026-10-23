@@ -314,7 +314,7 @@ struct MenuView: View {
             }
             section("Windows") {
                 card {
-                    ToggleRow(model: model, toggle: .snapWindows, title: "Snap Windows with ⌃⌥ Arrow Keys")
+                    ToggleRow(model: model, toggle: .snapWindows, title: "Snap Windows with control+option+arrow keys")
                     OptionStrip {
                         OptionChip(model: model, toggle: .snapThirds, title: "Thirds on External Displays",
                                    help: "Three columns instead of two on external displays")

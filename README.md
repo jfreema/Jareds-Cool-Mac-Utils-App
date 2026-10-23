@@ -62,7 +62,7 @@ Hold Control (⌃) and Option (⌥) and press an arrow key to put the front wind
 
 **Turn it on:**
 
-1. Click the app's icon in the menu bar and turn on **Snap Windows with ⌃⌥ Arrow Keys**.
+1. Click the app's icon in the menu bar and turn on **Snap Windows with control+option+arrow keys**.
 2. When macOS asks, click **Open System Settings**.
 3. Turn on **Jared's Cool Mac Utilities App** and enter your password or use Touch ID. The keys work within a couple of seconds.
 

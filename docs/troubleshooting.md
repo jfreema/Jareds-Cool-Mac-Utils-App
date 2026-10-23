@@ -58,7 +58,7 @@ From 1.1.6, the app is signed with an Apple Developer ID and notarized, so macOS
 ## Window snapping
 
 - **The keys do nothing.** The app doesn't have the Accessibility permission. Turn on **Jared's Cool Mac Utilities App** in **System Settings → Privacy & Security → Accessibility**.
-- **"Another app is using a ⌃⌥ arrow key."** Another app, such as a window manager, has the same shortcut. Quit it or change its shortcut, then turn snapping off and on.
+- **"Another app is using a control+option+arrow key."** Another app, such as a window manager, has the same shortcut. Quit it or change its shortcut, then turn snapping off and on.
 - **A window doesn't fill its column exactly.** Some apps keep a minimum size, and Terminal rounds to whole characters. The app centers those on the column and keeps them on the display.
 - **A full-screen window doesn't move.** The app leaves full-screen windows alone. Leave full screen first.
 

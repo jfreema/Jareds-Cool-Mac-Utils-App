@@ -159,7 +159,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         // Why the shortcut didn't take
         model.snapAction = snapper.status == .shortcutTaken
-            ? MenuAction(title: "Another app is using a ⌃⌥ arrow key") : nil
+            ? MenuAction(title: "Another app is using a control+option+arrow key") : nil
         // Allow Screen Snipping…, or why the shortcut didn't take, when the status calls for one
         model.snipAction = switch snipper.status {
         case .needsPermission: MenuAction(title: "Allow Screen Snipping…", command: .allowScreenSnipping)
