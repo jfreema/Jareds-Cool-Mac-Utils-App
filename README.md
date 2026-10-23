@@ -45,8 +45,8 @@ Rest the pointer on an open app's icon in the Dock to see its windows, then clic
 **Turn it on:**
 
 1. Click the app's icon in the menu bar and turn on **Show App Previews in the Dock**.
-2. When macOS asks, click **Open System Settings**, or choose **Allow App Previews…** in the app's menu. Turn on **Jared's Cool Mac Utilities App** in the **Accessibility** list, as for [window snapping](#window-snapping).
-3. For pictures of the windows, choose **Allow App Previews…** again and turn on **Jared's Cool Mac Utilities App** in the **Screen & System Audio Recording** list, as for the [screenshot tool](#screenshot-tool). Then click **Quit & Reopen**. Without it, the previews show only the windows' titles.
+2. When macOS asks, click **Open System Settings**, then turn on **Jared's Cool Mac Utilities App** in the **Accessibility** list, as for [window snapping](#window-snapping).
+3. For pictures of the windows, turn on **Jared's Cool Mac Utilities App** in **System Settings → Privacy & Security → Screen & System Audio Recording**, as for the [screenshot tool](#screenshot-tool). Then click **Quit & Reopen**. Without it, the previews show only the windows' titles.
 
 If window snapping and the screenshot tool are already on, the app has both permissions, so step 1 is all it takes.
 
@@ -63,7 +63,7 @@ Hold Control (⌃) and Option (⌥) and press an arrow key to put the front wind
 **Turn it on:**
 
 1. Click the app's icon in the menu bar and turn on **Snap Windows with ⌃⌥ Arrow Keys**.
-2. When macOS asks, click **Open System Settings**, or choose **Allow Window Snapping…** in the app's menu.
+2. When macOS asks, click **Open System Settings**.
 3. Turn on **Jared's Cool Mac Utilities App** and enter your password or use Touch ID. The keys work within a couple of seconds.
 
    | Find the **Accessibility** list | Turn on **Jared's Cool Mac Utilities App** |
@@ -76,7 +76,7 @@ Hold Control (⌃) and Option (⌥) and press an arrow key to put the front wind
 - **⌃⌥↑** widens it to fill the display. From a third, it goes to two thirds first.
 - **⌃⌥↓** moves it clockwise through the display's quarters, or sixths.
 
-Each display has two columns, or three on external displays with **Snap to Thirds on External Displays** on.
+Each display has two columns, or three on external displays with **Thirds on External Displays** on.
 
 | ⌃⌥← and ⌃⌥→ | ⌃⌥↓ |
 |---|---|
@@ -168,9 +168,9 @@ Keeps a MacBook awake with its lid closed, plugged in or on battery.
 
 **Turn it on:** click the app's icon in the menu bar, turn on **Stay Awake with Lid Closed**, and enter your password once. The options under it:
 
-- **Only While Connected to Power** keeps it awake only while it's plugged in. Unplug it and it sleeps as usual, right away if the lid is shut. This one starts out on, so turn it off to stay awake on battery too.
-- **Only While Connected to the Internet** keeps it awake only while it's online.
-- **Low Power Mode with Lid Closed** turns on Low Power Mode while the lid is shut, so the Mac runs cooler, if slower. Open the lid and your own setting comes back. It leaves Low Power Mode alone while an external display is in use. This one starts out on.
+- **Plugged In Only** keeps it awake only while it's plugged in. Unplug it and it sleeps as usual, right away if the lid is shut. This one starts out on, so turn it off to stay awake on battery too.
+- **Online Only** keeps it awake only while it's online.
+- **Low Power Mode** turns on Low Power Mode while the lid is shut, so the Mac runs cooler, if slower. Open the lid and your own setting comes back. It leaves Low Power Mode alone while an external display is in use. This one starts out on.
 
 **While it's on**, the Mac won't sleep even when idle, though the display still turns off. Choose **Sleep Now** to sleep anyway. On battery, it sleeps as usual once the battery is down to 10%. Don't leave it in a bag while it's awake: with the lid closed, it can get hot, even in Low Power Mode.
 

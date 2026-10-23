@@ -13,17 +13,12 @@ final class AppPreview {
     private(set) var isEnabled = UserDefaults.standard.bool(forKey: Keys.enabled) {
         didSet { UserDefaults.standard.set(isEnabled, forKey: Keys.enabled) }
     }
-    private(set) var status = Status.off
     /// Without Screen Recording it still works, with titles but no pictures
-    var needsPermission: Bool { status == .needsAccessibility || status == .needsScreenRecording }
+    private(set) var status = Status.off
 
     private enum Keys {
         static let enabled = "appPreview"
     }
-    private static let accessibilitySettings =
-        URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility")!
-    private static let screenRecordingSettings =
-        URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture")!
     /// How long the pointer rests on an icon before the first preview, so sweeping across the Dock shows nothing
     private static let restDelay = Duration.milliseconds(200)
     /// How long it takes to switch to another app's preview. Heading for a far card can cross the next icon.
@@ -91,11 +86,6 @@ final class AppPreview {
             if !CGPreflightScreenCaptureAccess() { _ = CGRequestScreenCaptureAccess() }
         }
         refresh()
-    }
-
-    /// The list Yafie still has to be turned on in
-    func openSettings() {
-        NSWorkspace.shared.open(AXIsProcessTrusted() ? Self.screenRecordingSettings : Self.accessibilitySettings)
     }
 
     /// Matches the Dock watching and status to the switch and the permissions. As with snips, a running app keeps
