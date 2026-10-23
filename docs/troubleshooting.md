@@ -29,6 +29,7 @@ From 1.1.6, the app is signed with an Apple Developer ID and notarized, so macOS
 - **Another app with a closed-lid mode.** Don't use it at the same time as this one. Both apps change the same setting.
 - **Sleeps even though you're online.** With **Online Only** on, the app counts the Mac as offline when `https://captive.apple.com` doesn't load for about a minute, for example on a network that blocks it. Turn that option off.
 - **Sleeps on battery.** **Plugged In Only** is on, or the battery is at 10% or less.
+- **control+option+L doesn't lock the screen.** Another app is using that shortcut. Quit it, then click the app's icon in the menu bar to take the shortcut back. Or choose **Lock Screen** in the Apple menu.
 - **Two of the app's processes in Activity Monitor.** The one without an icon is the watchdog, which turns sleep back on, and puts Low Power Mode back, if the app crashes. It ends by itself when the app quits.
 
 ## Guitar tuner

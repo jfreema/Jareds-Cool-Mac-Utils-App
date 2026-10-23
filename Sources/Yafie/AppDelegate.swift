@@ -8,6 +8,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let snapper = WindowSnapper()
     private let snipper = ScreenSnipper()
     private let previews = AppPreview()
+    private let screenLock = ScreenLock()
     private let cleaner = KeyboardCleaner()
     private let hiddenIcons = HiddenIcons()
     private lazy var drums = DrumMachineWindowController()
@@ -52,6 +53,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         hiddenIcons.willShow = { [weak self] in self?.menu.close() }
         hiddenIcons.keepsRegular = { [weak self] in self?.snipper.editors.isOpen ?? false }
         hiddenIcons.start()
+        screenLock.refresh()
         updateIcon()
         quitOnTerminationSignals()
         // After an update that moved the app to a new name
@@ -128,6 +130,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         snapper.refresh()
         previews.refresh()
         snipper.refresh()
+        // The app holding control+option+L may have quit
+        screenLock.refresh()
         refreshMenu(force: true)
     }
 
@@ -163,12 +167,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if !snapper.isEnabled { disabled.insert(.snapThirds) }
         model.isDisabled = disabled
 
-        // Sleep Now, Finish Setup… or Turn Sleep Back On…, when the status calls for one
+        // Finish Setup… or Turn Sleep Back On…, when the status calls for one
         model.stayAwakeAction = switch status {
-        case .active: MenuAction(title: "Sleep Now", command: .sleepNow)
         case .needsSetup, .lowPowerNeedsSetup: MenuAction(title: "Finish Setup…", command: .finishSetup)
         case .restoreFailed: MenuAction(title: "Turn Sleep Back On…", command: .retryRestore)
-        case .off, .waitingForPower, .lowBattery, .waitingForInternet: nil
+        case .off, .active, .waitingForPower, .lowBattery, .waitingForInternet: nil
         }
         // Why the shortcut didn't take
         model.snapAction = snapper.status == .shortcutTaken
@@ -217,7 +220,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             case .openTuner: tuner.show()
             case .openDrums: drums.show()
             case .cleanKeyboard: cleaner.start()
-            case .sleepNow: controller.sleepNow()
             case .finishSetup: controller.finishSetup()
             case .retryRestore: controller.retryRestore()
             case .showAbout: showAbout()

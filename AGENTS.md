@@ -6,7 +6,7 @@ Notes for any coding agent working on Jared's Cool Mac Utilities App, which is Y
 
 A macOS menu bar app with eight features: stay awake with the lid closed, window snapping, app previews from the Dock, a screenshot tool, an arrow for hidden menu bar icons, a guitar tuner, a drum machine and keyboard cleaning. It's Swift 6 with SwiftPM, with no Xcode project and no third-party dependencies. It runs on macOS 14 or later, on Apple silicon or Intel. It's an accessory app (`LSUIElement`), with no Dock icon or menu bar except while a snip editor is open or the hidden menu bar icons are out. [README.md](README.md) is the user guide.
 
-**Names:** users see Jared's Cool Mac Utilities App (`Yafie.fullName`), or Jared's Mac App (`Yafie.name`, `CFBundleName`) in menus, alerts and tooltips. On disk it's `jaredsmacutils.app`, with the executable and installer named to match. It was called Yafie before 1.1.4, and still is inside: the Swift package and module, the bundle ID `io.github.jfreema.yafie`, `/etc/sudoers.d/yafie` and the log subsystem. Never rename those: users' permissions, settings and password-free setup depend on them.
+**Names:** users see Jared's Cool Mac Utilities App (`Yafie.fullName`), or Jared's Mac App (`Yafie.name`, `CFBundleName`) in menus, alerts and tooltips. The menu's header says Jared's Cool Mac App, as Jared asked. On disk it's `jaredsmacutils.app`, with the executable and installer named to match. It was called Yafie before 1.1.4, and still is inside: the Swift package and module, the bundle ID `io.github.jfreema.yafie`, `/etc/sudoers.d/yafie` and the log subsystem. Never rename those: users' permissions, settings and password-free setup depend on them.
 
 ## Build and test
 
@@ -30,8 +30,8 @@ The app is one flat folder, `Sources/Yafie`, and the tests are in `Tests/YafieTe
 
 | Area | Files |
 |---|---|
-| Menu, alerts, launch | `AppDelegate`, `Yafie` (entry point, one copy at a time, the app's names), `MenuPanel` (the menu bar icon's menu, drawn in SwiftUI) |
-| Stay awake | `LidAwakeController`, `SleepSetting` (`pmset` through a sudoers rule), `LowPowerSetting` (Low Power Mode with the lid closed, through the same rule), `PowerManager` (and `LidMonitor`), `PowerSource`, `Connectivity`, `Watchdog` (a second process that turns sleep back on, and puts Low Power Mode back, if the app dies) |
+| Menu, alerts, launch | `AppDelegate`, `Yafie` (entry point, one copy at a time, the app's names), `MenuPanel` (the menu bar icon's menu, drawn in SwiftUI), `BubbleStyle` (the bubble pop look the menu and the tool windows share) |
+| Stay awake | `LidAwakeController`, `SleepSetting` (`pmset` through a sudoers rule), `LowPowerSetting` (Low Power Mode with the lid closed, through the same rule), `PowerManager` (and `LidMonitor`), `PowerSource`, `Connectivity`, `Watchdog` (a second process that turns sleep back on, and puts Low Power Mode back, if the app dies), `ScreenLock` (control+option+L locks the screen, to walk away while the Mac stays awake) |
 | Window snapping | `WindowSnapper`, `SnapLayout` (pure geometry) |
 | App preview | `AppPreview`, `DockWatcher` (the icon under the pointer), `AppWindows` (windows and their pictures), `PreviewPanel`, `PreviewLayout` (pure geometry) |
 | Screenshot tool | `ScreenSnipper`, `SnipDrawing` (pure drawing and layout), `SnipEditor`, `TextRecognizer` (Copy Text, with Vision) |
