@@ -19,10 +19,6 @@ func color(_ hex: UInt32, _ alpha: CGFloat = 1) -> CGColor {
             blue: CGFloat(hex & 0xFF) / 255, alpha: alpha)
 }
 
-func gradient(_ stops: [(CGFloat, CGColor)]) -> CGGradient {
-    CGGradient(colorsSpace: sRGB, colors: stops.map(\.1) as CFArray, locations: stops.map(\.0))!
-}
-
 func load(_ path: String) -> CGImage {
     let url = root.appendingPathComponent(path)
     guard let source = CGImageSourceCreateWithURL(url as CFURL, nil),
@@ -33,72 +29,59 @@ func load(_ path: String) -> CGImage {
 let icon = load("Resources/AppIcon.png")
 let menuGlyph = load("Resources/MenuIcon.png")
 
-// MARK: Scenery
+// MARK: Social preview
 
-/// Measured down from the top, like Finder's icon positions
-typealias Wave = (top: CGFloat, height: CGFloat, length: CGFloat, phase: CGFloat)
-
-/// Pale sky over two waves in the icon's blues
-func drawSea(_ ctx: CGContext, _ size: CGSize, back: Wave, front: Wave) {
-    func y(_ fromTop: CGFloat) -> CGFloat { size.height - fromTop }
-    ctx.drawLinearGradient(gradient([(0, color(0xF6FAFF)), (1, color(0xD4E6FF))]), start: CGPoint(x: 0, y: size.height),
-                           end: CGPoint(x: 0, y: y(front.top)), options: [.drawsAfterEndLocation])
-    let glow = CGPoint(x: size.width / 2, y: y(size.height / 10))
-    ctx.drawRadialGradient(gradient([(0, color(0xFFFFFF, 0.9)), (1, color(0xFFFFFF, 0))]), startCenter: glow, startRadius: 0,
-                           endCenter: glow, endRadius: size.width / 2, options: [])
-
-    ctx.saveGState()
-    ctx.addPath(wavePath(back, size))
-    ctx.clip()
-    ctx.drawLinearGradient(gradient([(0, color(0x9CC4FF)), (1, color(0x5B93F2))]), start: CGPoint(x: 0, y: y(back.top - 10)),
-                           end: CGPoint(x: 0, y: y(back.top + 78)), options: [.drawsAfterEndLocation])
-    ctx.restoreGState()
-    // Deepens toward the bottom
-    ctx.saveGState()
-    ctx.addPath(wavePath(front, size))
-    ctx.clip()
-    ctx.drawLinearGradient(gradient([(0, color(0x3B79E9)), (0.1, color(0x336ADC)), (1, color(0x13298F))]),
-                           start: CGPoint(x: 0, y: y(front.top - 8)), end: CGPoint(x: 0, y: 0), options: [])
-    ctx.restoreGState()
+/// The menu's colors, from BubbleStyle.swift
+enum Bubble {
+    static let blue = CGColor(srgbRed: 0.17, green: 0.37, blue: 0.94, alpha: 1)
+    static let ink = CGColor(srgbRed: 0.09, green: 0.12, blue: 0.24, alpha: 1)
 }
 
-func wavePath(_ wave: Wave, _ size: CGSize) -> CGPath {
-    let path = CGMutablePath()
-    path.move(to: .zero)
-    for x in stride(from: 0, through: size.width, by: 2) {
-        path.addLine(to: CGPoint(x: x, y: size.height - wave.top - wave.height * sin(2 * .pi * x / wave.length + wave.phase)))
-    }
-    path.addLine(to: CGPoint(x: size.width, y: 0))
-    path.closeSubpath()
-    return path
-}
-
-func drawText(_ ctx: CGContext, _ text: String, size: CGFloat, weight: NSFont.Weight, color: CGColor,
-              x: CGFloat, baseline: CGFloat, centered: Bool = false) {
+/// A line in the menu's rounded type
+func textLine(_ text: String, size: CGFloat, weight: NSFont.Weight, color: CGColor) -> CTLine {
     let system = NSFont.systemFont(ofSize: size, weight: weight)
     let font = system.fontDescriptor.withDesign(.rounded).flatMap { NSFont(descriptor: $0, size: size) } ?? system
-    let line = CTLineCreateWithAttributedString(NSAttributedString(string: text, attributes: [
+    return CTLineCreateWithAttributedString(NSAttributedString(string: text, attributes: [
         NSAttributedString.Key(kCTFontAttributeName as String): font,
         NSAttributedString.Key(kCTForegroundColorAttributeName as String): color,
     ]))
-    let width = centered ? CTLineGetTypographicBounds(line, nil, nil, nil) : 0
-    ctx.textPosition = CGPoint(x: x - width / 2, y: baseline)
+}
+
+func draw(_ ctx: CGContext, _ line: CTLine, x: CGFloat, baseline: CGFloat) {
+    ctx.textPosition = CGPoint(x: x, y: baseline)
     CTLineDraw(line, ctx)
 }
 
-// MARK: Social preview
-
+/// The icon on the menu's blue, with the name in chunky white type on a hard ink shadow, like the menu's header, and
+/// what the app is on a white card
 func drawSocialPreview(_ ctx: CGContext) {
-    let size = CGSize(width: 1280, height: 640)
-    drawSea(ctx, size, back: (468, 14, 1000, 2.2), front: (512, 11, 760, 0.4))
+    ctx.setFillColor(Bubble.blue)
+    ctx.fill(CGRect(x: 0, y: 0, width: 1280, height: 640))
     ctx.interpolationQuality = .high
     ctx.draw(icon, in: CGRect(x: 46, y: 112, width: 440, height: 440))
-    drawText(ctx, "Jared's Cool", size: 80, weight: .bold, color: color(0x0E2A75), x: 516, baseline: 413)
-    drawText(ctx, "Mac Utilities App", size: 80, weight: .bold, color: color(0x0E2A75), x: 516, baseline: 329)
-    drawText(ctx, "A Mac menu bar app with only the features", size: 31, weight: .medium, color: color(0x34466F),
-             x: 520, baseline: 263)
-    drawText(ctx, "I want and use, and nothing more.", size: 31, weight: .medium, color: color(0x34466F),
-             x: 520, baseline: 219)
+    for (text, baseline) in [("Jared's Cool", 433.0), ("Mac Utilities App", 349.0)] {
+        draw(ctx, textLine(text, size: 80, weight: .black, color: Bubble.ink), x: 522, baseline: baseline - 8)
+        draw(ctx, textLine(text, size: 80, weight: .black, color: color(0xFFFFFF)), x: 516, baseline: baseline)
+    }
+
+    let lines = ["A Mac menu bar app with only the features", "I want and use, and nothing more."]
+        .map { textLine($0, size: 30, weight: .semibold, color: Bubble.ink) }
+    let width = lines.map { CTLineGetTypographicBounds($0, nil, nil, nil) }.max() ?? 0
+    let card = CGPath(roundedRect: CGRect(x: 518, y: 182, width: width + 56, height: 124), cornerWidth: 22,
+                      cornerHeight: 22, transform: nil)
+    var lift = CGAffineTransform(translationX: 6, y: -10)
+    ctx.addPath(card.copy(using: &lift)!)
+    ctx.setFillColor(Bubble.ink)
+    ctx.fillPath()
+    ctx.addPath(card)
+    ctx.setFillColor(color(0xFFFFFF))
+    ctx.fillPath()
+    ctx.addPath(card)
+    ctx.setLineWidth(5)
+    ctx.setStrokeColor(Bubble.ink)
+    ctx.strokePath()
+    draw(ctx, lines[0], x: 546, baseline: 257)
+    draw(ctx, lines[1], x: 546, baseline: 217)
 }
 
 // MARK: Menu bar icon
