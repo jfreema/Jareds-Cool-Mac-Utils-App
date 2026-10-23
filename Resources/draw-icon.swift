@@ -46,6 +46,8 @@ struct Letter {
     var bend: CGFloat
     var radius: CGFloat
     var weight: CGFloat
+    /// How far the bottom curls around and up the left, in degrees
+    var curl: CGFloat = 202
 
     /// Down the stem, around the bottom and up to the left
     var spine: CGPath {
@@ -53,7 +55,7 @@ struct Letter {
         path.move(to: CGPoint(x: stemX, y: top))
         path.addLine(to: CGPoint(x: stemX, y: bend))
         path.addArc(center: CGPoint(x: stemX - radius, y: bend), radius: radius, startAngle: 0,
-                    endAngle: degrees(-202), clockwise: true)
+                    endAngle: degrees(-curl), clockwise: true)
         return path
     }
 
@@ -172,7 +174,36 @@ func sticker(_ ctx: CGContext, _ shape: CGPath, _ face: CGColor, outline: CGFloa
     return body
 }
 
+/// The menu's orange chip with its bolt, as beside the menu's title, tilted toward the J
+func drawBoltChip(_ ctx: CGContext, center: CGPoint, size: CGFloat, tilt: CGFloat) {
+    var turn = CGAffineTransform(translationX: center.x, y: center.y).rotated(by: degrees(tilt))
+    let chip = RoundedRectangle(cornerRadius: size * 0.27, style: .continuous)
+        .path(in: CGRect(x: -size / 2, y: -size / 2, width: size, height: size)).cgPath.copy(using: &turn)!
+    sticker(ctx, chip, Bubble.orange, outline: 14, lift: 18)
+
+    let weight = NSImage.SymbolConfiguration(pointSize: size / 2, weight: .black)
+    guard let bolt = NSImage(systemSymbolName: "bolt.fill", accessibilityDescription: nil)?
+        .withSymbolConfiguration(weight) else { fatalError("No bolt.fill symbol") }
+    let box = CGRect(x: -bolt.size.width / 2, y: -bolt.size.height / 2, width: bolt.size.width,
+                     height: bolt.size.height)
+    ctx.saveGState()
+    ctx.concatenate(turn)
+    // In ink: the symbol, then ink over it alone
+    ctx.beginTransparencyLayer(auxiliaryInfo: nil)
+    NSGraphicsContext.saveGraphicsState()
+    NSGraphicsContext.current = NSGraphicsContext(cgContext: ctx, flipped: false)
+    bolt.draw(in: box)
+    NSGraphicsContext.restoreGraphicsState()
+    ctx.setBlendMode(.sourceIn)
+    ctx.setFillColor(Bubble.ink)
+    ctx.fill(box)
+    ctx.endTransparencyLayer()
+    ctx.restoreGState()
+}
+
+/// The menu bar's J. The icon's curls up the left less, so it can't pass for a U.
 let letter = Letter(stemX: 668, top: 732, bend: 482, radius: 165, weight: 182)
+let iconLetter = Letter(stemX: 668, top: 732, bend: 482, radius: 165, weight: 182, curl: 168)
 let shades = Shades(center: CGPoint(x: 648, y: 648), width: 376, height: 116)
 let mouthCenter = CGPoint(x: 662, y: 538)
 let mouth = smile(center: mouthCenter, width: 92, height: 54)
@@ -188,13 +219,13 @@ func drawIcon(_ ctx: CGContext) {
     ctx.saveGState()
     ctx.addPath(facePath)
     ctx.clip()
-    // Confetti in the tools' colors
-    sticker(ctx, sparkle(at: CGPoint(x: 280, y: 770), radius: 66), color(0xFFFFFF), outline: 12, lift: 12)
-    sticker(ctx, dot(CGPoint(x: 404, y: 846), radius: 22), Bubble.orange, outline: 12, lift: 12)
-    sticker(ctx, dot(CGPoint(x: 200, y: 640), radius: 20), Bubble.green, outline: 12, lift: 12)
+    // The menu's bolt, and confetti in the tools' colors
+    sticker(ctx, dot(CGPoint(x: 440, y: 854), radius: 20), Bubble.yellow, outline: 12, lift: 12)
+    sticker(ctx, dot(CGPoint(x: 196, y: 586), radius: 18), Bubble.green, outline: 12, lift: 12)
+    drawBoltChip(ctx, center: CGPoint(x: 288, y: 748), size: 204, tilt: -8)
 
     // The J as a white sticker, shaded along its lower right
-    let body = letter.outline
+    let body = iconLetter.outline
     sticker(ctx, body, color(0xFFFFFF), outline: 18, lift: 34)
     let shading: CGFloat = 28
     fill(ctx, body.subtracting(moved(body, -shading * 0.6, shading)), Bubble.hover)
