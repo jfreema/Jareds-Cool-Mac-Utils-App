@@ -42,9 +42,10 @@ Building the release yourself still works: run `./build.sh --pkg`, then commit a
 
 ## Icon and artwork
 
-Two masters drive the artwork: `Resources/AppIcon.png`, the app icon at 1024 × 1024 pixels on Apple's macOS icon grid, and `Resources/MenuIcon.png`, the menu bar's glyph, black on a clear background. The menu bar draws only the glyph's shape, not its colors, so parts that overlap, like the sunglasses on the Y, need a clear gap around them. After changing either, run:
+Two masters drive the artwork: `Resources/AppIcon.png`, the app icon at 1024 × 1024 pixels on Apple's macOS icon grid, and `Resources/MenuIcon.png`, the menu bar's glyph, black on a clear background. `Resources/draw-icon.swift` draws both, a J in sunglasses, from the same shapes. The menu bar draws only the glyph's shape, not its colors, so parts that overlap, like the sunglasses on the J, need a clear gap around them. After changing the drawing, run:
 
 ```sh
+./Resources/draw-icon.swift
 ./Resources/make-icon.swift
 ```
 

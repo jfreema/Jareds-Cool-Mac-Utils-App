@@ -1,5 +1,5 @@
 #!/usr/bin/env swift
-// Builds the icons and the other art from two masters: ./Resources/make-icon.swift
+// Builds the icons and the other art from two masters, which draw-icon.swift draws: ./Resources/make-icon.swift
 // Resources/AppIcon.png: 1024 pixels on Apple's macOS grid, an 824-pixel squircle with its shadow.
 // Resources/MenuIcon.png: the menu bar glyph, black on clear.
 // Writes Resources/AppIcon.icns, Resources/MenuIcon.tiff, Resources/MenuIconOutline.tiff,
@@ -103,7 +103,7 @@ func drawSocialPreview(_ ctx: CGContext) {
 
 // MARK: Menu bar icon
 
-// Points. A shade taller than the 14-point symbol it replaced, wide enough for the Y; outline weight to match Wi-Fi's.
+// Points. A shade taller than the 14-point symbol it replaced, wide enough for the J; outline weight to match Wi-Fi's.
 let menuIconSize = CGSize(width: 16, height: 15)
 let menuOutlineStroke: CGFloat = 1.2
 
@@ -122,7 +122,7 @@ func blackImage(_ opaque: [Bool], width: Int, height: Int) -> CGImage {
                      space: sRGB, bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!.makeImage()!
 }
 
-/// The glyph hollowed out, for when Yafie isn't keeping the Mac awake
+/// The glyph hollowed out, for when the app isn't keeping the Mac awake
 func outlinedGlyph() -> CGImage {
     let (width, height) = (menuGlyph.width, menuGlyph.height)
     let ink = alphaMask(menuGlyph).map { $0 >= 128 }
