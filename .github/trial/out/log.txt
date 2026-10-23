@@ -1,0 +1,7 @@
+Timestamp               Ty Process[PID:TID]
+2026-10-23 07:00:46.604 Df jaredsmacutils[7034:608a] [io.github.jfreema.yafie:icons] The arrow starts at 290.000000, left of the system icons
+2026-10-23 07:00:52.022 Df jaredsmacutils[7302:62dd] [io.github.jfreema.yafie:icons] The arrow starts at 290.000000, left of the system icons
+2026-10-23 07:01:02.870 Df jaredsmacutils[7600:66c5] [io.github.jfreema.yafie:icons] The arrow starts at 290.000000, left of the system icons
+2026-10-23 07:01:11.432 Df jaredsmacutils[7600:66c5] [io.github.jfreema.yafie:icons] Showing hidden icons over wide, the arrow at (672.0, 738.0, 27.0, 30.0)
+2026-10-23 07:01:11.715 Df jaredsmacutils[7600:66c5] [io.github.jfreema.yafie:icons] Got the menu bar after 0.29 s, asked 1 times
+2026-10-23 07:01:12.945 Df jaredsmacutils[7600:66c5] [io.github.jfreema.yafie:icons] Hid the icons again: the arrow clicked again, back to the app before
