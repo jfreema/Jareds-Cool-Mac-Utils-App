@@ -14,13 +14,15 @@ EXPECTED_TEAM="885XHF7XLL"
 OPENSSL=/usr/bin/openssl
 WORK="$(mktemp -d)"
 TEST_KEYCHAIN="$WORK/test.keychain-db"
+# One request at a time, made just before it's needed, so it can't go to the wrong certificate
+CSR="$HOME/Desktop/JaredsMacApp.certSigningRequest"
 USED_CLIPBOARD=0
 KINDS=(Application Installer)
 
 cleanup() {
     security delete-keychain "$TEST_KEYCHAIN" 2>/dev/null || true
     rm -rf "$WORK"
-    for kind in $KINDS; do rm -f "$HOME/Desktop/JaredsMacApp-$kind.certSigningRequest"; done
+    rm -f "$CSR"
     (( USED_CLIPBOARD )) && pbcopy < /dev/null
     return 0
 }
@@ -57,12 +59,6 @@ while [[ -z "$APPLE_ID" ]]; do
     ask APPLE_ID "The email you sign in to your Apple Developer account with: "
 done
 
-for kind in $KINDS; do
-    $OPENSSL req -new -newkey rsa:2048 -nodes -keyout "$WORK/$kind.key" -subj "/emailAddress=$APPLE_ID/CN=$(id -F)" \
-        -out "$HOME/Desktop/JaredsMacApp-$kind.certSigningRequest" 2>/dev/null
-    chmod 600 "$WORK/$kind.key"
-done
-
 # Waits for the certificate made from $kind's request, and checks it
 fetch_certificate() {
     local kind="$1" answer cer newest subject team name
@@ -87,7 +83,7 @@ fetch_certificate() {
         fi
         if [[ "$($OPENSSL x509 -noout -modulus -in "$WORK/$kind.pem")" \
                 != "$($OPENSSL rsa -noout -modulus -in "$WORK/$kind.key")" ]]; then
-            fail "$cer was made from a different signing request. Upload JaredsMacApp-$kind.certSigningRequest."
+            fail "$cer was made from an older signing request. Make it again with JaredsMacApp.certSigningRequest."
             continue
         fi
         subject="$($OPENSSL x509 -noout -subject -in "$WORK/$kind.pem")"
@@ -115,12 +111,16 @@ fetch_certificate() {
 typeset -A NAMES
 step "2. Make the certificates on Apple's site"
 for kind in $KINDS; do
+    rm -f "$CSR"
+    $OPENSSL req -new -newkey rsa:2048 -nodes -keyout "$WORK/$kind.key" -subj "/emailAddress=$APPLE_ID/CN=$(id -F)" \
+        -out "$CSR" 2>/dev/null
+    chmod 600 "$WORK/$kind.key"
     print
     print "Opening developer.apple.com for the Developer ID $kind certificate. There:"
     print "  a. Sign in if asked."
     print "  b. Choose 'Developer ID $kind' and click Continue."
     print "  c. Select 'G2 Sub-CA' if it asks. (Apple preselects 'Previous Sub-CA', which expires in 2027.)"
-    print "     Click Choose File and pick JaredsMacApp-$kind.certSigningRequest on your Desktop."
+    print "     Click Choose File and pick JaredsMacApp.certSigningRequest on your Desktop. (It's a new one each time.)"
     print "  d. Click Continue, then Download."
     open "https://developer.apple.com/account/resources/certificates/add"
     fetch_certificate "$kind"
