@@ -67,9 +67,7 @@ Hold Control (⌃) and Option (⌥) and press an arrow key to put the front wind
 2. When macOS asks, click **Open System Settings**.
 3. Turn on **Jared's Cool Mac Utilities App** and enter your password or use Touch ID. The keys work within a couple of seconds.
 
-   | Find the **Accessibility** list | Turn on **Jared's Cool Mac Utilities App** |
-   |---|---|
-   | <img src="docs/snapping-1-accessibility.png" width="360" alt="Accessibility settings: Allow the applications below to control your computer."> | <img src="docs/snapping-2-turn-on.png" width="440" alt="The app in the list, with its switch turned on"> |
+   <img src="docs/snapping-accessibility.png" width="400" alt="Accessibility settings: Allow the applications below to control your computer, with Jared's Cool Mac Utilities App in the list and its switch turned on">
 
 **Use it:**
 
@@ -94,9 +92,7 @@ Press ⌃⌥P to snip part of the screen, then copy it, save it, mark it up with
 1. Click the app's icon in the menu bar and turn on **Snipping Tool with control+option+P**. Nothing appears yet: macOS just adds the app to its list, switched off.
 2. Choose **Allow Screen Snipping…** in the app's menu, then turn on **Jared's Cool Mac Utilities App** and enter your password or use Touch ID.
 
-   | Find the **Screen & System Audio Recording** list | Turn on **Jared's Cool Mac Utilities App** |
-   |---|---|
-   | <img src="docs/snipping-1-screen-recording.png" width="400" alt="Screen & System Audio Recording settings: Allow the applications below to record the content of your screen and audio, even while using other applications."> | <img src="docs/snipping-2-turn-on.png" width="400" alt="The app in the list, with its switch off"> |
+   <img src="docs/snipping-screen-recording.png" width="400" alt="Screen & System Audio Recording settings, with Jared's Cool Mac Utilities App in the list and its switch turned on">
 
 3. Click **Quit & Reopen**.
 4. Take your first snip. macOS asks whether the app can bypass the system private window picker. Click **Allow**, then take the snip again. macOS asks this again about once a month.
@@ -139,7 +135,7 @@ Shows the note you're playing and how sharp or flat you are, and says **In tune*
 
 **Use it:** choose **Guitar Tuner…** in the app's menu, click **Allow** for the microphone the first time, and play a string. The app listens only while the tuner is open, and its menu bar icon turns green, then yellow, orange and red as the sound gets louder.
 
-<img src="docs/tuner.png" width="300" alt="The tuner showing B2, 22 cents sharp, at 125.1 Hz">
+<img src="docs/tuner.png" width="300" alt="The Guitar Tuner window showing B2, 22 cents sharp, at 125.1 Hz">
 
 It uses the input chosen in **System Settings → Sound → Input**, unless that's a Bluetooth or virtual input. Then it uses the Mac's own microphone, since opening a Bluetooth headset's microphone can make it suddenly much louder. On an audio interface, it uses the louder of inputs 1 and 2. It only ever listens and never plays sound.
 
