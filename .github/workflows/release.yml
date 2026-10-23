@@ -1,6 +1,6 @@
 name: Release
 
-# Tests, builds, signs and checks Yafie whenever Resources/Info.plist changes on main. When that brings a new version,
+# Tests, builds, signs and checks the app whenever Resources/Info.plist changes on main. When that brings a new version,
 # it publishes it: commits the installer, the update feeds in downloads/ and the README's version line to main, which
 # is where Check for Updates looks. Run it by hand from the Actions tab to try a build without publishing.
 
@@ -27,7 +27,7 @@ jobs:
     runs-on: macos-26
     timeout-minutes: 30
     env:
-      # The fingerprint behind every grant users have given Yafie. A different certificate would look like a different
+      # The fingerprint behind every grant users have given the app. A different certificate would look like a different
       # app to macOS, so a release signed by anything else stops here. See docs/buildfromsource.md.
       CERTIFICATE_SHA1: be53c25d8c8e5d9ddd6545ea67cb8cbdf9710a90
     steps:
@@ -98,20 +98,20 @@ jobs:
           codesign --verify --strict "$app"
           codesign -d -r- "$app" 2>&1 | grep -q "certificate leaf = H\"$CERTIFICATE_SHA1\"" \
             || { echo "::error::Signed with a different certificate than every earlier release"; exit 1; }
-          # Each feed at this version, update.json always, and latest.json until the app is renamed
-          for feed in downloads/update.json downloads/latest.json; do
-            [[ "$(plutil -extract version raw -o - "$feed")" == "$version" ]] || continue
-            test "downloads/$(basename "$(plutil -extract url raw -o - "$feed")")" = "$pkg"
-            test "$(plutil -extract sha256 raw -o - "$feed")" = "$(shasum -a 256 "$pkg" | cut -d' ' -f1)"
-            echo "$feed points to $pkg"
-          done
+          test "$(plutil -extract version raw -o - downloads/update.json)" = "$version"
+          test "$(plutil -extract sha256 raw -o - downloads/update.json)" = "$(shasum -a 256 "$pkg" | cut -d' ' -f1)"
+          # Copies before 1.1.3 read latest.json and only take Yafie.app, so it and Yafie.pkg stay at 1.1.3 for good
+          test "$(plutil -extract version raw -o - downloads/latest.json)" = 1.1.3
+          git diff --quiet -- downloads/latest.json downloads/Yafie.pkg \
+            || { echo "::error::downloads/latest.json and downloads/Yafie.pkg must stay at 1.1.3"; exit 1; }
+          echo "downloads/update.json points to $pkg, and latest.json stays at 1.1.3"
           executable="$(/usr/libexec/PlistBuddy -c 'Print CFBundleExecutable' "$plist")"
           echo "$(basename "$app") $version for $(lipo -archs "$app/Contents/MacOS/$executable") checks out"
 
       - name: Keep the installer with this run
         uses: actions/upload-artifact@v4
         with:
-          name: Yafie-${{ steps.version.outputs.version }}
+          name: jaredsmacutils-${{ steps.version.outputs.version }}
           path: |
             downloads/*.pkg
             downloads/*.json

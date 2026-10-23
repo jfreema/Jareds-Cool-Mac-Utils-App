@@ -77,13 +77,13 @@ enum SnipMenu {
         let bar = NSMenu()
         let quitEditors = item("Quit Snip Editor", #selector(SnipEditors.quitEditors(_:)), "q")
         quitEditors.target = editors
-        add("Yafie", to: bar, [
-            item("About Yafie", #selector(AppDelegate.showAbout)),
+        add(Yafie.name, to: bar, [
+            item("About \(Yafie.name)", #selector(AppDelegate.showAbout)),
             .separator(),
-            item("Hide Yafie", #selector(NSApplication.hide(_:)), "h"),
+            item("Hide \(Yafie.name)", #selector(NSApplication.hide(_:)), "h"),
             .separator(),
             quitEditors,
-            item("Quit Yafie", #selector(NSApplication.terminate(_:))),  // no ⌘Q: that closes the editors
+            item("Quit \(Yafie.name)", #selector(NSApplication.terminate(_:))),  // no ⌘Q: that closes the editors
         ])
         add("File", to: bar, [
             item("Save…", #selector(SnipEditorController.saveSnip(_:)), "s"),

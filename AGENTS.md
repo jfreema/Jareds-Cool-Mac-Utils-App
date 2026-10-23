@@ -1,25 +1,27 @@
 # Agents
 
-Notes for any coding agent working on Yafie.
+Notes for any coding agent working on Jared's Cool Mac Utilities App, which is Yafie inside.
 
-## What Yafie is
+## What the app is
 
 A macOS menu bar app with seven features: stay awake with the lid closed, window snapping, app previews from the Dock, a screenshot tool, a guitar tuner, a drum machine and keyboard cleaning. It's Swift 6 with SwiftPM, with no Xcode project and no third-party dependencies. It runs on macOS 14 or later, on Apple silicon or Intel. It's an accessory app (`LSUIElement`), with no Dock icon or menu bar except while a snip editor is open. [README.md](README.md) is the user guide.
+
+**Names:** users see Jared's Cool Mac Utilities App (`Yafie.fullName`), or Jared's Mac App (`Yafie.name`, `CFBundleName`) in menus, alerts and tooltips. On disk it's `jaredsmacutils.app`, with the executable and installer named to match. It was called Yafie before 1.1.4, and still is inside: the Swift package and module, the bundle ID `io.github.jfreema.yafie`, the **Yafie Code Signing** certificate, `/etc/sudoers.d/yafie` and the log subsystem. Never rename those: users' permissions, settings and password-free setup depend on them.
 
 ## Build and test
 
 ```sh
 swift build            # compile
 swift test             # unit tests (Swift Testing)
-./build.sh             # build/Yafie.app
-./build.sh --install   # replace /Applications/Yafie.app and restart it
+./build.sh             # build/jaredsmacutils.app
+./build.sh --install   # replace /Applications/jaredsmacutils.app (and Yafie.app) and restart it
 ```
 
 - **Command Line Tools only:** everything must build without Xcode. SwiftUI's `@State` doesn't build with them, since the macro plugin it needs isn't included. Keep SwiftUI state in `@Observable` models, as `TunerWindow` and `SnipEditor` do.
 - **`swift test` sometimes fails with "plugin for module 'TestingMacros' not found".** It's a toolchain glitch, not the tests, so run it again. A real compile error can show up on a retry, so read the output each time.
 - **Linker warnings about missing search paths** come from the Command Line Tools. Ignore them.
 - **`./build.sh --install` quits and replaces the copy the user is running.** Ask first.
-- **A debug build won't start while the installed Yafie is running.** The second copy hands over to the first and quits, so quit Yafie first. These hooks work in debug builds only: `--tuner`, `--drums`, `--snip-editor <image file>` and `--update-now`.
+- **A debug build won't start while the installed app is running.** The second copy hands over to the first and quits, so quit the app first. These hooks work in debug builds only: `--tuner`, `--drums`, `--snip-editor <image file>` and `--update-now`.
 - **Logs:** `/usr/bin/log show --last 1h --predicate 'subsystem == "io.github.jfreema.yafie"'`. The categories are `lid`, `snap`, `preview`, `snip`, `tuner`, `drums` and `clean`.
 
 ## Code
@@ -28,8 +30,8 @@ The app is one flat folder, `Sources/Yafie`, and the tests are in `Tests/YafieTe
 
 | Area | Files |
 |---|---|
-| Menu, alerts, launch | `AppDelegate`, `Yafie` (entry point, one copy at a time), `ToggleRow`, `MenuSwitch` |
-| Stay awake | `LidAwakeController`, `SleepSetting` (`pmset` through a sudoers rule), `LowPowerSetting` (Low Power Mode with the lid closed, through the same rule), `PowerManager` (and `LidMonitor`), `PowerSource`, `Connectivity`, `Watchdog` (a second process that turns sleep back on, and puts Low Power Mode back, if Yafie dies) |
+| Menu, alerts, launch | `AppDelegate`, `Yafie` (entry point, one copy at a time, the app's names), `ToggleRow`, `MenuSwitch` |
+| Stay awake | `LidAwakeController`, `SleepSetting` (`pmset` through a sudoers rule), `LowPowerSetting` (Low Power Mode with the lid closed, through the same rule), `PowerManager` (and `LidMonitor`), `PowerSource`, `Connectivity`, `Watchdog` (a second process that turns sleep back on, and puts Low Power Mode back, if the app dies) |
 | Window snapping | `WindowSnapper`, `SnapLayout` (pure geometry) |
 | App preview | `AppPreview`, `DockWatcher` (the icon under the pointer), `AppWindows` (windows and their pictures), `PreviewPanel`, `PreviewLayout` (pure geometry) |
 | Screenshot tool | `ScreenSnipper`, `SnipDrawing` (pure drawing and layout), `SnipEditor`, `TextRecognizer` (Copy Text, with Vision) |
@@ -43,18 +45,19 @@ Put logic that can be pure, like geometry, drawing and parsing, in pure types wi
 ## Things that bite
 
 - **The main thread runs lid sleep, so never block it.** Accessibility calls run on a queue with a timeout. Core Audio runs in child processes (`--tuner-listen`, `--drum-play`), because AVAudioEngine can hang for good after an audio device changes.
-- **The sudoers rule allows only the `pmset` commands Yafie runs** (`SleepSetting.allowedCommands`). A new command needs a new rule, so everyone has to enter their password again: Yafie tests the rule with a real `sudo -n` write and shows **Finish Setup…** if it's old, as it did for Low Power Mode. `sudo -l` can't tell, since it says yes to anything an admin may run with a password. `SleepSettingTests` checks that every command matches the rule.
+- **The sudoers rule allows only the `pmset` commands the app runs** (`SleepSetting.allowedCommands`). A new command needs a new rule, so everyone has to enter their password again: the app tests the rule with a real `sudo -n` write and shows **Finish Setup…** if it's old, as it did for Low Power Mode. `sudo -l` can't tell, since it says yes to anything an admin may run with a password. `SleepSettingTests` checks that every command matches the rule.
 - **App Preview reads the Dock through Accessibility.** The Dock selects the icon under the pointer and posts `AXSelectedChildrenChanged` on its list, as DockDoor relies on too. Windows are matched to their pictures with the private `_AXUIElementGetWindow`, found with `dlsym`, since two windows can share a frame and title. Its panel is non-activating and must never take the focus.
-- **The drum player only plays.** It never touches an input, so it can't switch a Bluetooth headset to call mode. Its clock runs on its audio thread, a sample at a time, so the metronome and loop stay in time. The app writes its commands to a pipe set never to wait and never to raise SIGPIPE, so a stuck or dead player can't block or kill Yafie.
+- **The drum player only plays.** It never touches an input, so it can't switch a Bluetooth headset to call mode. Its clock runs on its audio thread, a sample at a time, so the metronome and loop stay in time. The app writes its commands to a pipe set never to wait and never to raise SIGPIPE, so a stuck or dead player can't block or kill the app.
 - **Trackpad drumming uses `NSTouch`**, so taps reach the pads only while the drum window is key and the pointer is over them. A tap can also arrive as a click, which the pads ignore.
 - **Keyboard cleaning drops every input event with an event tap**, where HID events enter the window server, so it needs Accessibility. The tap's source is on the main run loop on purpose: if the main thread hangs, macOS turns the tap off and input comes back, where a tap on its own thread could leave the Mac stuck. Secure input, like a focused password field, hides keystrokes from taps, so the cleaning window takes the keyboard, which ends other apps' secure input and catches any key that still gets past.
-- **Two update feeds.** From 1.1.3, Check for Updates reads `downloads/update.json` and finds the app in the installer by bundle ID, so a version with a new name goes in beside the old copy, which is removed, and Open at Login moves with it (`Updater.replace`). Copies before 1.1.3 read `downloads/latest.json` and only take `Yafie.app`. So once the app is renamed, `build.sh` must stop writing `latest.json` and `Yafie.pkg`, leaving them at the last Yafie, which old copies pass through.
-- **Global shortcuts go through `HotKeys`**, which owns Yafie's one Carbon handler. A second handler would take other features' key presses.
-- **⌘Q in the snip editor closes the editors, not Yafie.** While an editor is open, Yafie looks like a regular app, but quitting it would also stop Stay Awake and window snapping. **Quit Yafie** is in the menu, without the shortcut.
+- **Two update feeds.** From 1.1.3, Check for Updates reads `downloads/update.json` and finds the app in the installer by bundle ID, so a version with a new name goes in beside the old copy, which is removed (`Updater.replace`). Open at Login follows by itself: macOS keys login items by bundle ID and moves one to the app's new place the first time the app asks about it, which it does at launch (`Updater.keepOpenAtLogin`). Copies before 1.1.3 read `downloads/latest.json` and only take `Yafie.app`, so it and `Yafie.pkg` stay at 1.1.3, the last Yafie, for good. Old copies pass through it. `build.sh` doesn't write them, and the Release workflow fails if they change.
+- **Finder's name for the app comes from `Resources/en.lproj/InfoPlist.strings`,** and only while `CFBundleDisplayName` in `Info.plist` matches the file name, `jaredsmacutils`. Otherwise Finder, the Dock and Spotlight show `jaredsmacutils`. `AppNameTests` checks they match.
+- **Global shortcuts go through `HotKeys`**, which owns the app's one Carbon handler. A second handler would take other features' key presses.
+- **⌘Q in the snip editor closes the editors, not the app.** While an editor is open, the app looks like a regular one, but quitting it would also stop Stay Awake and window snapping. **Quit Jared's Mac App** is in the menu, without the shortcut.
 - **A menu item takes its key even when it's disabled.** So the snip editor's single-key shortcuts (R, L, A, H, T, 1 to 4, W) only exist while an editor has the keyboard and no text is being typed (`SnipMenu.setSingleKeys`). Otherwise those letters couldn't be typed in a text or a Save dialog's name.
-- **Activation:** since macOS 14, `NSApp.activate()` is a request that macOS can turn down. Anything shown after a wait or from a pop-up menu must use `NSApp.activateRegardless()`. That includes alerts, the snip editor and Save dialogs. Otherwise it opens behind the app in front and Yafie looks stuck. Hand focus back with `NSApp.handFocus(back:)`.
+- **Activation:** since macOS 14, `NSApp.activate()` is a request that macOS can turn down. Anything shown after a wait or from a pop-up menu must use `NSApp.activateRegardless()`. That includes alerts, the snip editor and Save dialogs. Otherwise it opens behind the app in front and the app looks stuck. Hand focus back with `NSApp.handFocus(back:)`.
 - **The tuner must never open a Bluetooth microphone, or play any sound.** Opening a headset's microphone switches it to call mode, which can make everything it plays dangerously loud, and many headsets then feed the microphone back into the ears. So the listener records with AVCaptureSession, which never opens an output, and only from built-in and wired inputs (`TunerInput`). It also skips virtual inputs, which carry other apps' sound, and interface channels past 2, which can be loopback.
-- **Screen Recording:** on recent macOS, `CGRequestScreenCaptureAccess()` shows no dialog. It only adds Yafie to the list in System Settings. The "bypass the system private window picker" alert comes with the first snip, then about once a month.
+- **Screen Recording:** on recent macOS, `CGRequestScreenCaptureAccess()` shows no dialog. It only adds the app to the list in System Settings. The "bypass the system private window picker" alert comes with the first snip, then about once a month.
 
 ## Signing
 

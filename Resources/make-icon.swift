@@ -93,10 +93,12 @@ func drawSocialPreview(_ ctx: CGContext) {
     drawSea(ctx, size, back: (468, 14, 1000, 2.2), front: (512, 11, 760, 0.4))
     ctx.interpolationQuality = .high
     ctx.draw(icon, in: CGRect(x: 46, y: 112, width: 440, height: 440))
-    drawText(ctx, "Yafie", size: 96, weight: .bold, color: color(0x0E2A75), x: 516, baseline: 368)
+    drawText(ctx, "Jared's Cool", size: 80, weight: .bold, color: color(0x0E2A75), x: 516, baseline: 413)
+    drawText(ctx, "Mac Utilities App", size: 80, weight: .bold, color: color(0x0E2A75), x: 516, baseline: 329)
     drawText(ctx, "A Mac menu bar app with only the features", size: 31, weight: .medium, color: color(0x34466F),
-             x: 520, baseline: 298)
-    drawText(ctx, "I want and use, and nothing more.", size: 31, weight: .medium, color: color(0x34466F), x: 520, baseline: 254)
+             x: 520, baseline: 263)
+    drawText(ctx, "I want and use, and nothing more.", size: 31, weight: .medium, color: color(0x34466F),
+             x: 520, baseline: 219)
 }
 
 // MARK: Menu bar icon

@@ -1,0 +1,4 @@
+/* The names Finder, the Dock and Spotlight show. They only use these while CFBundleDisplayName in Info.plist matches
+   the app's file name, jaredsmacutils.app. */
+"CFBundleDisplayName" = "Jared's Cool Mac Utilities App";
+"CFBundleName" = "Jared's Mac App";

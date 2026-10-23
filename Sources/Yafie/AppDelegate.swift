@@ -64,7 +64,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         updateIcon()
         quitOnTerminationSignals()
         // After an update that moved the app to a new name
-        Updater.restoreOpenAtLogin()
+        Updater.keepOpenAtLogin()
         // A second copy asks this one to speak up
         DistributedNotificationCenter.default().addObserver(forName: Yafie.showMenuNotification, object: nil,
                                                             queue: .main) { [weak self] _ in
@@ -191,7 +191,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         menu.addItem(.separator())
         let login = ToggleRow("Open at Login") { [weak self] on in self?.setOpenAtLogin(on) }
         menu.addItem(viewItem(login))
-        menu.addItem(item("About Yafie", #selector(showAbout)))
+        menu.addItem(item("About \(Yafie.name)", #selector(showAbout)))
         if updater.isBusy {
             let busy = NSMenuItem(title: "Checking for Updates…", action: nil, keyEquivalent: "")
             busy.isEnabled = false
@@ -200,7 +200,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             menu.addItem(item("Check for Updates…", #selector(checkForUpdates)))
         }
         menu.addItem(.separator())
-        menu.addItem(NSMenuItem(title: "Quit Yafie",
+        menu.addItem(NSMenuItem(title: "Quit \(Yafie.name)",
                                 action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
 
         openMenu = OpenMenu(summary: summary, stayAwake: stayAwake, power: power, online: online, lowPower: lowPower,
@@ -350,7 +350,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     @objc func showAbout() {
         NSApp.activate()
         // Empty build number drops the "(1)"
-        NSApp.orderFrontStandardAboutPanel(options: [.applicationVersion: Bundle.main.shortVersion, .version: ""])
+        NSApp.orderFrontStandardAboutPanel(options: [.applicationName: Yafie.fullName,
+                                                     .applicationVersion: Bundle.main.shortVersion, .version: ""])
     }
     @objc private func openTuner() { tuner.show() }
     @objc private func openDrums() { drums.show() }
@@ -370,7 +371,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             let image = loudness.icon
             image?.accessibilityDescription = "Tuner open, \(loudness.spoken)"
             button.image = image
-            button.toolTip = "Yafie: Tuner is open"
+            button.toolTip = "\(Yafie.name): Tuner is open"
             return
         }
         let status = controller.status
@@ -379,7 +380,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         image?.accessibilityDescription = status.summary
         // At full strength like the menu bar's other icons, even while off
         button.image = image
-        button.toolTip = "Yafie: \(status.summary)"
+        button.toolTip = "\(Yafie.name): \(status.summary)"
     }
 
     /// Clean quit restores sleep

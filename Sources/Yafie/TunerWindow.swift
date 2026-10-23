@@ -215,7 +215,7 @@ struct TunerView: View {
             case .starting, .listening:
                 ReadingView(reading: model.reading, isStarting: model.status == .starting)
             case .denied:
-                MessageView(symbol: "mic.slash", title: "Yafie can't use the microphone",
+                MessageView(symbol: "mic.slash", title: "\(Yafie.name) can't use the microphone",
                             detail: "Allow it in System Settings, then come back to this window.",
                             button: "Open Privacy Settings", action: openPrivacySettings)
             case .noInput:

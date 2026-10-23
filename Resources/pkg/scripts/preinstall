@@ -1,8 +1,10 @@
 #!/bin/sh
-# A running copy quits first, turning sleep back on as it goes
-/usr/bin/pkill -TERM -x Yafie || exit 0
-for _ in 1 2 3 4 5 6 7 8 9 10; do
-    /usr/bin/pgrep -x Yafie >/dev/null || break
-    /bin/sleep 0.5
+# A running copy quits first, turning sleep back on as it goes. Before 1.1.4, it ran as Yafie.
+for name in jaredsmacutils Yafie; do
+    /usr/bin/pkill -TERM -x "$name" || continue
+    for _ in 1 2 3 4 5 6 7 8 9 10; do
+        /usr/bin/pgrep -x "$name" >/dev/null || break
+        /bin/sleep 0.5
+    done
 done
 exit 0

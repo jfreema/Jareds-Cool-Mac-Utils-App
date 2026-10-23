@@ -5,9 +5,9 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>en</string>
 	<key>CFBundleDisplayName</key>
-	<string>Yafie</string>
+	<string>jaredsmacutils</string>
 	<key>CFBundleExecutable</key>
-	<string>Yafie</string>
+	<string>jaredsmacutils</string>
 	<key>CFBundleIconFile</key>
 	<string>AppIcon</string>
 	<key>CFBundleIdentifier</key>
@@ -15,22 +15,24 @@
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
-	<string>Yafie</string>
+	<string>Jared's Mac App</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
-	<string>1.1.3</string>
+	<string>1.1.4</string>
 	<key>CFBundleVersion</key>
 	<string>1</string>
 	<key>LSAppNapIsDisabled</key>
 	<true/>
 	<key>LSApplicationCategoryType</key>
 	<string>public.app-category.utilities</string>
+	<key>LSHasLocalizedDisplayName</key>
+	<true/>
 	<key>LSMinimumSystemVersion</key>
 	<string>14.0</string>
 	<key>LSUIElement</key>
 	<true/>
 	<key>NSMicrophoneUsageDescription</key>
-	<string>Yafie listens only while the guitar tuner is open, to find the note you're playing.</string>
+	<string>It listens only while the guitar tuner is open, to find the note you're playing.</string>
 </dict>
 </plist>

@@ -39,8 +39,8 @@ final class KeyboardCleaner {
         guard InputBlocker.start(onCommandKeys: { [weak self] down in self?.commandKeys(down) }) else {
             cleanLogger.error("Couldn't create the event tap")
             Alert.show("Couldn't turn off the keyboard and trackpad",
-                       "Turn Yafie off and back on in System Settings → Privacy & Security → Accessibility, then try "
-                           + "again.")
+                       "Turn \(Yafie.fullName) off and back on in System Settings → Privacy & Security → "
+                           + "Accessibility, then try again.")
             return NSApp.handFocus(back: previousApp)
         }
         if IsSecureEventInputEnabled() { cleanLogger.notice("Secure input is on, so keys can get past the tap") }

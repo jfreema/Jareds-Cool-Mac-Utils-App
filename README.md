@@ -1,12 +1,14 @@
-<p align="center"><img src="docs/icon.png" width="128" alt="Yafie icon"></p>
+<p align="center"><img src="docs/icon.png" width="128" alt="Jared's Cool Mac Utilities App icon"></p>
 
-<h1 align="center">Yafie</h1>
+<h1 align="center">Jared's Cool Mac Utilities App</h1>
 
 <p align="center">A Mac menu bar app with only the features I use.</p>
 
-<p align="center"><a href="https://github.com/jfreema/Jareds-Cool-Mac-Utils-App/raw/main/downloads/Yafie.pkg"><img src="docs/download.svg" width="260" alt="Download Yafie"></a></p>
+<p align="center"><a href="https://github.com/jfreema/Jareds-Cool-Mac-Utils-App/raw/main/downloads/jaredsmacutils.pkg"><img src="docs/download.svg" width="204" alt="Download Jared's Cool Mac Utilities App"></a></p>
 
 <p align="center">Version 1.1.3 · macOS 14 or later · Apple silicon or Intel</p>
+
+<p align="center"><b>It used to be called Yafie.</b> If updating from Yafie gives you any trouble, <a href="#uninstall">uninstall Yafie</a>, then do a fresh install of Jared's Cool Mac Utilities App.</p>
 
 <table>
   <tr>
@@ -28,17 +30,17 @@
 
 ## Install
 
-1. Open the **Yafie.pkg** you downloaded.
-2. macOS blocks it the first time, because Yafie isn't signed with a paid Apple Developer ID. Click **Done**, then **Open Anyway** in **System Settings → Privacy & Security** (there for about an hour), then **Open Anyway** again, and enter your password.
+1. Open the **jaredsmacutils.pkg** you downloaded.
+2. macOS blocks it the first time, because the app isn't signed with a paid Apple Developer ID. Click **Done**, then **Open Anyway** in **System Settings → Privacy & Security** (there for about an hour), then **Open Anyway** again, and enter your password.
 
    | 1. Click **Done** | 2. Click **Open Anyway** | 3. Click **Open Anyway** |
    |---|---|---|
-   | <img src="docs/install-1-blocked.png" height="200" alt="“Yafie.pkg” Not Opened, with Move to Trash and Done buttons"> | <img src="docs/install-2-open-anyway.png" width="380" alt="Privacy & Security settings: “Yafie.pkg” was blocked to protect your Mac, with an Open Anyway button"> | <img src="docs/install-3-confirm.png" height="200" alt="Open “Yafie.pkg”? with Move to Trash, Open Anyway and Done buttons"> |
+   | <img src="docs/install-1-blocked.png" height="200" alt="The installer Not Opened, with Move to Trash and Done buttons"> | <img src="docs/install-2-open-anyway.png" width="380" alt="Privacy & Security settings: the installer was blocked to protect your Mac, with an Open Anyway button"> | <img src="docs/install-3-confirm.png" height="200" alt="Open the installer? with Move to Trash, Open Anyway and Done buttons"> |
 
-3. Click through the installer and enter your password. Yafie opens, and its icon appears in the menu bar.
-4. Click Yafie in the menu bar and turn on **Open at Login**.
+3. Click through the installer and enter your password. The app opens, and its icon appears in the menu bar.
+4. Click its icon in the menu bar and turn on **Open at Login**.
 
-To update, choose **Check for Updates…** in Yafie's menu. Yafie installs the newest version and restarts, keeping your settings.
+To update, choose **Check for Updates…** in the app's menu. It installs the newest version and restarts, keeping your settings.
 
 ---
 
@@ -48,11 +50,11 @@ Rest the pointer on an open app's icon in the Dock to see its windows, then clic
 
 **Turn it on:**
 
-1. Click Yafie in the menu bar and turn on **Show App Previews in the Dock**.
-2. When macOS asks, click **Open System Settings**, or choose **Allow App Previews…** in Yafie's menu. Turn on **Yafie.app** in the **Accessibility** list, as for [window snapping](#window-snapping).
-3. For pictures of the windows, choose **Allow App Previews…** again and turn on **Yafie.app** in the **Screen & System Audio Recording** list, as for the [screenshot tool](#screenshot-tool). Then click **Quit & Reopen**. Without it, the previews show only the windows' titles.
+1. Click the app's icon in the menu bar and turn on **Show App Previews in the Dock**.
+2. When macOS asks, click **Open System Settings**, or choose **Allow App Previews…** in the app's menu. Turn on **Jared's Cool Mac Utilities App** in the **Accessibility** list, as for [window snapping](#window-snapping).
+3. For pictures of the windows, choose **Allow App Previews…** again and turn on **Jared's Cool Mac Utilities App** in the **Screen & System Audio Recording** list, as for the [screenshot tool](#screenshot-tool). Then click **Quit & Reopen**. Without it, the previews show only the windows' titles.
 
-If window snapping and the screenshot tool are already on, Yafie has both permissions, so step 1 is all it takes.
+If window snapping and the screenshot tool are already on, the app has both permissions, so step 1 is all it takes.
 
 **Use it:** rest the pointer on an open app's icon in the Dock. Its windows appear above the icon, or beside it with the Dock on the side. Click one to bring it to the front, or click the × in its corner to close that window. Move the pointer away, or click anywhere else, to close the previews.
 
@@ -66,13 +68,13 @@ Hold Control (⌃) and Option (⌥) and press an arrow key to put the front wind
 
 **Turn it on:**
 
-1. Click Yafie in the menu bar and turn on **Snap Windows with ⌃⌥ Arrow Keys**.
-2. When macOS asks, click **Open System Settings**, or choose **Allow Window Snapping…** in Yafie's menu.
-3. Turn on **Yafie.app** and enter your password or use Touch ID. The keys work within a couple of seconds.
+1. Click the app's icon in the menu bar and turn on **Snap Windows with ⌃⌥ Arrow Keys**.
+2. When macOS asks, click **Open System Settings**, or choose **Allow Window Snapping…** in the app's menu.
+3. Turn on **Jared's Cool Mac Utilities App** and enter your password or use Touch ID. The keys work within a couple of seconds.
 
-   | Find the **Accessibility** list | Turn on **Yafie.app** |
+   | Find the **Accessibility** list | Turn on **Jared's Cool Mac Utilities App** |
    |---|---|
-   | <img src="docs/snapping-1-accessibility.png" width="360" alt="Accessibility settings: Allow the applications below to control your computer."> | <img src="docs/snapping-2-turn-on.png" width="440" alt="Yafie.app in the list, with its switch turned on"> |
+   | <img src="docs/snapping-1-accessibility.png" width="360" alt="Accessibility settings: Allow the applications below to control your computer."> | <img src="docs/snapping-2-turn-on.png" width="440" alt="The app in the list, with its switch turned on"> |
 
 **Use it:**
 
@@ -94,17 +96,17 @@ Press ⌃⌥P to snip part of the screen, then copy it, save it, mark it up with
 
 **Turn it on:**
 
-1. Click Yafie in the menu bar and turn on **Snipping Tool with ⌃⌥P**. Nothing appears yet: macOS just adds Yafie to its list, switched off.
-2. Choose **Allow Screen Snipping…** in Yafie's menu, then turn on **Yafie.app** and enter your password or use Touch ID.
+1. Click the app's icon in the menu bar and turn on **Snipping Tool with ⌃⌥P**. Nothing appears yet: macOS just adds the app to its list, switched off.
+2. Choose **Allow Screen Snipping…** in the app's menu, then turn on **Jared's Cool Mac Utilities App** and enter your password or use Touch ID.
 
-   | Find the **Screen & System Audio Recording** list | Turn on **Yafie.app** |
+   | Find the **Screen & System Audio Recording** list | Turn on **Jared's Cool Mac Utilities App** |
    |---|---|
-   | <img src="docs/snipping-1-screen-recording.png" width="400" alt="Screen & System Audio Recording settings: Allow the applications below to record the content of your screen and audio, even while using other applications."> | <img src="docs/snipping-2-turn-on.png" width="400" alt="Yafie.app in the list, with its switch off"> |
+   | <img src="docs/snipping-1-screen-recording.png" width="400" alt="Screen & System Audio Recording settings: Allow the applications below to record the content of your screen and audio, even while using other applications."> | <img src="docs/snipping-2-turn-on.png" width="400" alt="The app in the list, with its switch off"> |
 
 3. Click **Quit & Reopen**.
-4. Take your first snip. macOS asks whether Yafie can bypass the system private window picker. Click **Allow**, then take the snip again. macOS asks this again about once a month.
+4. Take your first snip. macOS asks whether the app can bypass the system private window picker. Click **Allow**, then take the snip again. macOS asks this again about once a month.
 
-   <img src="docs/snipping-3-allow.png" width="244" alt="“Yafie” is requesting to bypass the system private window picker and directly access your screen and audio, with Allow and Open System Settings buttons">
+   <img src="docs/snipping-3-allow.png" width="244" alt="The app is requesting to bypass the system private window picker and directly access your screen and audio, with Allow and Open System Settings buttons">
 
 **Use it:** press ⌃⌥P and drag across part of the screen, as with ⌘⇧4. Press Space to pick a whole window instead, or Esc to cancel. A menu opens where you let go, with **Copy to Clipboard**, **Copy Text**, **Open in Editor** and **Save…**.
 
@@ -120,7 +122,7 @@ In the editor, drag to draw. Hold Shift to keep lines and arrows to 45° steps, 
 | ⌘Z, ⇧⌘Z | Undo, redo |
 | ⌘C | Copy it with its shapes. The editor stays open. |
 | ⌘S | Save it with its shapes. The editor closes. |
-| ⌘Q | Close the editor. Yafie stays in the menu bar. |
+| ⌘Q | Close the editor. The app stays in the menu bar. |
 
 ---
 
@@ -128,7 +130,7 @@ In the editor, drag to draw. Hold Shift to keep lines and arrows to 45° steps, 
 
 Shows the note you're playing and how sharp or flat you are, and says **In tune** within 3 cents. Any tuning works, with A4 at 440 Hz.
 
-**Use it:** choose **Guitar Tuner…** in Yafie's menu, click **Allow** for the microphone the first time, and play a string. Yafie listens only while the tuner is open, and its menu bar icon turns green, then yellow, orange and red as the sound gets louder.
+**Use it:** choose **Guitar Tuner…** in the app's menu, click **Allow** for the microphone the first time, and play a string. The app listens only while the tuner is open, and its menu bar icon turns green, then yellow, orange and red as the sound gets louder.
 
 <img src="docs/tuner.png" width="300" alt="The tuner showing B2, 22 cents sharp, at 125.1 Hz">
 
@@ -140,7 +142,7 @@ It uses the input chosen in **System Settings → Sound → Input**, unless that
 
 Tap out a beat on the trackpad, with a metronome, and loop a bar or 4 bars of it to play along to.
 
-**Use it:** choose **Drum Machine…** in Yafie's menu. The trackpad is the kit: tap its top left for the snare, its top right for the kick, and anywhere along the bottom for a hi-hat. Taps play the drums while the drum machine is the front window and the pointer is over its pads. You can also click the pads.
+**Use it:** choose **Drum Machine…** in the app's menu. The trackpad is the kit: tap its top left for the snare, its top right for the kick, and anywhere along the bottom for a hi-hat. Taps play the drums while the drum machine is the front window and the pointer is over its pads. You can also click the pads.
 
 - **Play** starts the metronome, and **Stop** stops it. Space does both. Set **Tempo** from 40 to 240 beats a minute, or turn **Metronome** off.
 - **Record** records what you play for two passes of the **Loop**, a bar or 4 bars, then plays it over and over. The second pass plays back the first while you add to it, so you can play the kick and snare, then the hi-hat, without stopping. From a stop, a bar's count-in comes first. Record again to add more, or **Clear** to start over.
@@ -158,9 +160,9 @@ Bluetooth headphones play everything a moment late, so you hear each tap after y
 
 Turns off the keyboard and trackpad for 5 minutes, so you can wipe them without typing or clicking anything.
 
-**Turn it on:** it needs the Accessibility permission, as [window snapping](#window-snapping) does. With snapping or app previews on, Yafie has it already. Otherwise, choose **Clean Keyboard and Trackpad…** in Yafie's menu, click **Open System Settings** when macOS asks, and turn on **Yafie.app**.
+**Turn it on:** it needs the Accessibility permission, as [window snapping](#window-snapping) does. With snapping or app previews on, the app has it already. Otherwise, choose **Clean Keyboard and Trackpad…** in the app's menu, click **Open System Settings** when macOS asks, and turn on **Jared's Cool Mac Utilities App**.
 
-**Use it:** choose **Clean Keyboard and Trackpad…** in Yafie's menu, then click **Turn Off**. A window in the middle of the screen counts down until they come back on. To turn them back on sooner, hold down both ⌘ keys, left and right, for 1.5 seconds.
+**Use it:** choose **Clean Keyboard and Trackpad…** in the app's menu, then click **Turn Off**. A window in the middle of the screen counts down until they come back on. To turn them back on sooner, hold down both ⌘ keys, left and right, for 1.5 seconds.
 
 Every keyboard, trackpad and mouse is off, external ones too, but not the power button.
 
@@ -170,7 +172,7 @@ Every keyboard, trackpad and mouse is off, external ones too, but not the power 
 
 Keeps a MacBook awake with its lid closed, plugged in or on battery.
 
-**Turn it on:** click Yafie in the menu bar, turn on **Stay Awake with Lid Closed**, and enter your password once. The options under it:
+**Turn it on:** click the app's icon in the menu bar, turn on **Stay Awake with Lid Closed**, and enter your password once. The options under it:
 
 - **Only While Connected to Power** keeps it awake only while it's plugged in. Unplug it and it sleeps as usual, right away if the lid is shut. This one starts out on, so turn it off to stay awake on battery too.
 - **Only While Connected to the Internet** keeps it awake only while it's online.
@@ -189,13 +191,13 @@ Its menu bar icon shows what it's doing:
 <details>
 <summary>How it works</summary>
 
-Yafie turns sleep off with `pmset disablesleep 1` and back on with `pmset disablesleep 0`. If the lid is closed at that point, it also puts the Mac to sleep, unless an external display is in use. The one-time password adds `/etc/sudoers.d/yafie`, which lets your account run only those two commands, and the ones for Low Power Mode, without a password.
+The app turns sleep off with `pmset disablesleep 1` and back on with `pmset disablesleep 0`. If the lid is closed at that point, it also puts the Mac to sleep, unless an external display is in use. The one-time password adds `/etc/sudoers.d/yafie`, which lets your account run only those two commands, and the ones for Low Power Mode, without a password.
 
-Low Power Mode is `pmset lowpowermode`, or `pmset powermode` on Macs that have High Power Mode too. macOS keeps one setting for battery and one for the power adapter. Yafie only turns on the ones that are off, and puts just those back.
+Low Power Mode is `pmset lowpowermode`, or `pmset powermode` on Macs that have High Power Mode too. macOS keeps one setting for battery and one for the power adapter. The app only turns on the ones that are off, and puts just those back.
 
-Online means a Wi-Fi, Ethernet or cellular connection (a VPN alone doesn't count) where `captive.apple.com` loads. Yafie checks once a minute.
+Online means a Wi-Fi, Ethernet or cellular connection (a VPN alone doesn't count) where `captive.apple.com` loads. The app checks once a minute.
 
-If Yafie quits or crashes, sleep comes back on, and Low Power Mode goes back to your setting, within a second.
+If the app quits or crashes, sleep comes back on, and Low Power Mode goes back to your setting, within a second.
 
 </details>
 
@@ -203,7 +205,7 @@ If Yafie quits or crashes, sleep comes back on, and Low Power Mode goes back to 
 
 ## Uninstall
 
-Quit Yafie, delete `/Applications/Yafie.app`, then run:
+Quit the app, delete `/Applications/jaredsmacutils.app`, or `/Applications/Yafie.app` from before the app was renamed, then run:
 
 ```sh
 sudo pkgutil --forget io.github.jfreema.yafie

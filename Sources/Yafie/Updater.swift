@@ -57,12 +57,12 @@ final class Updater {
             return
         }
         guard release.version.compare(current, options: .numeric) == .orderedDescending else {
-            Alert.show("Yafie is up to date", "Version \(current) is the newest.")
+            Alert.show("\(Yafie.name) is up to date", "Version \(current) is the newest.")
             return
         }
         if askFirst {
-            guard Alert.confirm("Yafie \(release.version) is available",
-                                "You have \(current). Yafie restarts on the new version when it's done.",
+            guard Alert.confirm("\(Yafie.name) \(release.version) is available",
+                                "You have \(current). \(Yafie.name) restarts on the new version when it's done.",
                                 button: "Update") else { return }
         }
         let app = Bundle.main.bundleURL
@@ -70,21 +70,20 @@ final class Updater {
         do {
             // Translocated copies run from a read-only folder
             guard !app.path.contains("/AppTranslocation/") else {
-                throw Failure("Move Yafie to your Applications folder, open it from there, then try again.")
+                throw Failure("Move \(Yafie.name) to your Applications folder, open it from there, then try again.")
             }
             guard FileManager.default.isWritableFile(atPath: app.deletingLastPathComponent().path) else {
-                throw Failure("Yafie can't replace itself in \(app.deletingLastPathComponent().path). "
+                throw Failure("\(Yafie.name) can't replace itself in \(app.deletingLastPathComponent().path). "
                               + "Download the new version from GitHub instead.")
             }
             installed = try await Self.replace(app, with: release, bundleID: Bundle.main.bundleIdentifier)
         } catch {
             logger.error("Update failed: \(error.localizedDescription, privacy: .public)")
-            Alert.show("Couldn't update Yafie", error.localizedDescription)
+            Alert.show("Couldn't update \(Yafie.name)", error.localizedDescription)
             return
         }
         logger.notice(
             "Updated to \(release.version, privacy: .public) at \(installed.path, privacy: .public), restarting")
-        if installed.path != app.path { Self.handOverOpenAtLogin() }
         Self.relaunch(installed)
     }
 
@@ -188,21 +187,14 @@ final class Updater {
         NSApp.terminate(nil)
     }
 
-    /// Open at Login points at the app where it was. So after a move, it's turned off here and back on by the copy in
-    /// the new place, with restoreOpenAtLogin.
-    private static func handOverOpenAtLogin() {
-        guard SMAppService.mainApp.status == .enabled else { return }
-        do {
-            try SMAppService.mainApp.unregister()
-            UserDefaults.standard.set(true, forKey: reopensAtLogin)
-        } catch {
-            logger.error("Couldn't hand over Open at Login: \(error.localizedDescription, privacy: .public)")
+    /// At launch. Open at Login follows the app by its bundle ID: macOS moves it to wherever the app is the first time
+    /// the app asks about it, so after a move to a new name it asks right away. 1.1.3, which made that move, could
+    /// instead turn it off on the way out, leaving a note to turn it back on here.
+    static func keepOpenAtLogin() {
+        guard UserDefaults.standard.bool(forKey: reopensAtLogin) else {
+            _ = SMAppService.mainApp.status
+            return
         }
-    }
-
-    /// At launch
-    static func restoreOpenAtLogin() {
-        guard UserDefaults.standard.bool(forKey: reopensAtLogin) else { return }
         UserDefaults.standard.removeObject(forKey: reopensAtLogin)
         do {
             try SMAppService.mainApp.register()

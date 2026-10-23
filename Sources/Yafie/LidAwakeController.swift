@@ -223,7 +223,7 @@ final class LidAwakeController {
         var ready = await SleepSetting.isPasswordFree()
         if ready, usesLowPower { ready = await checkLowPower() }
         if !ready {
-            let prompt = "Yafie needs your password once, so it can change lid sleep and Low Power Mode "
+            let prompt = "\(Yafie.name) needs your password once, so it can change lid sleep and Low Power Mode "
                 + "without asking again."
             switch Administrator.run(SleepSetting.installRuleCommand, prompt: prompt) {
             case .done:
@@ -349,7 +349,7 @@ final class LidAwakeController {
                 return
             }
             let outcome = Administrator.run("/usr/bin/pmset disablesleep 0",
-                                            prompt: "Yafie needs your password to turn sleep back on.")
+                                            prompt: "\(Yafie.name) needs your password to turn sleep back on.")
             guard case .done = outcome else {
                 restoreFailed = true
                 return

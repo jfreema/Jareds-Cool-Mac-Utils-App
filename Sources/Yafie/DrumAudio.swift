@@ -73,7 +73,7 @@ final class DrumAudio {
 
     private func launch() {
         guard let player else {
-            onStatus(.failed("Couldn't find Yafie's drum player."))
+            onStatus(.failed("Couldn't find the drum player."))
             return
         }
         session += 1

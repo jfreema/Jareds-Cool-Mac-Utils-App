@@ -3,7 +3,10 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 
-NAME="Yafie"
+# The app's file name, jaredsmacutils, names the executable and the installer too. The Swift package keeps the app's
+# old name, Yafie.
+NAME="$(/usr/libexec/PlistBuddy -c 'Print CFBundleExecutable' Resources/Info.plist)"
+ID="$(/usr/libexec/PlistBuddy -c 'Print CFBundleIdentifier' Resources/Info.plist)"
 APP="build/$NAME.app"
 MODE="${1:-}"
 
@@ -12,15 +15,17 @@ ARCHS=()
 [[ "$MODE" == "--pkg" ]] && ARCHS=(--arch arm64 --arch x86_64)
 
 swift build -c release "${ARCHS[@]}"
-BIN="$(swift build -c release "${ARCHS[@]}" --show-bin-path)/$NAME"
+BIN="$(swift build -c release "${ARCHS[@]}" --show-bin-path)/Yafie"
 
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp "$BIN" "$APP/Contents/MacOS/$NAME"
 cp Resources/Info.plist "$APP/Contents/Info.plist"
 cp Resources/AppIcon.icns Resources/MenuIcon.tiff Resources/MenuIconOutline.tiff "$APP/Contents/Resources/"
+# The name Finder shows, Jared's Cool Mac Utilities App
+cp -R Resources/en.lproj "$APP/Contents/Resources/"
 
-# One identity for every build, so macOS keeps Yafie's permissions across updates. See docs/buildfromsource.md.
+# One identity for every build, so macOS keeps the app's permissions across updates. See docs/buildfromsource.md.
 # YAFIE_SIGNING_IDENTITY names another, for testing.
 IDENTITY="${YAFIE_SIGNING_IDENTITY:-Yafie Code Signing}"
 if security find-identity -v -p codesigning | grep -q "\"$IDENTITY\""; then
@@ -42,14 +47,20 @@ fi
 echo "Built $APP (signed by $SIGNED_BY)"
 
 if [[ "$MODE" == "--install" ]]; then
-    # SIGTERM lets it restore sleep
-    if pkill -x "$NAME"; then
-        for _ in {1..25}; do
-            pgrep -x "$NAME" >/dev/null || break
-            sleep 0.2
-        done
-    fi
+    # SIGTERM lets it restore sleep. Before 1.1.4, it ran as Yafie.
+    for running in "$NAME" Yafie; do
+        if pkill -x "$running"; then
+            for _ in {1..25}; do
+                pgrep -x "$running" >/dev/null || break
+                sleep 0.2
+            done
+        fi
+    done
     rm -rf "/Applications/$NAME.app"
+    # The copy from before the rename, but never another app with that name
+    old_id="$(/usr/libexec/PlistBuddy -c 'Print CFBundleIdentifier' /Applications/Yafie.app/Contents/Info.plist \
+        2>/dev/null || true)"
+    if [[ "$old_id" == "$ID" ]]; then rm -rf /Applications/Yafie.app; fi
     ditto "$APP" "/Applications/$NAME.app"
     open "/Applications/$NAME.app"
     echo "Installed /Applications/$NAME.app"
@@ -57,8 +68,8 @@ fi
 
 if [[ "$MODE" == "--pkg" ]]; then
     VERSION="$(/usr/libexec/PlistBuddy -c 'Print CFBundleShortVersionString' Resources/Info.plist)"
-    ID="$(/usr/libexec/PlistBuddy -c 'Print CFBundleIdentifier' Resources/Info.plist)"
     MIN_OS="$(/usr/libexec/PlistBuddy -c 'Print LSMinimumSystemVersion' Resources/Info.plist)"
+    TITLE="$(plutil -extract CFBundleDisplayName raw -o - Resources/en.lproj/InfoPlist.strings)"
     # Fixed name keeps the README download link stable
     PKG="downloads/$NAME.pkg"
     WORK="build/pkg"
@@ -76,7 +87,7 @@ if [[ "$MODE" == "--pkg" ]]; then
     cat > "$WORK/distribution.xml" <<EOF
 <?xml version="1.0" encoding="utf-8"?>
 <installer-gui-script minSpecVersion="2">
-    <title>$NAME</title>
+    <title>$TITLE</title>
     <conclusion file="conclusion.txt" mime-type="text/plain"/>
     <options customize="never" require-scripts="false" hostArchitectures="arm64,x86_64"/>
     <domains enable_localSystem="true"/>
@@ -107,10 +118,9 @@ EOF
   "sha256": "$(shasum -a 256 "$PKG" | cut -d' ' -f1)"
 }
 EOF
-    # The same for copies before 1.1.3, which read latest.json and only take Yafie.app. Once the app is renamed,
-    # latest.json and Yafie.pkg stay at the last Yafie, whose Check for Updates can take the new name.
-    cp downloads/update.json downloads/latest.json
+    # Not downloads/latest.json and Yafie.pkg: they stay at 1.1.3, the last Yafie, for copies before it, which only
+    # take Yafie.app. 1.1.3's Check for Updates then takes them on to the new name.
     # README shows the version next to the download link
     sed -i '' -E "s/Version [0-9.]+ ·/Version $VERSION ·/" README.md
-    echo "Built $PKG ($VERSION), downloads/update.json and downloads/latest.json"
+    echo "Built $PKG ($VERSION) and downloads/update.json"
 fi

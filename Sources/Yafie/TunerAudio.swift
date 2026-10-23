@@ -100,7 +100,7 @@ final class TunerAudio {
 
     private func launch() {
         guard let listener else {
-            onStatus(.failed("Couldn't find Yafie's listener."))
+            onStatus(.failed("Couldn't find the tuner's listener."))
             return
         }
         session += 1

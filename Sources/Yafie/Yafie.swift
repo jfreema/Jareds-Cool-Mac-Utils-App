@@ -1,8 +1,15 @@
 import AppKit
 
+/// The app, called Jared's Cool Mac Utilities App from 1.1.4. Yafie, its name before, stays on inside: this module,
+/// the bundle ID, the signing certificate and the sudoers rule, which users' permissions and settings depend on.
 @main
 @MainActor
 enum Yafie {
+    /// In menus, alerts and tooltips. CFBundleName too, which stays under 16 characters.
+    nonisolated static let name = "Jared's Mac App"
+    /// Where there's room, like the About panel. Finder shows it, from en.lproj/InfoPlist.strings.
+    nonisolated static let fullName = "Jared's Cool Mac Utilities App"
+
     static let showMenuNotification = Notification.Name("io.github.jfreema.yafie.showMenu")
 
     static func main() {
