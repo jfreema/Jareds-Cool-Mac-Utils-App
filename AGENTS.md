@@ -68,17 +68,13 @@ From 1.1.6, releases are signed with Jared's Developer ID certificates, team `88
 
 ## Versioning
 
-Every update to the published package raises the version in `Resources/Info.plist` (`CFBundleShortVersionString`):
+**Every push to main that changes the app publishes it to everyone** as a new version: the Release workflow tests, builds, signs and notarizes it, then commits the installer, the update feeds, the version in `Resources/Info.plist` (`CFBundleShortVersionString`) and the README's version line, and Check for Updates offers it. Pushes that only change docs, tests or the art scripts don't. So push to main only what's ready for everyone, and try anything else first with **Actions → Release → Run workflow** on a branch, with **Publish** off. See [docs/buildfromsource.md](docs/buildfromsource.md#release-an-update).
 
-- **A new feature**, one that gets its own section in the README, like the drum machine was: the middle number up by one, and the last back to 0. For example, 1.0.3 → 1.1.0.
-- **Anything else**, including fixes and additions to an existing feature, like a new tool in the snip editor: the last number up by one. For example, 1.1.0 → 1.1.1.
+- **Anything else**, including fixes and additions to an existing feature, like a new tool in the snip editor: leave the version alone. The workflow raises the last number by one, for example 1.1.0 → 1.1.1.
+- **A new feature**, one that gets its own section in the README, like the drum machine was: raise the middle number by one, and the last back to 0, in the same push as the feature. For example, 1.0.3 → 1.1.0. Count from the published version in `downloads/update.json`, not from `Info.plist`. The workflow publishes a raised version as it is.
 - **A major version**, like 1.0.0, only when the user asks for one.
 
-**Raise it as part of every change**, without being asked. Count from the published version in `downloads/update.json` (`downloads/latest.json` before 1.1.3), not from `Info.plist`. Changes that go out together share one raise, and if any of them is a new feature, that raise is a new feature's.
-
-**Don't commit or push.** The user commits and pushes with GitHub Desktop. Pushing a new version to main publishes it to everyone: the Release workflow builds, signs and publishes the installer, and Check for Updates offers it. See [docs/buildfromsource.md](docs/buildfromsource.md#release-an-update).
-
-- **After a release,** the workflow pushes a commit of its own with the installer, the update feeds and the README's version line, so the local copy is behind until that's pulled.
+- **After a release,** the workflow pushes a commit of its own with the installer, the update feeds, the version and the README's version line, so the local copy is behind until that's pulled. Its message names the commit it was built from, which is how the next run tells whether the app changed since.
 - **Leave `downloads/` alone.** Don't build or commit it by hand.
 - **The README's version line** (`Version 0.8.0 · …`) is rewritten by `build.sh`. Keep its format, or change the `sed` in `build.sh` to match.
 

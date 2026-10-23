@@ -1,17 +1,20 @@
 name: Release
 
-# Tests, builds, signs and checks the app whenever Resources/Info.plist changes on main. When that brings a new version,
-# it publishes it: commits the installer, the update feeds in downloads/ and the README's version line to main, which
-# is where Check for Updates looks. Run it by hand from the Actions tab to try a build without publishing.
+# Every push to main that changes the app publishes it as a new version: this tests, builds, signs and checks it, then
+# commits the installer, the update feeds in downloads/, the version in Resources/Info.plist and the README's version
+# line to main, which is where Check for Updates looks. The last number of the version goes up by itself, unless the
+# push raised the version already, as for a new feature. Run it by hand from the Actions tab to try a build without
+# publishing.
 
 on:
   push:
     branches: [main]
-    paths: [Resources/Info.plist]
+    # The app's own files. Docs, tests and the art scripts alone don't make a new version.
+    paths: [Sources/**, Resources/**, Package.swift, build.sh, '!Resources/*.swift']
   workflow_dispatch:
     inputs:
       publish:
-        description: Publish, if the version is new
+        description: Publish, if the app changed since the last release
         type: boolean
         default: false
 
@@ -33,21 +36,46 @@ jobs:
     steps:
       - uses: actions/checkout@v5
         with:
-          fetch-depth: 0  # so Publish can rebase onto anything pushed meanwhile
+          # A push builds main as it is now, so a run that waited for the one before takes in every push since
+          ref: ${{ github.event_name == 'push' && 'main' || github.ref }}
+          fetch-depth: 0  # for the last release, and so Publish can rebase onto anything pushed meanwhile
 
-      - name: Read the version
+      - name: Pick the version
         id: version
         run: |
-          version="$(/usr/libexec/PlistBuddy -c 'Print CFBundleShortVersionString' Resources/Info.plist)"
-          # Nothing is published before the first release, and update.json only from 1.1.3
-          published="$(plutil -extract version raw -o - downloads/update.json 2>/dev/null \
-            || plutil -extract version raw -o - downloads/latest.json 2>/dev/null || echo none)"
-          echo "Info.plist says $version, the published version is $published"
-          echo "version=$version" >> "$GITHUB_OUTPUT"
-          # A new version is published when it's pushed to main, or when a manual run asks to
-          if [[ "$version" != "$published" && "${{ github.event_name == 'push' || inputs.publish }}" == true ]]; then
+          plist=Resources/Info.plist
+          version="$(/usr/libexec/PlistBuddy -c 'Print CFBundleShortVersionString' "$plist")"
+          published="$(plutil -extract version raw -o - downloads/update.json)"
+          echo "source=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+          # The commit the published installer was built from. Releases before 1.1.12 don't say, so their own.
+          release="$(git log -1 --format=%H -- downloads/update.json)"
+          built="$(git log -1 --format=%B "$release" | sed -n 's/^Built from //p')"
+          git cat-file -e "$built^{commit}" 2>/dev/null || built="$release"  # or rewritten away
+          # Whether the app changed since: its files, and Info.plist apart from the version
+          for commit in "$built" HEAD; do
+            git show "$commit:$plist" > "$RUNNER_TEMP/$commit.plist"
+            plutil -remove CFBundleShortVersionString "$RUNNER_TEMP/$commit.plist"
+          done
+          changed=false
+          if ! git diff --quiet "$built" HEAD -- Sources Package.swift build.sh Resources \
+              ":(exclude)$plist" ':(exclude)Resources/*.swift' \
+              || ! cmp -s "$RUNNER_TEMP/$built.plist" "$RUNNER_TEMP/HEAD.plist"; then
+            changed=true
+          fi
+          # A version raised by hand, as for a new feature, goes out as it is. Otherwise the last number goes up.
+          next="$version"
+          if [[ "$version" == "$published" && $changed == true ]]; then
+            next="${version%.*}.$(( ${version##*.} + 1 ))"
+          fi
+          echo "Info.plist says $version, $published is published, and the app changed since $built: $changed"
+          if [[ "$next" != "$published" && "${{ github.event_name == 'push' || inputs.publish }}" == true ]]; then
+            /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $next" "$plist"
+            echo "Publishing $next"
+            echo "version=$next" >> "$GITHUB_OUTPUT"
             echo "publish=true" >> "$GITHUB_OUTPUT"
           else
+            if [[ "$next" != "$published" ]]; then echo "Publishing would make it $next"; fi
+            echo "version=$version" >> "$GITHUB_OUTPUT"
             echo "publish=false" >> "$GITHUB_OUTPUT"
           fi
 
@@ -143,8 +171,9 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add downloads README.md
-          git commit -m "Release ${{ steps.version.outputs.version }}"
+          git add downloads README.md Resources/Info.plist
+          git commit -m "Release ${{ steps.version.outputs.version }}" \
+            -m "Built from ${{ steps.version.outputs.source }}"
           git pull --rebase origin main
           git push origin HEAD:main
 
