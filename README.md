@@ -10,6 +10,8 @@
 
 <p align="center"><b>It used to be called Yafie.</b> If updating from Yafie gives you any trouble, <a href="#uninstall">uninstall Yafie</a>, then do a fresh install of Jared's Cool Mac Utilities App.</p>
 
+<p align="center"><img src="docs/menu.png" width="400" alt="The app's menu: a switch for each feature, and buttons for the guitar tuner, drum machine and keyboard cleaning"></p>
+
 <table>
   <tr>
     <td width="50%"><b><a href="#app-preview">App preview</a></b><br>Rest the pointer on an app in the Dock to see its windows, and click the one you want.</td>

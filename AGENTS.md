@@ -80,6 +80,6 @@ From 1.1.6, releases are signed with Jared's Developer ID certificates, team `88
 
 ## Docs
 
-- **[README.md](README.md)** is for users, and lean. Each feature has the same parts: what it does, **Turn it on**, then **Use it**. Update it, and [docs/troubleshooting.md](docs/troubleshooting.md), with every change users will see.
+- **[README.md](README.md)** is for users, and lean. Each feature has the same parts: what it does, **Turn it on**, then **Use it**. Update it, and [docs/troubleshooting.md](docs/troubleshooting.md), with every change users will see. The picture of the menu near its top, `docs/menu.png`, is a 2x screenshot with clear corners: replace it when the menu changes.
 - **`docs/ideas/`** holds specs for features before they're built. It's gitignored, so specs stay local.
 - **Code style:** short, sparse comments, and lines of 120 columns at most. Match the code around you.
