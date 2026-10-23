@@ -324,7 +324,7 @@ struct MenuView: View {
             }
             section("Screenshots") {
                 card {
-                    ToggleRow(model: model, toggle: .snipScreen, title: "Snipping Tool with ⌃⌥P")
+                    ToggleRow(model: model, toggle: .snipScreen, title: "Snipping Tool with control+option+P")
                     if let action = model.snipAction { ActionRow(model: model, action: action) }
                 }
             }

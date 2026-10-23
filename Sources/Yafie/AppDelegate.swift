@@ -163,7 +163,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // Allow Screen Snipping…, or why the shortcut didn't take, when the status calls for one
         model.snipAction = switch snipper.status {
         case .needsPermission: MenuAction(title: "Allow Screen Snipping…", command: .allowScreenSnipping)
-        case .shortcutTaken: MenuAction(title: "Another app is using ⌃⌥P")
+        case .shortcutTaken: MenuAction(title: "Another app is using control+option+P")
         case .off, .on: nil
         }
         model.isCheckingForUpdates = updater.isBusy

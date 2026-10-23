@@ -79,6 +79,6 @@ From 1.1.6, the app is signed with an Apple Developer ID and notarized, so macOS
 - **Nothing seems to happen when you turn on Snipping Tool.** macOS adds the app to its Screen & System Audio Recording list, switched off, without asking. Choose **Allow Screen Snipping…** in the app's menu to get there. See [Screenshot tool](../README.md#screenshot-tool).
 - **The menu vanished on your first snip.** macOS asked whether the app can bypass the system private window picker, which closes the menu. Click **Allow**, then snip again.
 - **macOS asks every month whether the app can record the screen.** Expected on macOS 15 and later, for every app that takes screenshots. Click **Allow**. If the snip you were taking comes out wrong, take it again.
-- **"Another app is using ⌃⌥P."** Another app has the same shortcut. Quit it or change its shortcut, then turn snipping off and on.
+- **"Another app is using control+option+P."** Another app has the same shortcut. Quit it or change its shortcut, then turn snipping off and on.
 - **An app's own ⌃⌥P stopped working.** While snipping is on, ⌃⌥P belongs to the snipping tool in every app. Turn snipping off to give it back.
 - **Copy Text says No text found, or gets words wrong.** It reads clear text best. Zoom in on small or blurry text, then snip it again.

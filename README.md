@@ -90,7 +90,7 @@ Press ⌃⌥P to snip part of the screen, then copy it, save it, mark it up with
 
 **Turn it on:**
 
-1. Click the app's icon in the menu bar and turn on **Snipping Tool with ⌃⌥P**. Nothing appears yet: macOS just adds the app to its list, switched off.
+1. Click the app's icon in the menu bar and turn on **Snipping Tool with control+option+P**. Nothing appears yet: macOS just adds the app to its list, switched off.
 2. Choose **Allow Screen Snipping…** in the app's menu, then turn on **Jared's Cool Mac Utilities App** and enter your password or use Touch ID.
 
    | Find the **Screen & System Audio Recording** list | Turn on **Jared's Cool Mac Utilities App** |
