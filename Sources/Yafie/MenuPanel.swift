@@ -24,14 +24,6 @@ struct MenuAction: Equatable {
     var command: MenuCommand?
 }
 
-/// The pill beside Stay Awake that says what it's doing
-struct MenuBadge: Equatable {
-    enum Tone { case plain, good, caution, alert }
-    let title: String
-    let symbol: String
-    let tone: Tone
-}
-
 /// What the menu shows. AppDelegate fills it in, and hears back through onToggle and onCommand.
 @Observable @MainActor
 final class MenuModel {
@@ -40,7 +32,7 @@ final class MenuModel {
     var snapAction: MenuAction?
     var snipAction: MenuAction?
     var stayAwakeSummary = ""
-    var stayAwakeBadge = MenuBadge(title: "Off", symbol: "moon.fill", tone: .plain)
+    var stayAwakeSymbol = "moon.fill"
     var stayAwakeAction: MenuAction?
     var isCheckingForUpdates = false
     /// The row under the pointer, highlighted as a menu's would be
@@ -215,7 +207,7 @@ struct MenuView: View {
                     ToggleRow(model: model, toggle: .appPreviews, title: "Show App Previews in the Dock")
                 }
             }
-            section("Windows") {
+            section("Window Snapping") {
                 card {
                     ToggleRow(model: model, toggle: .snapWindows, title: "Snap Windows with control+option+arrow keys")
                     OptionStrip {
@@ -251,7 +243,7 @@ struct MenuView: View {
                 }
                 .padding(.trailing, 2)
             }
-            section("Stay Awake", badge: model.stayAwakeBadge) {
+            section("Stay Awake") {
                 card {
                     StatusRow(model: model)
                     ToggleRow(model: model, toggle: .stayAwake, title: "Stay Awake with Lid Closed")
@@ -322,18 +314,13 @@ struct MenuView: View {
         .padding(.bottom, 3)  // room for the shadows
     }
 
-    private func section<Content: View>(_ title: String, badge: MenuBadge? = nil,
-                                        @ViewBuilder content: () -> Content) -> some View {
+    private func section<Content: View>(_ title: String, @ViewBuilder content: () -> Content) -> some View {
         VStack(alignment: .leading, spacing: 5) {
-            HStack {
-                Text(title.uppercased())
-                    .font(.system(size: 10.5, weight: .black, design: .rounded))
-                    .kerning(1.3)
-                    .foregroundStyle(.white)
-                    .accessibilityAddTraits(.isHeader)
-                Spacer()
-                if let badge { Badge(badge: badge) }
-            }
+            Text(title.uppercased())
+                .font(.system(size: 10.5, weight: .black, design: .rounded))
+                .kerning(1.3)
+                .foregroundStyle(.white)
+                .accessibilityAddTraits(.isHeader)
             content()
         }
     }
@@ -348,33 +335,6 @@ struct MenuView: View {
 private struct MenuSizeKey: PreferenceKey {
     static let defaultValue = CGSize.zero
     static func reduce(value: inout CGSize, nextValue: () -> CGSize) { value = nextValue() }
-}
-
-private struct Badge: View {
-    let badge: MenuBadge
-
-    var body: some View {
-        HStack(spacing: 4) {
-            Image(systemName: badge.symbol).font(.system(size: 9, weight: .black))
-            Text(badge.title.uppercased()).font(.system(size: 10, weight: .black, design: .rounded)).kerning(1)
-        }
-        .foregroundStyle(Bubble.ink)
-        .padding(.horizontal, 7)
-        .padding(.vertical, 3)
-        .bubbleCard(fill: fill, radius: 5, lift: 2)
-        .padding(.trailing, 2)
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(badge.title)
-    }
-
-    private var fill: Color {
-        switch badge.tone {
-        case .plain: .white
-        case .good: Bubble.green
-        case .caution: Bubble.yellow
-        case .alert: Bubble.orange
-        }
-    }
 }
 
 /// A row with a switch. A click anywhere on it flips the switch, as in the old menu.
@@ -496,7 +456,7 @@ private struct StatusRow: View {
     var body: some View {
         HStack(spacing: 10) {
             HStack(spacing: 8) {
-                Image(systemName: model.stayAwakeBadge.symbol)
+                Image(systemName: model.stayAwakeSymbol)
                     .font(.system(size: 12, weight: .bold))
                     .frame(width: 16)
                 Text(model.stayAwakeSummary)
