@@ -46,19 +46,20 @@ final class ScreenSnipper: NSObject {
     }
 
     /// Matches the shortcut and status to the switch and the permission. A running app keeps its old answer about the
-    /// permission until it restarts, which is why macOS offers Quit & Reopen once it's allowed.
+    /// permission until it restarts, which is why macOS offers Quit & Reopen once it's allowed. The shortcut stays
+    /// while the permission is missing, so pressing it says why there's no snip instead of doing nothing.
     func refresh() {
         let next: Status
         if !isEnabled {
             next = .off
-        } else if !CGPreflightScreenCaptureAccess() {
-            next = .needsPermission
         } else if hotKey == nil, !register() {
             next = .shortcutTaken
+        } else if !CGPreflightScreenCaptureAccess() {
+            next = .needsPermission
         } else {
             next = .on
         }
-        if next != .on { unregister() }
+        if next == .off { unregister() }
         guard next != status else { return }
         status = next
         snipLogger.notice("Screen snipping: \(String(describing: next), privacy: .public)")
@@ -78,11 +79,26 @@ final class ScreenSnipper: NSObject {
 
     private func pressed() {
         guard capture == nil, offered == nil else { return }  // one at a time
-        guard CGPreflightScreenCaptureAccess() else { return refresh() }  // taken away since
+        guard CGPreflightScreenCaptureAccess() else { return askForPermission() }
         let frontmost = NSWorkspace.shared.frontmostApplication
         previousApp = frontmost?.processIdentifier == ProcessInfo.processInfo.processIdentifier ? nil : frontmost
         let clipboard = NSPasteboard.general.changeCount
         capture = SnipCapture { [weak self] outcome in self?.captured(outcome, clipboard: clipboard) }
+    }
+
+    /// Never allowed, taken away, or reset by a new signature, as 1.1.6's Developer ID was
+    private func askForPermission() {
+        refresh()
+        snipLogger.notice("⌃⌥P without Screen Recording")
+        let previous = NSWorkspace.shared.frontmostApplication
+        if Alert.confirm("Allow Screen Snipping",
+                         "Turn on \(Yafie.name) in Privacy & Security → Screen & System Audio Recording, then quit and "
+                         + "reopen it. If it's already on there, remove it with − and add it again.",
+                         button: "Open System Settings") {
+            openScreenRecordingSettings()
+        } else {
+            NSApp.handFocus(back: previous)
+        }
     }
 
     private func captured(_ outcome: SnipCapture.Outcome, clipboard: Int) {
