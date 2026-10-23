@@ -1,4 +1,5 @@
 import AppKit
+import Carbon.HIToolbox
 import os
 
 private let iconsLogger = Logger(subsystem: Bundle.main.bundleIdentifier ?? "yafie", category: "icons")
@@ -6,7 +7,8 @@ private let iconsLogger = Logger(subsystem: Bundle.main.bundleIdentifier ?? "yaf
 /// A ‹ in the menu bar that brings back the icons macOS hides when they don't fit. On a MacBook with a notch, icons
 /// only go right of the notch, and an app whose menus run past it, like Chrome, takes that room. macOS hides the
 /// leftmost icons then, and gives apps no way to show them. So the arrow puts Yafie in front with a menu bar of just
-/// its name, the shortest there can be, until you're done with them.
+/// its name, the shortest there can be, until you're done with them. control+option+H does the same, for when even
+/// the arrow doesn't fit.
 @MainActor
 final class HiddenIcons: NSObject {
     var onChange: (() -> Void)?
@@ -42,18 +44,24 @@ final class HiddenIcons: NSObject {
     private var timer: Timer?
     private var activationObserver: (any NSObjectProtocol)?
     private var keyMonitor: Any?
+    private var hotKey: HotKey?
 
     func start() {
-        if isEnabled { addArrow() }
+        if isEnabled {
+            addArrow()
+            registerShortcut()
+        }
     }
 
     func setEnabled(_ enabled: Bool) {
         isEnabled = enabled
         if enabled {
             addArrow()
+            registerShortcut()
         } else {
             hide(returning: true, "the arrow turned off")
             removeArrow()
+            unregisterShortcut()
         }
         iconsLogger.notice("Arrow for hidden icons: \(enabled ? "on" : "off", privacy: .public)")
         onChange?()
@@ -121,11 +129,30 @@ final class HiddenIcons: NSObject {
     }
 
     @objc private func clicked() {
+        toggle(again: "the arrow clicked again")
+    }
+
+    private func toggle(again reason: String) {
         if isShowing {
-            hide(returning: true, "the arrow clicked again")
+            hide(returning: true, reason)
         } else {
             show()
         }
+    }
+
+    // MARK: Shortcut
+
+    private func registerShortcut() {
+        guard hotKey == nil else { return }
+        hotKey = HotKeys.register(kVK_ANSI_H, controlKey | optionKey) { [weak self] in
+            self?.toggle(again: "control+option+H again")
+        }
+        if hotKey == nil { iconsLogger.error("Another app is using ⌃⌥H") }
+    }
+
+    private func unregisterShortcut() {
+        if let hotKey { HotKeys.unregister(hotKey) }
+        hotKey = nil
     }
 
     // MARK: Arrow
@@ -284,6 +311,8 @@ final class HiddenIcons: NSObject {
 struct RevealWatch {
     /// How long the pointer can be away from the menu bar, with nothing open, before they hide again
     static let lookingDelay: TimeInterval = 3
+    /// The same before it has been there at all, as after the shortcut, which leaves it wherever it was
+    static let reachingDelay: TimeInterval = 6
     /// The same, once a menu from one of them has closed
     static let doneDelay: TimeInterval = 1
     /// How long macOS has to bring Yafie to the front. Until then, the app you were in has the menu bar.
@@ -315,6 +344,8 @@ struct RevealWatch {
     private(set) var hadMenuBar = false
     /// A menu has opened since they came out
     private(set) var sawMenu = false
+    /// The pointer has been in the menu bar since they came out
+    private(set) var wasInMenuBar = false
     private var awaySince: TimeInterval?
 
     init(start: TimeInterval) {
@@ -328,13 +359,15 @@ struct RevealWatch {
         }
         hadMenuBar = true
         if sample.isMenuOpen { sawMenu = true }
+        if sample.isPointerInMenuBar { wasInMenuBar = true }
         guard !sample.hasKeyWindow, !sample.isMenuOpen, !sample.isPointerInMenuBar else {
             awaySince = nil
             return .stay
         }
         let since = awaySince ?? sample.time
         awaySince = since
-        return sample.time - since >= (sawMenu ? Self.doneDelay : Self.lookingDelay) ? .hideAndReturn : .stay
+        let delay = sawMenu ? Self.doneDelay : wasInMenuBar ? Self.lookingDelay : Self.reachingDelay
+        return sample.time - since >= delay ? .hideAndReturn : .stay
     }
 
     /// A menu, or a popover or panel an icon opened, from its window's level and height. Menu bar icons themselves
