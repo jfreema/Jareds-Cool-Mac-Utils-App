@@ -61,6 +61,13 @@ case "sum":
     print("\(arguments.dropFirst().joined(separator: " ")): front \(front), menu bar \(owner), icons shown \(shown) "
           + "hidden \(hidden), crowd shown [\(crowd.sorted().joined(separator: " "))], menus open \(menus), \(arrow), "
           + "pointer \(Int(point.x)),\(Int(point.y))")
+case "order":
+    // The menu bar's icons on screen, left to right: name@x+width
+    let items = windows().filter { ($0[kCGWindowLayer as String] as? Int) == 25 && bounds($0).height <= 40
+        && ($0[kCGWindowIsOnscreen as String] as? Bool ?? false) }
+        .sorted { bounds($0).minX < bounds($1).minX }
+        .map { "\($0[kCGWindowName as String] as? String ?? "?")@\(Int(bounds($0).minX))+\(Int(bounds($0).width))" }
+    print("\(arguments.dropFirst().joined(separator: " ")): \(items.joined(separator: " "))")
 case "find":
     // The center of the named status item's window, in the window server's coordinates
     let name = arguments[1]

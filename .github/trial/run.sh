@@ -1,6 +1,6 @@
 #!/bin/zsh
-# A crowded menu bar and an app in front with Chrome's menus, then control+option+H: the icons shown and left alone with
-# the pointer away, then pressed again to hide them, then with the pointer brought to the menu bar. Last, the arrow.
+# How macOS 26 orders menu bar icons by "NSStatusItem Preferred Position": where the arrow lands for each value, next
+# to the stored values of the other icons
 set -u
 out="${1:-trial}"
 mkdir -p "$out"
@@ -47,52 +47,37 @@ shot() {
     screencapture -x -R0,0,$width,40 "$out/$1.png" 2>&1 || true
 }
 click() { [[ -n "$1" ]] && /tmp/probe click ${=1}; }
+key="NSStatusItem Preferred Position HiddenIconsArrow"
+positions() {
+    echo "--- $1" >> "$out/defaults.txt"
+    for domain in trial.crowd $id com.apple.controlcenter com.apple.Spotlight com.apple.systemuiserver; do
+        defaults read $domain 2>/dev/null | grep -i "position\|visible" | sed "s/^/$domain /" >> "$out/defaults.txt"
+    done
+}
 
 /tmp/probe warp 600 500
 "$RUNNER_TEMP/crowd.app/Contents/MacOS/crowd" > "$out/crowd.txt" 2>&1 &
 sleep 4
-count=$(sed -n 's/^crowd: \([0-9]*\) icons.*/\1/p' "$out/crowd.txt")
-shot 01-crowd
-"$RUNNER_TEMP/wide.app/Contents/MacOS/wide" > /dev/null 2>&1 &
-sleep 4
-shot 02-wide-in-front
+/tmp/probe order 01-crowd | tee -a "$out/summary.txt"
+positions 01-crowd
 
 defaults write $id hiddenIcons -bool true
 launch
-sleep 6
-shot 03-arrow-added
-/tmp/probe key 4 control option  # H
-sleep 0.75
-shot 04-shortcut-soon-after
-screencapture -x "$out/04-full-screen.png" || true
-sleep 3
-shot 05-pointer-away-4s-later
-sleep 3.5
-shot 06-pointer-away-7s-later
-
-/tmp/probe key 4 control option
-sleep 1
-shot 07-shortcut-again
-/tmp/probe key 4 control option
-sleep 1
-shot 08-shortcut-a-third-time
-
-/tmp/probe key 4 control option
-sleep 0.75
-/tmp/probe warp 400 15  # into the menu bar
-sleep 6
-shot 09-pointer-in-menu-bar-6s
-/tmp/probe warp 600 500
-sleep 4
-shot 10-pointer-left-4s-ago
-
-arrow=$(/tmp/probe find HiddenIconsArrow)
-echo "arrow at: ${arrow:-not found by name}" | tee -a "$out/summary.txt"
-click "$arrow"
-sleep 1
-shot 11-arrow-clicked
-click "$arrow"
-sleep 1
-shot 12-arrow-clicked-again
+sleep 5
+/tmp/probe order 02-arrow-seeded-0 | tee -a "$out/summary.txt"
+positions 02-arrow-seeded-0
+shot 02-arrow-seeded-0
 pkill -x jaredsmacutils
-/usr/bin/log show --last 10m --info --style compact --predicate "subsystem == \"$id\"" > "$out/log.txt" 2>&1
+sleep 1
+positions 03-after-quitting
+
+for p in 40 100 150 250 350 500 700; do
+    defaults write $id "$key" -float $p
+    launch
+    sleep 3
+    /tmp/probe order "pos-$p" | tee -a "$out/summary.txt"
+    echo "pos-$p stored after: $(defaults read $id "$key" 2>&1)" | tee -a "$out/summary.txt"
+    pkill -x jaredsmacutils
+    sleep 1
+done
+positions 99-end

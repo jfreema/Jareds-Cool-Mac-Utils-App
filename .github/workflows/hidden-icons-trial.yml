@@ -29,6 +29,7 @@ jobs:
         if: always()
         run: |
           cat "$RUNNER_TEMP/trial/summary.txt" || true
+          cat "$RUNNER_TEMP/trial/defaults.txt" || true
           cut -c 12- "$RUNNER_TEMP/trial/log.txt" | grep -v "^Timestamp" || true
           cat "$RUNNER_TEMP/trial/yafie.txt" || true
 
