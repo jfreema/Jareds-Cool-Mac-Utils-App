@@ -6,7 +6,7 @@
 
 <p align="center"><a href="https://github.com/jfreema/Jareds-Cool-Mac-Utils-App/raw/main/downloads/jaredsmacutils.pkg"><img src="docs/download.svg" width="204" alt="Download Jared's Cool Mac Utilities App"></a></p>
 
-<p align="center">Version 1.1.11 · macOS 14 or later · Apple silicon or Intel</p>
+<p align="center">Version 1.1.12 · macOS 14 or later · Apple silicon or Intel</p>
 
 <p align="center"><b>It used to be called Yafie.</b> If updating from Yafie gives you any trouble, <a href="#uninstall">uninstall Yafie</a>, then do a fresh install of Jared's Cool Mac Utilities App.</p>
 
