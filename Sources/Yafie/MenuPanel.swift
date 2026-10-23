@@ -379,7 +379,7 @@ struct MenuView: View {
         HStack(spacing: 8) {
             Button("About") { model.onCommand(.showAbout) }
                 .buttonStyle(BubbleButtonStyle())
-            Button(model.isCheckingForUpdates ? "Checking…" : "Check for Updates") {
+            Button(model.isCheckingForUpdates ? String("Checking…") : String("Check for Updates")) {
                 model.onCommand(.checkForUpdates)
             }
             .buttonStyle(BubbleButtonStyle())
