@@ -5,7 +5,7 @@ import SwiftUI
 
 /// A switch in the menu
 enum MenuToggle: Hashable {
-    case appPreviews, snapWindows, snapThirds, snipScreen
+    case appPreviews, snapWindows, snapThirds, snipScreen, hiddenIcons
     case stayAwake, requirePower, requireInternet, lowPower
     case openAtLogin
 }
@@ -229,6 +229,11 @@ struct MenuView: View {
                 card {
                     ToggleRow(model: model, toggle: .snipScreen, title: "Snipping Tool with control+option+P")
                     if let action = model.snipAction { ActionRow(model: model, action: action) }
+                }
+            }
+            section("Menu Bar") {
+                card {
+                    ToggleRow(model: model, toggle: .hiddenIcons, title: "Arrow to Show Hidden Icons")
                 }
             }
             section("Tools") {

@@ -73,6 +73,13 @@ From 1.1.6, the app is signed with an Apple Developer ID and notarized, so macOS
 - **A window comes to the front instead of closing.** Its app is asking whether to save changes, or to confirm. Answer it there.
 - **A window has no ×.** Its app doesn't let it be closed from outside, like some panels and full-screen windows.
 
+## Hidden menu bar icons
+
+- **Some icons still don't show after clicking ‹.** They don't fit even beside the app's short menu bar. On a MacBook with a notch, macOS only puts icons to the right of it. Quit apps whose icons you don't need, or move some of the system's icons into Control Center.
+- **The arrow is hidden too.** It was moved in among the icons macOS hides. Bring an app with a short menu bar to the front, like Finder, then hold ⌘ and drag **‹** to the right, next to Control Center.
+- **A Dock icon appears when you click the arrow.** On purpose: macOS only gives the menu bar to apps with a Dock icon, and the app takes it for a moment to make room. It goes when the icons hide again.
+- **The first key you type after clicking the arrow does nothing.** The app was in front for the icons, so that key hands the keyboard back to the app you were in. Click your app's window instead to go straight back.
+
 ## Screenshot tool
 
 - **The menu shows Allow Screen Snipping….** The app doesn't have the Screen & System Audio Recording permission. Choose it, turn on the app in the list that opens, then click **Quit & Reopen**.

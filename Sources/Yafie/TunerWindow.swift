@@ -90,11 +90,13 @@ final class UtilityPanel: NSPanel {
         return content
     }
 
-    /// Back where it was last time, at this size: one saved before the bubble pop look had another
+    /// Back where it was last time, at this size: one saved before the bubble pop look had another. It keeps its top
+    /// edge, so growing doesn't push it up under the menu bar.
     func restoreFrame(named name: String, size: CGSize) {
         let restored = setFrameUsingName(name)
+        let topLeft = NSPoint(x: frame.minX, y: frame.maxY)
         setContentSize(size)
-        if !restored { center() }
+        if restored { setFrameTopLeftPoint(topLeft) } else { center() }
         setFrameAutosaveName(name)
     }
 
