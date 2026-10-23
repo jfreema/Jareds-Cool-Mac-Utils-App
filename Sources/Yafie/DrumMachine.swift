@@ -58,15 +58,15 @@ final class DrumMachineWindowController: NSObject, NSWindowDelegate {
         let panel = UtilityPanel(contentRect: NSRect(origin: .zero, size: DrumMachineView.size),
                                  styleMask: [.titled, .closable, .utilityWindow], backing: .buffered, defer: true)
         panel.title = "Drum Machine"
-        panel.contentView = NSHostingView(rootView: view)
+        panel.useBubbleChrome()
+        panel.contentView = UtilityPanel.content(view)
         panel.isFloatingPanel = true
         // Panels hide when their app deactivates, which would make the drums vanish at the first click elsewhere
         panel.hidesOnDeactivate = false
         panel.isReleasedWhenClosed = false
         panel.collectionBehavior = [.moveToActiveSpace, .fullScreenAuxiliary]
         panel.delegate = self
-        if !panel.setFrameUsingName(Self.frameName) { panel.center() }
-        panel.setFrameAutosaveName(Self.frameName)
+        panel.restoreFrame(named: Self.frameName, size: DrumMachineView.size)
         return panel
     }
 }
@@ -272,31 +272,47 @@ final class DrumMachineModel {
 
 // MARK: Views
 
-/// The pads over the controls. All its state is in the model: the Command Line Tools can't build SwiftUI's @State.
+/// The pads on blue over the controls on a white card. All its state is in the model: the Command Line Tools can't
+/// build SwiftUI's @State. It fills the window, title bar and all, so its size is the window's.
 struct DrumMachineView: View {
-    static let size = CGSize(width: 520, height: 540)
+    static let size = CGSize(width: 540, height: 640)
 
     let model: DrumMachineModel
     let retry: () -> Void
 
     var body: some View {
-        Group {
+        VStack(spacing: 12) {
+            BubbleHeader(title: "Drum Machine", symbol: "music.quarternote.3", chip: Bubble.green)
             switch model.status {
             case .failed(let message):
                 MessageView(symbol: "speaker.slash", title: "Couldn't play sound", detail: message,
                             button: "Try Again", action: retry)
+                    .padding(20)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .bubbleCard()
+                    .padding(.trailing, 2)
+                    .padding(.bottom, 3)
             case .starting, .ready:
-                VStack(spacing: 14) {
-                    DrumPads(model: model)
-                    Text("Tap the trackpad where the pads are, with the pointer over them, or click them.")
-                        .font(.callout)
-                        .foregroundStyle(.secondary)
-                    DrumControls(model: model)
-                }
+                DrumPads(model: model)
+                    .padding(.trailing, 3)
+                    .padding(.bottom, 4)  // room for the shadows
+                Text("Tap the trackpad where the pads are, with the pointer over them, or click them.")
+                    .font(Bubble.body(12))
+                    .foregroundStyle(Color.white.opacity(0.9))
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
+                DrumControls(model: model)
+                    .padding(14)
+                    .bubbleCard()
+                    .padding(.trailing, 2)
+                    .padding(.bottom, 3)
             }
         }
-        .padding(20)
-        .frame(width: Self.size.width, height: Self.size.height)
+        .padding(.horizontal, 16)
+        .padding(.top, 2)
+        .padding(.bottom, 14)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Bubble.blue.ignoresSafeArea())
     }
 }
 
@@ -305,7 +321,7 @@ private struct DrumPads: View {
     let model: DrumMachineModel
 
     var body: some View {
-        Grid(horizontalSpacing: 10, verticalSpacing: 10) {
+        Grid(horizontalSpacing: 12, verticalSpacing: 12) {
             GridRow {
                 DrumPadView(pad: .snare, model: model)
                 DrumPadView(pad: .kick, model: model)
@@ -319,19 +335,27 @@ private struct DrumPads: View {
     }
 }
 
+/// A big outlined pad on a hard shadow. A hit fills it with its color and presses it down into the shadow.
 private struct DrumPadView: View {
+    private static let lift: CGFloat = 4
+
     let pad: DrumPad
     let model: DrumMachineModel
 
     var body: some View {
         let isLit = model.lit.contains(pad)
-        RoundedRectangle(cornerRadius: 14)
-            .fill(pad.color.opacity(isLit ? 0.9 : 0.2))
+        let shape = RoundedRectangle(cornerRadius: 14, style: .continuous)
+        let sink = isLit ? Self.lift - 1 : 0
+        shape.fill(Color.white)
+            .overlay(shape.fill(pad.color.opacity(isLit ? 1 : 0.35)))
             .overlay {
                 Text(pad.name)
-                    .font(.system(size: 22, weight: .semibold))
-                    .foregroundStyle(isLit ? Color.white : Color.primary)
+                    .font(Bubble.display(24))
+                    .foregroundStyle(Bubble.ink)
             }
+            .overlay(shape.strokeBorder(Bubble.ink, lineWidth: 2.5))
+            .offset(x: sink * 0.6, y: sink)
+            .background(shape.fill(Bubble.ink).offset(x: Self.lift * 0.6, y: Self.lift))
             .animation(.easeOut(duration: 0.12), value: isLit)
             .accessibilityElement(children: .ignore)
             .accessibilityLabel(pad.name)
@@ -343,9 +367,9 @@ private struct DrumPadView: View {
 private extension DrumPad {
     var color: Color {
         switch self {
-        case .kick: .orange
-        case .snare: .blue
-        case .hiHat: .teal
+        case .kick: Bubble.orange
+        case .snare: Bubble.yellow
+        case .hiHat: Bubble.green
         }
     }
 }
@@ -354,84 +378,146 @@ private struct DrumControls: View {
     let model: DrumMachineModel
 
     var body: some View {
-        VStack(spacing: 12) {
-            HStack(spacing: 10) {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 8) {
                 Button { model.togglePlay() } label: {
                     Label(model.isPlaying ? "Stop" : "Play", systemImage: model.isPlaying ? "stop.fill" : "play.fill")
                         .frame(minWidth: 56)
                 }
+                .buttonStyle(BubbleButtonStyle(fill: model.isPlaying ? Bubble.yellow : Bubble.green, height: 30,
+                                               fontSize: 13))
                 .help("Play or stop (Space)")
                 Button { model.record() } label: {
-                    Label { Text("Record") } icon: { Image(systemName: "record.circle").foregroundStyle(.red) }
+                    Label {
+                        Text("Record")
+                    } icon: {
+                        Image(systemName: "record.circle.fill").foregroundStyle(Bubble.red)
+                    }
                 }
-                    .disabled(model.phase == .countIn || model.phase == .recording)
-                    .help("Record two passes round the loop, with a bar's count-in when stopped")
+                .buttonStyle(BubbleButtonStyle(height: 30, fontSize: 13))
+                .disabled(model.phase == .countIn || model.phase == .recording)
+                .help("Record two passes round the loop, with a bar's count-in when stopped")
                 Button("Clear") { model.clear() }
+                    .buttonStyle(BubbleButtonStyle(height: 30, fontSize: 13))
                     .disabled(model.pattern.isEmpty)
                     .help("Clear the loop")
                 Spacer(minLength: 0)
                 BeatLights(beat: model.beat, bars: model.bars)
             }
-            .controlSize(.large)
-            HStack(spacing: 16) {
-                Picker("Loop", selection: Binding(get: { model.bars }, set: { model.bars = $0 })) {
-                    Text("1 Bar").tag(1)
-                    Text("4 Bars").tag(4)
+            HStack(spacing: 18) {
+                HStack(spacing: 6) {
+                    ControlLabel("Loop")
+                    ChoiceChip(title: "1 Bar", isChosen: model.bars == 1) { model.bars = 1 }
+                    ChoiceChip(title: "4 Bars", isChosen: model.bars == 4) { model.bars = 4 }
                 }
-                .pickerStyle(.segmented)
-                .fixedSize()
-                Picker("Quantize", selection: Binding(get: { model.quantize }, set: { model.quantize = $0 })) {
+                .accessibilityElement(children: .contain)
+                .accessibilityLabel("Loop")
+                HStack(spacing: 6) {
+                    ControlLabel("Quantize")
                     ForEach(DrumQuantize.allCases, id: \.self) { quantize in
-                        Text(quantize.name).tag(quantize)
+                        ChoiceChip(title: quantize.name, isChosen: model.quantize == quantize) {
+                            model.quantize = quantize
+                        }
                     }
                 }
-                .pickerStyle(.menu)
-                .fixedSize()
+                .accessibilityElement(children: .contain)
+                .accessibilityLabel("Quantize")
                 .help("Snap the loop's hits to the nearest quarter, eighth or sixteenth note, or play them as you did")
-                Toggle("Metronome", isOn: Binding(get: { model.isMetronomeOn }, set: { model.isMetronomeOn = $0 }))
-                Spacer(minLength: 0)
             }
-            HStack(spacing: 10) {
+            HStack(spacing: 8) {
+                ControlLabel("Feel")
                 Picker("Feel", selection: Binding(get: { model.feel }, set: { model.feel = $0 })) {
                     ForEach(DrumFeel.allCases, id: \.self) { feel in
                         Text(feel.name).tag(feel)
                     }
                 }
                 .pickerStyle(.menu)
+                .labelsHidden()
                 .fixedSize()
                 .help("Swing alternates subdivisions; Laid Back delays backbeats; Loose Garage pushes and pulls")
-                Text("Amount")
+                ControlLabel("Amount")
+                    .padding(.leading, 8)
                 Slider(value: Binding(get: { model.feelAmount }, set: { model.setFeelAmount($0) }), in: 0...100)
-                Text("\(Int(model.feelAmount))%")
-                    .monospacedDigit()
-                    .frame(width: 44, alignment: .trailing)
+                    .accessibilityLabel("Amount")
+                ControlValue(text: "\(Int(model.feelAmount))%", width: 44)
             }
             .disabled(model.quantize == .none)
             .help("Feel changes the loop, leaving live taps and the metronome steady. Quantize None bypasses it")
-            HStack(spacing: 10) {
-                Text("Tempo")
+            HStack(spacing: 8) {
+                ControlLabel("Tempo")
                 Slider(value: Binding(get: { model.tempo }, set: { model.setTempo($0) }), in: DrumSequencer.tempos)
+                    .accessibilityLabel("Tempo")
                 Stepper(value: Binding(get: { model.tempo }, set: { model.setTempo($0) }), in: DrumSequencer.tempos) {
-                    Text("\(Int(model.tempo)) BPM")
-                        .monospacedDigit()
-                        .frame(width: 68, alignment: .trailing)
+                    ControlValue(text: "\(Int(model.tempo)) BPM", width: 64)
                 }
+                Toggle("Metronome", isOn: Binding(get: { model.isMetronomeOn }, set: { model.isMetronomeOn = $0 }))
+                    .toggleStyle(ChipToggleStyle())
+                    .padding(.leading, 6)
             }
-            HStack(spacing: 10) {
+            HStack(spacing: 8) {
                 Toggle("Mute Taps", isOn: Binding(get: { model.areTapsMuted }, set: { model.areTapsMuted = $0 }))
+                    .toggleStyle(ChipToggleStyle())
                     .help("Silence your taps, which Bluetooth headphones play late. They still light up and record")
                 Group {
-                    Text("Bluetooth Offset")
-                        .padding(.leading, 6)
+                    ControlLabel("Bluetooth Offset")
+                        .padding(.leading, 8)
                     Slider(value: Binding(get: { model.bluetoothOffset }, set: { model.setBluetoothOffset($0) }),
                            in: DrumSequencer.bluetoothOffsets)
-                    Text("\(Int(model.bluetoothOffset)) ms")
-                        .monospacedDigit()
-                        .frame(width: 52, alignment: .trailing)
+                        .accessibilityLabel("Bluetooth Offset")
+                    ControlValue(text: "\(Int(model.bluetoothOffset)) ms", width: 52)
                 }
                 .help("Move hits played over Bluetooth earlier, for headphones that play later than they tell macOS")
             }
         }
+        .tint(Bubble.blue)
+    }
+}
+
+/// A control's name, small, upper case and letter-spaced, like the menu's section names. It fades with its control.
+private struct ControlLabel: View {
+    let text: String
+    @Environment(\.isEnabled) private var isEnabled
+
+    init(_ text: String) {
+        self.text = text
+    }
+
+    var body: some View {
+        Text(text.uppercased())
+            .font(.system(size: 10, weight: .black, design: .rounded))
+            .kerning(1.1)
+            .foregroundStyle(Bubble.ink.opacity(isEnabled ? 0.55 : 0.25))
+            .fixedSize()
+            .accessibilityHidden(true)  // the control says it
+    }
+}
+
+/// A slider's reading, as 120 BPM. It fades with its control.
+private struct ControlValue: View {
+    let text: String
+    let width: CGFloat
+    @Environment(\.isEnabled) private var isEnabled
+
+    var body: some View {
+        Text(text)
+            .font(Bubble.body(12.5))
+            .monospacedDigit()
+            .foregroundStyle(Bubble.ink.opacity(isEnabled ? 1 : 0.4))
+            .frame(width: width, alignment: .trailing)
+    }
+}
+
+/// One of a few choices, as a pill that turns yellow when it's the one chosen
+private struct ChoiceChip: View {
+    let title: String
+    let isChosen: Bool
+    let choose: () -> Void
+
+    var body: some View {
+        Button(title, action: choose)
+            .buttonStyle(BubbleButtonStyle(fill: isChosen ? Bubble.yellow : .white, height: 24, fontSize: 12))
+            .fixedSize()
+            .accessibilityAddTraits(isChosen ? [.isSelected] : [])
     }
 }
 
@@ -443,13 +529,15 @@ private struct BeatLights: View {
     var body: some View {
         HStack(spacing: 7) {
             Text(caption)
-                .font(.callout)
+                .font(Bubble.body(12))
                 .monospacedDigit()
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Bubble.ink.opacity(0.6))
+                .lineLimit(1)
             ForEach(1...DrumSequencer.beatsPerBar, id: \.self) { index in
-                Circle()
-                    .fill(index == beat?.beat ? color : Color.secondary.opacity(0.25))
-                    .frame(width: 12, height: 12)
+                let light = RoundedRectangle(cornerRadius: 4, style: .continuous)
+                light.fill(index == beat?.beat ? color : Bubble.tint)
+                    .overlay(light.strokeBorder(Bubble.ink, lineWidth: 1.5))
+                    .frame(width: 14, height: 14)
             }
         }
         .accessibilityElement(children: .ignore)
@@ -471,9 +559,9 @@ private struct BeatLights: View {
 
     private var color: Color {
         switch beat?.phase {
-        case .countIn: .orange
-        case .recording: .red
-        default: .accentColor
+        case .countIn: Bubble.orange
+        case .recording: Bubble.red
+        default: Bubble.blue
         }
     }
 }

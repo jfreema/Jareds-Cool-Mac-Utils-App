@@ -32,7 +32,7 @@ final class KeyboardCleaner {
         let previousApp = frontmost?.processIdentifier == ProcessInfo.processInfo.processIdentifier ? nil : frontmost
         guard Alert.confirm("Turn off the keyboard and trackpad?",
                             "They stay off for 5 minutes while you clean them. To turn them back on sooner, hold down "
-                                + "both ⌘ keys for 1.5 seconds.",
+                                + "both Command keys for 1.5 seconds.",
                             button: "Turn Off", cancel: "Cancel") else {
             return NSApp.handFocus(back: previousApp)
         }
@@ -108,17 +108,10 @@ final class KeyboardCleaner {
         panel.backgroundColor = .clear
         panel.hasShadow = true
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .ignoresCycle]
-        // At its size from the start: grown from zero, it would grow the content by as much again
-        let background = NSVisualEffectView(frame: NSRect(origin: .zero, size: CleaningView.size))
-        background.material = .popover
-        background.blendingMode = .behindWindow
-        background.state = .active
-        background.maskImage = .roundedMask(radius: 16)
+        // The view draws the window's shape, and the window keeps its size
         let content = NSHostingView(rootView: CleaningView(model: model))
-        content.frame = NSRect(origin: .zero, size: CleaningView.size)
-        content.autoresizingMask = [.width, .height]
-        background.addSubview(content)
-        panel.contentView = background
+        content.sizingOptions = []
+        panel.contentView = content
         return panel
     }
 }
@@ -247,41 +240,54 @@ final class CleaningModel {
     var session = CleaningSession(start: Date())
 }
 
+/// Blue and outlined on a hard shadow, like the menu, with the countdown on a white card. The window around it is
+/// clear.
 struct CleaningView: View {
-    static let size = CGSize(width: 400, height: 250)
-    private static let barWidth: CGFloat = 260
+    static let size = CGSize(width: 420, height: 260)
+    private static let barWidth: CGFloat = 300
+    /// How far the shadow drops, inside the window
+    private static let lift: CGFloat = 5
 
     let model: CleaningModel
 
     var body: some View {
         let session = model.session
         let isHolding = session.heldSince != nil
-        VStack(spacing: 10) {
-            Image(systemName: "keyboard")
-                .font(.system(size: 42))
-                .foregroundStyle(.secondary)
-            Text("Keyboard and trackpad are off")
-                .font(.system(size: 20, weight: .bold))
-            // Ticks on the session's whole seconds
-            TimelineView(.periodic(from: session.start, by: 1)) { context in
-                Text("Back on in \(CleaningSession.countdown(session.end.timeIntervalSince(context.date)))")
-                    .font(.system(size: 15))
-                    .monospacedDigit()
+        let bar = Capsule()
+        VStack(spacing: 14) {
+            BubbleHeader(title: "Keyboard and trackpad are off", symbol: "keyboard", chip: Bubble.orange)
+            VStack(spacing: 10) {
+                // Ticks on the session's whole seconds
+                TimelineView(.periodic(from: session.start, by: 1)) { context in
+                    Text("Back on in \(CleaningSession.countdown(session.end.timeIntervalSince(context.date)))")
+                        .font(Bubble.display(26))
+                        .monospacedDigit()
+                        .foregroundStyle(Bubble.ink)
+                }
+                Text("Hold down both Command keys for 1.5 seconds to turn them on now.")
+                    .font(Bubble.body(13))
+                    .foregroundStyle(Bubble.ink.opacity(0.7))
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
+                // Fills while both Command keys are down
+                ZStack(alignment: .leading) {
+                    bar.fill(Bubble.tint)
+                    bar.fill(Bubble.green).frame(width: isHolding ? Self.barWidth : 0)
+                }
+                .frame(width: Self.barWidth, height: 14)
+                .overlay(bar.strokeBorder(Bubble.ink, lineWidth: Bubble.outline))
+                .animation(isHolding ? .linear(duration: CleaningSession.hold) : .easeOut(duration: 0.2),
+                           value: isHolding)
+                .padding(.top, 4)
             }
-            Text("Hold down both ⌘ keys for 1.5 seconds to turn them on now.")
-                .font(.system(size: 13))
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
-            // Fills while both ⌘ keys are down
-            ZStack(alignment: .leading) {
-                Capsule().fill(.quaternary)
-                Capsule().fill(Color.accentColor).frame(width: isHolding ? Self.barWidth : 0)
-            }
-            .frame(width: Self.barWidth, height: 10)
-            .animation(isHolding ? .linear(duration: CleaningSession.hold) : .easeOut(duration: 0.2), value: isHolding)
-            .padding(.top, 6)
+            .padding(.horizontal, 20)
+            .padding(.vertical, 16)
+            .frame(maxWidth: .infinity)
+            .bubbleCard()
         }
-        .padding(30)
-        .frame(width: Self.size.width, height: Self.size.height)
+        .padding(20)
+        .frame(width: Self.size.width - Self.lift * 0.6, height: Self.size.height - Self.lift)
+        .bubbleCard(fill: Bubble.blue, radius: 18, lift: Self.lift)
+        .frame(width: Self.size.width, height: Self.size.height, alignment: .topLeading)
     }
 }

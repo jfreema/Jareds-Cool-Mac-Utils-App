@@ -172,7 +172,7 @@ Keeps a MacBook awake with its lid closed, plugged in or on battery.
 - **Online Only** keeps it awake only while it's online.
 - **Low Power Mode** turns on Low Power Mode while the lid is shut, so the Mac runs cooler, if slower. Open the lid and your own setting comes back. It leaves Low Power Mode alone while an external display is in use. This one starts out on.
 
-**While it's on**, the Mac won't sleep even when idle, though the display still turns off. Choose **Sleep Now** to sleep anyway. On battery, it sleeps as usual once the battery is down to 10%. Don't leave it in a bag while it's awake: with the lid closed, it can get hot, even in Low Power Mode.
+**While it's on**, the Mac won't sleep even when idle, though the display still turns off. To let it sleep, turn it off. To walk away while it stays awake, press **control+option+L**, which locks the screen as **Lock Screen** in the Apple menu does. On battery, it sleeps as usual once the battery is down to 10%. Don't leave it in a bag while it's awake: with the lid closed, it can get hot, even in Low Power Mode.
 
 Its menu bar icon shows what it's doing:
 

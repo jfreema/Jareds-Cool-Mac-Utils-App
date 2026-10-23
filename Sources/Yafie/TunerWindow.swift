@@ -68,21 +68,36 @@ final class TunerWindowController: NSObject, NSWindowDelegate {
         let panel = UtilityPanel(contentRect: NSRect(origin: .zero, size: TunerView.size),
                                styleMask: [.titled, .closable, .utilityWindow], backing: .buffered, defer: true)
         panel.title = "Tuner"
-        panel.contentView = NSHostingView(rootView: view)
+        panel.useBubbleChrome()
+        panel.contentView = UtilityPanel.content(view)
         panel.isFloatingPanel = true
         // Panels hide when their app deactivates, which would make the tuner vanish at the first click elsewhere
         panel.hidesOnDeactivate = false
         panel.isReleasedWhenClosed = false
         panel.collectionBehavior = [.moveToActiveSpace, .fullScreenAuxiliary]
         panel.delegate = self
-        if !panel.setFrameUsingName(Self.frameName) { panel.center() }
-        panel.setFrameAutosaveName(Self.frameName)
+        panel.restoreFrame(named: Self.frameName, size: TunerView.size)
         return panel
     }
 }
 
 /// The tuner's and the drum machine's. Esc and ⌘W close it, though Yafie has no menu bar to carry them.
 final class UtilityPanel: NSPanel {
+    /// A view that fills the panel, its size set by the panel rather than the view
+    static func content(_ view: some View) -> NSView {
+        let content = NSHostingView(rootView: view)
+        content.sizingOptions = []
+        return content
+    }
+
+    /// Back where it was last time, at this size: one saved before the bubble pop look had another
+    func restoreFrame(named name: String, size: CGSize) {
+        let restored = setFrameUsingName(name)
+        setContentSize(size)
+        if !restored { center() }
+        setFrameAutosaveName(name)
+    }
+
     override func cancelOperation(_ sender: Any?) { performClose(sender) }
 
     override func performKeyEquivalent(with event: NSEvent) -> Bool {
@@ -202,34 +217,47 @@ struct LoudnessMeter {
 
 // MARK: Views
 
+/// Blue, with the reading on a white card. It fills the window, title bar and all, so its size is the window's.
 struct TunerView: View {
-    static let size = CGSize(width: 480, height: 300)
+    static let size = CGSize(width: 480, height: 380)
 
     let model: TunerModel
     let retry: () -> Void
     let openPrivacySettings: () -> Void
 
     var body: some View {
-        Group {
-            switch model.status {
-            case .starting, .listening:
-                ReadingView(reading: model.reading, isStarting: model.status == .starting)
-            case .denied:
-                MessageView(symbol: "mic.slash", title: "\(Yafie.name) can't use the microphone",
-                            detail: "Allow it in System Settings, then come back to this window.",
-                            button: "Open Privacy Settings", action: openPrivacySettings)
-            case .noInput:
-                MessageView(symbol: "mic.slash", title: "No microphone the tuner can use",
-                            detail: "Connect a wired one. The tuner never uses Bluetooth microphones, which switch "
-                                + "headsets to call mode.",
-                            button: "Try Again", action: retry)
-            case .failed(let message):
-                MessageView(symbol: "exclamationmark.triangle", title: "Couldn't start listening",
-                            detail: message, button: "Try Again", action: retry)
+        VStack(spacing: 12) {
+            BubbleHeader(title: "Guitar Tuner", symbol: "tuningfork", chip: Bubble.yellow)
+            Group {
+                switch model.status {
+                case .starting, .listening:
+                    ReadingView(reading: model.reading, isStarting: model.status == .starting)
+                case .denied:
+                    MessageView(symbol: "mic.slash", title: "\(Yafie.name) can't use the microphone",
+                                detail: "Allow it in System Settings, then come back to this window.",
+                                button: "Open Privacy Settings", action: openPrivacySettings)
+                case .noInput:
+                    MessageView(symbol: "mic.slash", title: "No microphone the tuner can use",
+                                detail: "Connect a wired one. The tuner never uses Bluetooth microphones, which switch "
+                                    + "headsets to call mode.",
+                                button: "Try Again", action: retry)
+                case .failed(let message):
+                    MessageView(symbol: "exclamationmark.triangle", title: "Couldn't start listening",
+                                detail: message, button: "Try Again", action: retry)
+                }
             }
+            .padding(.horizontal, 20)
+            .padding(.vertical, 14)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .bubbleCard()
+            .padding(.trailing, 2)
+            .padding(.bottom, 3)
         }
-        .padding(30)
-        .frame(width: Self.size.width, height: Self.size.height)
+        .padding(.horizontal, 16)
+        .padding(.top, 2)
+        .padding(.bottom, 14)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Bubble.blue.ignoresSafeArea())
     }
 }
 
@@ -238,24 +266,29 @@ private struct ReadingView: View {
     let isStarting: Bool
 
     var body: some View {
-        VStack(spacing: 15) {
+        let isInTune = reading?.isInTune == true
+        VStack(spacing: 10) {
             Group {
                 if let reading {
                     NoteName(note: reading.note)
-                        .foregroundStyle(reading.isInTune ? Color.green : Color.primary)
+                        .foregroundStyle(reading.isInTune ? Bubble.deepGreen : Bubble.ink)
                 } else {
                     Text(isStarting ? "Waiting for the microphone…" : "Play a string")
-                        .font(.system(size: 22))
-                        .foregroundStyle(.secondary)
+                        .font(Bubble.display(22))
+                        .foregroundStyle(Bubble.ink.opacity(0.4))
                 }
             }
             .frame(height: 114)
-            CentsMeter(cents: reading?.note.cents, isInTune: reading?.isInTune == true)
+            CentsMeter(cents: reading?.note.cents, isInTune: isInTune)
                 .frame(height: 69)
             Text(caption)
-                .font(.system(size: 18))
+                .font(Bubble.body(15))
                 .monospacedDigit()
-                .foregroundStyle(reading?.isInTune == true ? Color.green : Color.secondary)
+                .foregroundStyle(Bubble.ink)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 4)
+                .bubbleCard(fill: isInTune ? Bubble.green : Bubble.tint, radius: 8, lift: 2)
+                .opacity(reading == nil ? 0 : 1)
         }
         .opacity(reading?.isHeld == true ? 0.4 : 1)
         .animation(.easeOut(duration: 0.2), value: reading?.isHeld)
@@ -291,10 +324,10 @@ private struct NoteName: View {
     var body: some View {
         HStack(alignment: .firstTextBaseline, spacing: 3) {
             Text(note.name)
-                .font(.system(size: 96, weight: .semibold, design: .rounded))
+                .font(Bubble.display(96))
             Text(verbatim: "\(note.octave)")
-                .font(.system(size: 39, weight: .semibold, design: .rounded))
-                .foregroundStyle(.secondary)
+                .font(Bubble.display(39))
+                .opacity(0.45)
                 .baselineOffset(-15)
         }
     }
@@ -308,6 +341,7 @@ private struct CentsMeter: View {
     /// Room for ♭ and ♯ at the ends
     private static let inset: CGFloat = 33
     private static let midline: CGFloat = 21
+    private static let marks = Bubble.ink.opacity(0.45)
 
     var body: some View {
         GeometryReader { geometry in
@@ -316,30 +350,32 @@ private struct CentsMeter: View {
                 let left = Self.x(-TunerModel.Reading.tolerance, in: size.width)
                 let right = Self.x(TunerModel.Reading.tolerance, in: size.width)
                 context.fill(Path(roundedRect: CGRect(x: left, y: 0, width: right - left, height: 2 * Self.midline),
-                                  cornerRadius: 4.5), with: .color(.green.opacity(0.2)))
+                                  cornerRadius: 4.5), with: .color(Bubble.green.opacity(0.35)))
                 for step in stride(from: -50, through: 50, by: 5) {
                     let length: CGFloat = step == 0 ? 42 : step % 25 == 0 ? 27 : 15
                     let x = Self.x(Double(step), in: size.width)
                     var tick = Path()
                     tick.move(to: CGPoint(x: x, y: Self.midline - length / 2))
                     tick.addLine(to: CGPoint(x: x, y: Self.midline + length / 2))
-                    context.stroke(tick, with: .style(.secondary), lineWidth: step == 0 ? 3 : 1.5)
+                    context.stroke(tick, with: .color(step == 0 ? Bubble.ink : Self.marks),
+                                   style: StrokeStyle(lineWidth: step == 0 ? 3 : 2, lineCap: .round))
                 }
                 for step in [-50, -25, 0, 25, 50] {
                     let label = step > 0 ? "+\(step)" : step < 0 ? "−\(-step)" : "0"
-                    context.draw(Text(label).font(.system(size: 15)).foregroundStyle(.secondary),
+                    context.draw(Text(label).font(Bubble.body(14)).foregroundStyle(Self.marks),
                                  at: CGPoint(x: Self.x(Double(step), in: size.width), y: 2 * Self.midline + 15))
                 }
-                context.draw(Text("♭").font(.system(size: 22)).foregroundStyle(.secondary),
+                context.draw(Text("♭").font(Bubble.display(22)).foregroundStyle(Self.marks),
                              at: CGPoint(x: 12, y: Self.midline))
-                context.draw(Text("♯").font(.system(size: 22)).foregroundStyle(.secondary),
+                context.draw(Text("♯").font(Bubble.display(22)).foregroundStyle(Self.marks),
                              at: CGPoint(x: size.width - 12, y: Self.midline))
             }
             .overlay(alignment: .topLeading) {
                 if let cents {
                     Capsule()
-                        .fill(isInTune ? Color.green : Color.primary)
-                        .frame(width: 6, height: 2 * Self.midline + 6)
+                        .fill(isInTune ? Bubble.green : Bubble.yellow)
+                        .overlay(Capsule().strokeBorder(Bubble.ink, lineWidth: 2))
+                        .frame(width: 10, height: 2 * Self.midline + 8)
                         .position(x: Self.x(cents, in: width), y: Self.midline)
                         .animation(.easeOut(duration: 0.1), value: cents)
                 }
@@ -352,7 +388,7 @@ private struct CentsMeter: View {
     }
 }
 
-/// Why it can't go on, and what to do
+/// Why it can't go on, and what to do. The tuner's and the drum machine's, on their white card.
 struct MessageView: View {
     let symbol: String
     let title: String
@@ -363,18 +399,22 @@ struct MessageView: View {
     var body: some View {
         VStack(spacing: 12) {
             Image(systemName: symbol)
-                .font(.system(size: 42))
-                .foregroundStyle(.secondary)
+                .font(.system(size: 22, weight: .bold))
+                .foregroundStyle(Bubble.ink)
+                .frame(width: 48, height: 48)
+                .bubbleCard(fill: Bubble.yellow, radius: 12, lift: 3)
             Text(title)
-                .font(.system(size: 20, weight: .bold))
+                .font(Bubble.display(19))
+                .foregroundStyle(Bubble.ink)
+                .multilineTextAlignment(.center)
             Text(detail)
-                .font(.system(size: 18))
-                .foregroundStyle(.secondary)
+                .font(Bubble.body(14))
+                .foregroundStyle(Bubble.ink.opacity(0.7))
                 .multilineTextAlignment(.center)
                 .lineLimit(3)
             Button(button, action: action)
-                .controlSize(.large)
-                .padding(.top, 6)
+                .buttonStyle(BubbleButtonStyle(fill: Bubble.yellow, height: 30, fontSize: 13.5))
+                .padding(.top, 4)
         }
     }
 }
