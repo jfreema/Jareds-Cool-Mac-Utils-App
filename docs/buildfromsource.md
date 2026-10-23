@@ -11,24 +11,35 @@ swift test             # run the unit tests
 
 The installer copies the app into `/Applications`, removes `Yafie.app` from before the rename, hands the app to the person installing (so **Check for Updates…** can replace it later), then opens it. Its scripts and closing page are in `Resources/pkg`.
 
-The app was called Yafie before 1.1.4, and it still is inside: the Swift package, the bundle ID `io.github.jfreema.yafie`, the **Yafie Code Signing** certificate and `/etc/sudoers.d/yafie`. Keep them. Users' permissions, settings and password-free setup depend on them. Its names, Jared's Cool Mac Utilities App and Jared's Mac App for short, are in `Resources/Info.plist`, `Resources/en.lproj/InfoPlist.strings` and `Yafie.name` in the code.
+The app was called Yafie before 1.1.4, and it still is inside: the Swift package, the bundle ID `io.github.jfreema.yafie` and `/etc/sudoers.d/yafie`. Keep them. Users' permissions, settings and password-free setup depend on them. Its names, Jared's Cool Mac Utilities App and Jared's Mac App for short, are in `Resources/Info.plist`, `Resources/en.lproj/InfoPlist.strings` and `Yafie.name` in the code.
 
 ## Signing
 
-Every build is signed with one self-signed certificate, **Yafie Code Signing**. A stable signature means macOS keeps the app's permissions (Accessibility for window snapping and app previews, Screen Recording for snips and window pictures, Microphone for the tuner) across updates. `./build.sh --pkg` refuses to run without it; other builds fall back to ad hoc signing.
+From 1.1.6, releases are signed with Jared's **Developer ID** certificates (team `885XHF7XLL`) and notarized by Apple, so the installer opens on any Mac without a Gatekeeper warning. This doesn't involve the App Store. macOS ties the app's permissions (Accessibility for window snapping and app previews, Screen Recording for snips and window pictures, Microphone for the tuner) to the team, so they last across updates and certificate renewals. Releases before 1.1.6 used a self-signed certificate, so updating to 1.1.6 asks everyone for the permissions once more.
 
-- **First time:** `./Resources/make-signing-identity.sh` creates it in your login keychain. macOS asks for your password to trust it for code signing. The first build then asks to use the key: enter your password and click **Always Allow**.
-- **Back it up:** in Keychain Access, select **Yafie Code Signing** under login → My Certificates, then choose File → Export Items… and save a .p12 with a password. Keep both somewhere safe. A new certificate would look like a new app to macOS, and everyone would have to allow the app again.
-- **On another Mac:** double-click the .p12 to import it. Then open the certificate in Keychain Access and set Trust → Code Signing to **Always Trust**.
-- **For GitHub:** the Release workflow signs with a copy stored in two repository secrets, `YAFIE_SIGNING_P12` (the .p12, base64) and `YAFIE_SIGNING_PASSWORD`. The workflow also checks that every release is signed by this certificate's fingerprint. If the certificate ever has to change, update both secrets and `CERTIFICATE_SHA1` in `.github/workflows/release.yml`.
-- **Without trust:** a Mac can have the certificate without trusting it, like GitHub's Macs, where macOS won't let a job trust one. `codesign` refuses to use it there, so `build.sh` signs through the Security framework's signing API with `Resources/sign-untrusted.swift`. The result is the same signature.
+Two certificates do it: **Developer ID Application** signs the app, with the hardened runtime and `Resources/jaredsmacutils.entitlements` (the microphone), and **Developer ID Installer** signs the installer. `build.sh` uses the first of each in the keychain, or `YAFIE_SIGNING_IDENTITY` and `YAFIE_INSTALLER_IDENTITY`. Without them, `./build.sh` and `./build.sh --install` sign ad hoc, and `./build.sh --pkg` stops. With `NOTARY_APPLE_ID` and `NOTARY_PASSWORD` set, `--pkg` also notarizes the installer, with the app in it, and staples the ticket.
+
+- **First time:** on your Mac, run `zsh scripts/setup-signing.sh`. It makes the private keys and two signing requests, opens Apple's site for you to turn each into a certificate (pick **G2 Sub-CA**), packages them as .p12 files with a random password, asks for an app-specific password from [account.apple.com](https://account.apple.com) and checks it with Apple, then adds the secrets below to the repo. With the GitHub CLI (`brew install gh`, then `gh auth login`) it adds them itself; without it, it opens GitHub's page and puts each one on your clipboard. Your login keychain keeps the certificates as the backup.
+- **For GitHub:** the Release workflow signs and notarizes with five repository secrets:
+
+  | Secret | Value |
+  |---|---|
+  | `DEVELOPER_ID_APP_P12` | The Developer ID Application .p12, base64 |
+  | `DEVELOPER_ID_INSTALLER_P12` | The Developer ID Installer .p12, base64 |
+  | `DEVELOPER_ID_P12_PASSWORD` | The password of both .p12 files |
+  | `NOTARY_APPLE_ID` | The Apple ID email |
+  | `NOTARY_PASSWORD` | The app-specific password |
+
+- **The team is checked.** The workflow refuses a release not signed by `TEAM_ID` in `.github/workflows/release.yml`, and **Check for Updates…** refuses an update signed by another team than the running copy. Never change the team: everyone would have to allow the app again, and Check for Updates couldn't take them there.
+- **Renewing:** the certificates last five years. Run the setup script again before they expire; certificates from the same team keep everyone's permissions.
+- **Apple's wait:** Apple usually notarizes in minutes, but can take hours. Test runs wait 15 minutes, then carry on unnotarized with a warning. A release waits an hour, then stops without publishing, so re-run it once Apple has finished.
 
 ## Release an update
 
 1. Raise `CFBundleShortVersionString` in `Resources/Info.plist`. **Check for Updates…** only offers a higher version.
 2. Commit and push. The Release workflow (`.github/workflows/release.yml`) does the rest on GitHub's Macs:
    - runs the tests
-   - builds the installer with `./build.sh --pkg` and signs it
+   - builds the installer with `./build.sh --pkg`, signs it and has Apple notarize it
    - checks it the way **Check for Updates…** will
    - commits the installer, `downloads/jaredsmacutils.pkg`, its update feed, `downloads/update.json`, and the README's version line to `main`
 

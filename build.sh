@@ -25,20 +25,20 @@ cp Resources/AppIcon.icns Resources/MenuIcon.tiff Resources/MenuIconOutline.tiff
 # The name Finder shows, Jared's Cool Mac Utilities App
 cp -R Resources/en.lproj "$APP/Contents/Resources/"
 
-# One identity for every build, so macOS keeps the app's permissions across updates. See docs/buildfromsource.md.
-# YAFIE_SIGNING_IDENTITY names another, for testing.
-IDENTITY="${YAFIE_SIGNING_IDENTITY:-Yafie Code Signing}"
-if security find-identity -v -p codesigning | grep -q "\"$IDENTITY\""; then
-    codesign --force --strip-disallowed-xattrs --sign "$IDENTITY" "$APP"
-    SIGNED_BY="$IDENTITY"
-elif security find-identity -p codesigning | grep -q "\"$IDENTITY\""; then
-    # Here but not trusted, as on GitHub's Macs, so codesign won't use it
-    xattr -cr "$APP"
-    ./Resources/sign-untrusted.swift "$IDENTITY" "$APP"
-    SIGNED_BY="$IDENTITY, through the signing API"
+# A Developer ID Application certificate signs it, with the hardened runtime notarization needs. macOS ties the app's
+# permissions to the team, so they last across updates. YAFIE_SIGNING_IDENTITY picks one by name or SHA-1. See
+# docs/buildfromsource.md.
+IDENTITY="${YAFIE_SIGNING_IDENTITY:-}"
+if [[ -z "$IDENTITY" ]]; then
+    IDENTITY="$(security find-identity -v -p codesigning | awk '/"Developer ID Application/ { print $2; exit }')"
+fi
+if [[ -n "$IDENTITY" ]]; then
+    codesign --force --options runtime --timestamp --entitlements Resources/jaredsmacutils.entitlements \
+        --strip-disallowed-xattrs --sign "$IDENTITY" "$APP"
+    TEAM="$(codesign -dv "$APP" 2>&1 | sed -n 's/^TeamIdentifier=//p')"
+    SIGNED_BY="Developer ID, team $TEAM"
 elif [[ "$MODE" == "--pkg" ]]; then
-    echo "No \"$IDENTITY\" identity. A release signed ad hoc would reset everyone's permissions." >&2
-    echo "Run Resources/make-signing-identity.sh, or import the backup, first." >&2
+    echo "No Developer ID Application identity. Run scripts/setup-signing.sh first." >&2
     exit 1
 else
     codesign --force --strip-disallowed-xattrs --sign - "$APP"  # ad hoc is enough for a build from source
@@ -105,12 +105,55 @@ if [[ "$MODE" == "--pkg" ]]; then
     <pkg-ref id="$ID" version="$VERSION" onConclusion="none">$NAME-app.pkg</pkg-ref>
 </installer-gui-script>
 EOF
+    # The installer has its own certificate, Developer ID Installer, from the same team
+    INSTALLER="${YAFIE_INSTALLER_IDENTITY:-}"
+    if [[ -z "$INSTALLER" ]]; then
+        INSTALLER="$(security find-identity -v | awk '/"Developer ID Installer/ { print $2; exit }')"
+    fi
+    if [[ -z "$INSTALLER" ]]; then
+        echo "No Developer ID Installer identity. Run scripts/setup-signing.sh first." >&2
+        exit 1
+    fi
     rm -f "$PKG"
     productbuild --distribution "$WORK/distribution.xml" --resources Resources/pkg/resources \
-        --package-path "$WORK" "$PKG" >/dev/null
+        --package-path "$WORK" --sign "$INSTALLER" --timestamp "$PKG" >/dev/null
     rm -rf "$WORK"
 
-    # What Check for Updates reads. The hash lets it reject a stale or broken download.
+    # Notarizes the installer, and the app in it, with an app-specific password, so Gatekeeper opens it without a
+    # warning. Apple usually takes minutes, but a new kind of submission can take hours. Then NOTARY_REQUIRED (releases)
+    # stops here, and anything else carries on unnotarized.
+    if [[ -n "${NOTARY_APPLE_ID:-}" && -n "${NOTARY_PASSWORD:-}" ]]; then
+        notary() { xcrun notarytool "$@" --apple-id "$NOTARY_APPLE_ID" --password "$NOTARY_PASSWORD" --team-id "$TEAM" }
+        # The result goes to stdout, or to stderr when the wait runs out
+        notary submit "$PKG" --wait --timeout "${NOTARY_TIMEOUT:-60m}" --output-format json \
+            > build/notary.out 2>&1 || true
+        cat build/notary.out
+        STATUS="$(sed -nE 's/.*"status" *: *"([^"]+)".*/\1/p' build/notary.out | head -1)"
+        SUBMISSION="$(sed -nE 's/.*"id" *: *"([0-9a-fA-F-]{36})".*/\1/p' build/notary.out | head -1)"
+        if [[ "$STATUS" == "Accepted" ]]; then
+            xcrun stapler staple "$PKG"
+            echo "Notarized and stapled"
+        elif [[ -n "$SUBMISSION" && ( -z "$STATUS" || "$STATUS" == "In Progress" ) ]]; then
+            echo "Apple is still notarizing submission $SUBMISSION. Its recent submissions:"
+            notary history 2>&1 | head -12 || true
+            if [[ -n "${NOTARY_REQUIRED:-}" ]]; then
+                echo "Stopping rather than publishing it unnotarized. Run this again once Apple finishes." >&2
+                exit 1
+            fi
+            echo "::warning::Apple hasn't finished notarizing submission $SUBMISSION, so this build isn't notarized."
+        else
+            [[ -n "$SUBMISSION" ]] && notary log "$SUBMISSION" || true
+            echo "Notarization failed${STATUS:+ ($STATUS)}" >&2
+            exit 1
+        fi
+    elif [[ -n "${NOTARY_REQUIRED:-}" ]]; then
+        echo "Set NOTARY_APPLE_ID and NOTARY_PASSWORD to notarize." >&2
+        exit 1
+    else
+        echo "Not notarized: set NOTARY_APPLE_ID and NOTARY_PASSWORD to notarize."
+    fi
+
+    # What Check for Updates reads, hashed after stapling. The hash lets it reject a stale or broken download.
     cat > downloads/update.json <<EOF
 {
   "version": "$VERSION",

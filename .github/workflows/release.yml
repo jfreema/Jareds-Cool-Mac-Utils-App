@@ -25,11 +25,11 @@ concurrency:
 jobs:
   release:
     runs-on: macos-26
-    timeout-minutes: 30
+    timeout-minutes: 90  # notarizing a release can wait up to an hour
     env:
-      # The fingerprint behind every grant users have given the app. A different certificate would look like a different
-      # app to macOS, so a release signed by anything else stops here. See docs/buildfromsource.md.
-      CERTIFICATE_SHA1: be53c25d8c8e5d9ddd6545ea67cb8cbdf9710a90
+      # The Apple Developer team behind every grant users have given the app since 1.1.6. Another team would look like
+      # a different app to macOS, and Check for Updates refuses it, so a release signed by anyone else stops here.
+      TEAM_ID: 885XHF7XLL
     steps:
       - uses: actions/checkout@v5
         with:
@@ -44,38 +44,53 @@ jobs:
             || plutil -extract version raw -o - downloads/latest.json 2>/dev/null || echo none)"
           echo "Info.plist says $version, the published version is $published"
           echo "version=$version" >> "$GITHUB_OUTPUT"
-          if [[ "$version" != "$published" ]]; then echo "new=true" >> "$GITHUB_OUTPUT"; else echo "new=false" >> "$GITHUB_OUTPUT"; fi
+          # A new version is published when it's pushed to main, or when a manual run asks to
+          if [[ "$version" != "$published" && "${{ github.event_name == 'push' || inputs.publish }}" == true ]]; then
+            echo "publish=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "publish=false" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Test
         run: |
           swift --version
           swift test
 
-      - name: Import the signing identity
+      - name: Import the Developer ID certificates
         env:
-          SIGNING_P12: ${{ secrets.YAFIE_SIGNING_P12 }}
-          SIGNING_PASSWORD: ${{ secrets.YAFIE_SIGNING_PASSWORD }}
+          # Developer ID Application signs the app, and Developer ID Installer the installer
+          APP_P12: ${{ secrets.DEVELOPER_ID_APP_P12 }}
+          INSTALLER_P12: ${{ secrets.DEVELOPER_ID_INSTALLER_P12 }}
+          P12_PASSWORD: ${{ secrets.DEVELOPER_ID_P12_PASSWORD }}
         run: |
-          if [[ -z "$SIGNING_P12" || -z "$SIGNING_PASSWORD" ]]; then
-            echo "::error::Add the YAFIE_SIGNING_P12 and YAFIE_SIGNING_PASSWORD secrets. See docs/buildfromsource.md."
+          if [[ -z "$APP_P12" || -z "$INSTALLER_P12" || -z "$P12_PASSWORD" ]]; then
+            echo "::error::Add the Developer ID secrets with scripts/setup-signing.sh. See docs/buildfromsource.md."
             exit 1
           fi
           keychain="$RUNNER_TEMP/signing.keychain-db"
           keychain_password="$(uuidgen)"
-          echo "$SIGNING_P12" | base64 --decode > "$RUNNER_TEMP/signing.p12"
           security create-keychain -p "$keychain_password" "$keychain"
           security set-keychain-settings -lut 3600 "$keychain"
           security unlock-keychain -p "$keychain_password" "$keychain"
-          # Any tool may use the key, since this keychain only lives as long as the job
-          security import "$RUNNER_TEMP/signing.p12" -k "$keychain" -P "$SIGNING_PASSWORD" -A
-          rm "$RUNNER_TEMP/signing.p12"
-          # Uses it without asking: nobody is here to answer
-          security set-key-partition-list -S apple-tool:,apple:,codesign:,unsigned: -s -k "$keychain_password" "$keychain" > /dev/null
+          for p12 in APP_P12 INSTALLER_P12; do
+            echo "${!p12}" | base64 --decode > "$RUNNER_TEMP/signing.p12"
+            security import "$RUNNER_TEMP/signing.p12" -k "$keychain" -P "$P12_PASSWORD" \
+              -T /usr/bin/codesign -T /usr/bin/productbuild
+            rm "$RUNNER_TEMP/signing.p12"
+          done
+          # Uses them without asking: nobody is here to answer
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$keychain_password" "$keychain" > /dev/null
           security list-keychains -d user -s "$keychain" $(security list-keychains -d user | tr -d '"')
-          # Not trusted here (macOS won't let a job trust a certificate), so build.sh signs through the signing API
-          security find-identity -p codesigning "$keychain"
+          security find-identity -v "$keychain"
 
-      - name: Build and sign
+      - name: Build, sign and notarize
+        env:
+          # Test runs notarize too. They wait 15 minutes for Apple, then carry on unnotarized. A release waits an hour,
+          # then stops rather than publish an unnotarized installer.
+          NOTARY_APPLE_ID: ${{ secrets.NOTARY_APPLE_ID }}
+          NOTARY_PASSWORD: ${{ secrets.NOTARY_PASSWORD }}
+          NOTARY_TIMEOUT: ${{ steps.version.outputs.publish == 'true' && '60m' || '15m' }}
+          NOTARY_REQUIRED: ${{ steps.version.outputs.publish == 'true' && '1' || '' }}
         run: ./build.sh --pkg
 
       - name: Check it as Check for Updates will
@@ -96,8 +111,15 @@ jobs:
           plist="$app/Contents/Info.plist"
           test "$(/usr/libexec/PlistBuddy -c 'Print CFBundleShortVersionString' "$plist")" = "$version"
           codesign --verify --strict "$app"
-          codesign -d -r- "$app" 2>&1 | grep -q "certificate leaf = H\"$CERTIFICATE_SHA1\"" \
-            || { echo "::error::Signed with a different certificate than every earlier release"; exit 1; }
+          codesign -dv "$app" 2>&1 | grep -qx "TeamIdentifier=$TEAM_ID" \
+            || { echo "::error::The app isn't signed by team $TEAM_ID"; exit 1; }
+          pkgutil --check-signature "$pkg" | grep -q "Developer ID Installer: .*($TEAM_ID)" \
+            || { echo "::error::The installer isn't signed by team $TEAM_ID"; exit 1; }
+          if xcrun stapler validate "$pkg"; then
+            spctl --assess --type install --verbose "$pkg"
+          elif [[ "${{ steps.version.outputs.publish }}" == true ]]; then
+            echo "::error::$pkg isn't notarized"; exit 1
+          fi
           test "$(plutil -extract version raw -o - downloads/update.json)" = "$version"
           test "$(plutil -extract sha256 raw -o - downloads/update.json)" = "$(shasum -a 256 "$pkg" | cut -d' ' -f1)"
           # Copies before 1.1.3 read latest.json and only take Yafie.app, so it and Yafie.pkg stay at 1.1.3 for good
@@ -117,7 +139,7 @@ jobs:
             downloads/*.json
 
       - name: Publish
-        if: steps.version.outputs.new == 'true' && (github.event_name == 'push' || inputs.publish)
+        if: steps.version.outputs.publish == 'true'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
@@ -126,6 +148,6 @@ jobs:
           git pull --rebase origin main
           git push origin HEAD:main
 
-      - name: Remove the signing identity
+      - name: Remove the signing keychain
         if: always()
         run: security delete-keychain "$RUNNER_TEMP/signing.keychain-db" 2>/dev/null || true

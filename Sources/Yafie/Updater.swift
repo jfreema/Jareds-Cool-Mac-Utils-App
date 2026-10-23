@@ -1,5 +1,6 @@
 import AppKit
 import CryptoKit
+import Security
 import ServiceManagement
 
 /// Updates from the repo's downloads folder
@@ -129,6 +130,10 @@ final class Updater {
               Shell.run("/usr/bin/codesign", ["--verify", "--strict", staged.path]).status == 0 else {
             throw Failure("The downloaded app didn't check out.")
         }
+        // Once signed by a Developer ID, only take updates signed by the same team
+        if let team = team(of: app), team(of: staged) != team {
+            throw Failure("The download isn't signed by the same developer as this copy of \(Yafie.name).")
+        }
         // Same name, as macOS compares names, ignoring case
         guard staged.lastPathComponent.lowercased() != app.lastPathComponent.lowercased() else {
             _ = try files.replaceItemAt(app, withItemAt: staged)
@@ -163,6 +168,17 @@ final class Updater {
             walk.skipDescendants()
         }
         return nil
+    }
+
+    /// The Apple Developer team that signed it, or nil for a self-signed or ad hoc signature
+    nonisolated static func team(of app: URL) -> String? {
+        var code: SecStaticCode?
+        guard SecStaticCodeCreateWithPath(app as CFURL, [], &code) == errSecSuccess, let code else { return nil }
+        var info: CFDictionary?
+        let flags = SecCSFlags(rawValue: kSecCSSigningInformation)
+        guard SecCodeCopySigningInformation(code, flags, &info) == errSecSuccess,
+              let dict = info as? [String: Any] else { return nil }
+        return dict[kSecCodeInfoTeamIdentifier as String] as? String
     }
 
     nonisolated private static func identifier(of app: URL) -> String? {
