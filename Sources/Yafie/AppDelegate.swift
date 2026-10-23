@@ -2,7 +2,7 @@ import AppKit
 import ServiceManagement
 
 @MainActor
-final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
+final class AppDelegate: NSObject, NSApplicationDelegate {
     private let controller = LidAwakeController()
     private let updater = Updater()
     private let snapper = WindowSnapper()
@@ -17,38 +17,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }()
     private var statusItem: NSStatusItem?
     private var signalSources: [any DispatchSourceSignal] = []
-    /// Switches stay put when flipped, so the open menu updates in place
-    private var openMenu: OpenMenu?
+    /// The menu bar icon's menu. Switches stay put when flipped, so the open menu updates in place.
+    private let menu = MenuPanelController()
     /// Alerts and prompts wait for the menu to close
     private var afterMenuCloses: (@MainActor () -> Void)?
     /// A termination signal quits without asking about unsaved snips
     private var isQuittingForSignal = false
 
-    private struct OpenMenu {
-        let summary: NSMenuItem
-        let stayAwake: ToggleRow
-        let power: ToggleRow
-        let online: ToggleRow
-        let lowPower: ToggleRow
-        let action: NSMenuItem
-        let snap: ToggleRow
-        let thirds: ToggleRow
-        let snapAction: NSMenuItem
-        let preview: ToggleRow
-        let previewAction: NSMenuItem
-        let snip: ToggleRow
-        let snipAction: NSMenuItem
-        let login: ToggleRow
-    }
-
     func applicationDidFinishLaunching(_ notification: Notification) {
         let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
-        let menu = NSMenu()
-        menu.delegate = self
-        // Otherwise the switch rows, which have no action, would be dimmed
-        menu.autoenablesItems = false
-        item.menu = menu
+        item.button?.target = self
+        item.button?.action = #selector(toggleMenu)
+        // Opens on the press, as a menu does
+        item.button?.sendAction(on: [.leftMouseDown, .rightMouseDown])
         statusItem = item
+        menu.willOpen = { [weak self] in self?.menuWillOpen() }
+        menu.didClose = { [weak self] in self?.menuDidClose() }
+        menu.model.onToggle = { [weak self] toggle, on in self?.flip(toggle, on) }
+        menu.model.onCommand = { [weak self] command in self?.run(command) }
 
         controller.onChange = { [weak self] in
             self?.updateIcon()
@@ -120,179 +106,119 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     // MARK: Menu
 
-    func menuNeedsUpdate(_ menu: NSMenu) {
+    @objc private func toggleMenu() {
+        guard let button = statusItem?.button else { return }
+        menu.toggle(from: button)
+    }
+
+    private func menuWillOpen() {
         // The permissions may have changed in System Settings
         snapper.refresh()
         previews.refresh()
         snipper.refresh()
-        menu.removeAllItems()
-
-        menu.addItem(.sectionHeader(title: "App Preview"))
-        let preview = ToggleRow("Show App Previews in the Dock") { [weak self] on in self?.setAppPreviews(on) }
-        menu.addItem(viewItem(preview))
-        // While a permission is missing
-        let previewAction = item("Allow App Previews…", #selector(allowAppPreviews))
-        menu.addItem(previewAction)
-
-        menu.addItem(.separator())
-        menu.addItem(.sectionHeader(title: "Windows"))
-        let snap = ToggleRow("Snap Windows with ⌃⌥ Arrow Keys") { [weak self] on in self?.setSnapWindows(on) }
-        let thirds = ToggleRow("Snap to Thirds on External Displays", indented: true) { [weak self] on in
-            self?.snapper.setUsesThirds(on)
-        }
-        menu.addItem(viewItem(snap))
-        menu.addItem(viewItem(thirds))
-        // Allow Window Snapping…, or why the shortcut didn't take, when the status calls for one
-        let snapAction = NSMenuItem(title: "", action: nil, keyEquivalent: "")
-        snapAction.target = self
-        menu.addItem(snapAction)
-
-        menu.addItem(.separator())
-        menu.addItem(.sectionHeader(title: "Screenshots"))
-        let snip = ToggleRow("Snipping Tool with ⌃⌥P") { [weak self] on in self?.setSnipScreen(on) }
-        menu.addItem(viewItem(snip))
-        // Allow Screen Snipping…, or why the shortcut didn't take, when the status calls for one
-        let snipAction = NSMenuItem(title: "", action: nil, keyEquivalent: "")
-        snipAction.target = self
-        menu.addItem(snipAction)
-
-        menu.addItem(.separator())
-        menu.addItem(.sectionHeader(title: "Tools"))
-        menu.addItem(item("Guitar Tuner…", #selector(openTuner)))
-        menu.addItem(item("Drum Machine…", #selector(openDrums)))
-        menu.addItem(item("Clean Keyboard and Trackpad…", #selector(cleanKeyboard)))
-
-        menu.addItem(.separator())
-        menu.addItem(.sectionHeader(title: "Stay Awake"))
-        // What it's doing now, which the menu bar icon shows too
-        let summary = NSMenuItem(title: "", action: nil, keyEquivalent: "")
-        summary.isEnabled = false
-        menu.addItem(summary)
-        let stayAwake = ToggleRow("Stay Awake with Lid Closed") { [weak self] on in self?.setStayAwake(on) }
-        let power = ToggleRow("Only While Connected to Power", indented: true) { [weak self] on in
-            self?.controller.setRequiresPower(on)
-        }
-        let online = ToggleRow("Only While Connected to the Internet", indented: true) { [weak self] on in
-            self?.controller.setRequiresInternet(on)
-        }
-        let lowPower = ToggleRow("Low Power Mode with Lid Closed", indented: true) { [weak self] on in
-            self?.controller.setUsesLowPower(on)
-        }
-        menu.addItem(viewItem(stayAwake))
-        menu.addItem(viewItem(power))
-        menu.addItem(viewItem(online))
-        menu.addItem(viewItem(lowPower))
-        // Sleep Now, Finish Setup… or Turn Sleep Back On…, when the status calls for one
-        let action = NSMenuItem(title: "", action: nil, keyEquivalent: "")
-        action.target = self
-        menu.addItem(action)
-
-        // Yafie itself
-        menu.addItem(.separator())
-        let login = ToggleRow("Open at Login") { [weak self] on in self?.setOpenAtLogin(on) }
-        menu.addItem(viewItem(login))
-        menu.addItem(item("About \(Yafie.name)", #selector(showAbout)))
-        if updater.isBusy {
-            let busy = NSMenuItem(title: "Checking for Updates…", action: nil, keyEquivalent: "")
-            busy.isEnabled = false
-            menu.addItem(busy)
-        } else {
-            menu.addItem(item("Check for Updates…", #selector(checkForUpdates)))
-        }
-        menu.addItem(.separator())
-        menu.addItem(NSMenuItem(title: "Quit \(Yafie.name)",
-                                action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
-
-        openMenu = OpenMenu(summary: summary, stayAwake: stayAwake, power: power, online: online, lowPower: lowPower,
-                            action: action, snap: snap, thirds: thirds, snapAction: snapAction, preview: preview,
-                            previewAction: previewAction, snip: snip, snipAction: snipAction, login: login)
-        refreshMenu()
+        refreshMenu(force: true)
     }
 
-    func menuDidClose(_ menu: NSMenu) {
-        openMenu = nil
+    private func menuDidClose() {
         guard let work = afterMenuCloses else { return }
         afterMenuCloses = nil
-        // Once the menu's tracking has unwound
+        // Once the panel is gone
         Task { @MainActor in work() }
     }
 
     /// Matches the open menu to the current state
-    private func refreshMenu() {
-        guard let menu = openMenu else { return }
+    private func refreshMenu(force: Bool = false) {
+        guard force || menu.isOpen else { return }
+        let model = menu.model
         let status = controller.status
-        menu.summary.title = status.summary
-        menu.stayAwake.isOn = controller.isEnabled
-        menu.power.isOn = controller.requiresPower
-        menu.online.isOn = controller.requiresInternet
-        menu.lowPower.isOn = controller.usesLowPower
+        model.stayAwakeSummary = status.summary
+        model.stayAwakeBadge = status.badge
+        model.isOn = [
+            .appPreviews: previews.isEnabled,
+            .snapWindows: snapper.isEnabled,
+            .snapThirds: snapper.usesThirds,
+            .snipScreen: snipper.isEnabled,
+            .stayAwake: controller.isEnabled,
+            .requirePower: controller.requiresPower,
+            .requireInternet: controller.requiresInternet,
+            .lowPower: controller.usesLowPower,
+            .openAtLogin: SMAppService.mainApp.status == .enabled,
+        ]
+        var disabled: Set<MenuToggle> = []
         // Only mean something while the main switch is on
-        menu.power.isEnabled = controller.isEnabled
-        menu.online.isEnabled = controller.isEnabled
-        menu.lowPower.isEnabled = controller.isEnabled
-        menu.login.isOn = SMAppService.mainApp.status == .enabled
+        if !controller.isEnabled { disabled.formUnion([.requirePower, .requireInternet, .lowPower]) }
+        if !snapper.isEnabled { disabled.insert(.snapThirds) }
+        model.isDisabled = disabled
 
-        let action: (title: String, selector: Selector)? = switch status {
-        case .active: ("Sleep Now", #selector(sleepNow))
-        case .needsSetup, .lowPowerNeedsSetup: ("Finish Setup…", #selector(finishSetup))
-        case .restoreFailed: ("Turn Sleep Back On…", #selector(retryRestore))
+        // Sleep Now, Finish Setup… or Turn Sleep Back On…, when the status calls for one
+        model.stayAwakeAction = switch status {
+        case .active: MenuAction(title: "Sleep Now", command: .sleepNow)
+        case .needsSetup, .lowPowerNeedsSetup: MenuAction(title: "Finish Setup…", command: .finishSetup)
+        case .restoreFailed: MenuAction(title: "Turn Sleep Back On…", command: .retryRestore)
         case .off, .waitingForPower, .lowBattery, .waitingForInternet: nil
         }
-        menu.action.title = action?.title ?? ""
-        menu.action.action = action?.selector
-        menu.action.isHidden = action == nil
-
-        menu.snap.isOn = snapper.isEnabled
-        menu.thirds.isOn = snapper.usesThirds
-        menu.thirds.isEnabled = snapper.isEnabled
-        switch snapper.status {
-        case .needsPermission:
-            menu.snapAction.title = "Allow Window Snapping…"
-            menu.snapAction.action = #selector(allowWindowSnapping)
-            menu.snapAction.isEnabled = true
-        case .shortcutTaken:
-            menu.snapAction.title = "Another app is using a ⌃⌥ arrow key"
-            menu.snapAction.action = nil
-            menu.snapAction.isEnabled = false
-        case .off, .on:
-            break
+        // Allow Window Snapping…, or why the shortcut didn't take, when the status calls for one
+        model.snapAction = switch snapper.status {
+        case .needsPermission: MenuAction(title: "Allow Window Snapping…", command: .allowWindowSnapping)
+        case .shortcutTaken: MenuAction(title: "Another app is using a ⌃⌥ arrow key")
+        case .off, .on: nil
         }
-        menu.snapAction.isHidden = snapper.status != .needsPermission && snapper.status != .shortcutTaken
-
-        menu.preview.isOn = previews.isEnabled
-        menu.previewAction.isHidden = !previews.needsPermission
-
-        menu.snip.isOn = snipper.isEnabled
-        switch snipper.status {
-        case .needsPermission:
-            menu.snipAction.title = "Allow Screen Snipping…"
-            menu.snipAction.action = #selector(allowScreenSnipping)
-            menu.snipAction.isEnabled = true
-        case .shortcutTaken:
-            menu.snipAction.title = "Another app is using ⌃⌥P"
-            menu.snipAction.action = nil
-            menu.snipAction.isEnabled = false
-        case .off, .on:
-            break
+        // While a permission is missing
+        model.previewAction = previews.needsPermission
+            ? MenuAction(title: "Allow App Previews…", command: .allowAppPreviews) : nil
+        // Allow Screen Snipping…, or why the shortcut didn't take, when the status calls for one
+        model.snipAction = switch snipper.status {
+        case .needsPermission: MenuAction(title: "Allow Screen Snipping…", command: .allowScreenSnipping)
+        case .shortcutTaken: MenuAction(title: "Another app is using ⌃⌥P")
+        case .off, .on: nil
         }
-        menu.snipAction.isHidden = snipper.status != .needsPermission && snipper.status != .shortcutTaken
+        model.isCheckingForUpdates = updater.isBusy
     }
 
     private func closeMenu(then work: @escaping @MainActor () -> Void) {
+        guard menu.isOpen else {
+            Task { @MainActor in work() }
+            return
+        }
         afterMenuCloses = work
-        statusItem?.menu?.cancelTracking()
+        menu.close()
     }
 
-    private func item(_ title: String, _ action: Selector) -> NSMenuItem {
-        let item = NSMenuItem(title: title, action: action, keyEquivalent: "")
-        item.target = self
-        return item
+    private func flip(_ toggle: MenuToggle, _ on: Bool) {
+        switch toggle {
+        case .appPreviews: setAppPreviews(on)
+        case .snapWindows: setSnapWindows(on)
+        case .snapThirds: snapper.setUsesThirds(on)
+        case .snipScreen: setSnipScreen(on)
+        case .stayAwake: setStayAwake(on)
+        case .requirePower: controller.setRequiresPower(on)
+        case .requireInternet: controller.setRequiresInternet(on)
+        case .lowPower: controller.setUsesLowPower(on)
+        case .openAtLogin: setOpenAtLogin(on)
+        }
+        // Back to how things are, if the feature didn't take it
+        refreshMenu()
     }
 
-    private func viewItem(_ row: ToggleRow) -> NSMenuItem {
-        let item = NSMenuItem()
-        item.view = row
-        return item
+    /// Buttons close the menu first, as a menu's items do
+    private func run(_ command: MenuCommand) {
+        closeMenu { [weak self] in
+            guard let self else { return }
+            switch command {
+            case .allowAppPreviews: previews.openSettings()
+            case .allowWindowSnapping: snapper.openAccessibilitySettings()
+            case .allowScreenSnipping: snipper.openScreenRecordingSettings()
+            case .openTuner: tuner.show()
+            case .openDrums: drums.show()
+            case .cleanKeyboard: cleaner.start()
+            case .sleepNow: controller.sleepNow()
+            case .finishSetup: controller.finishSetup()
+            case .retryRestore: controller.retryRestore()
+            case .showAbout: showAbout()
+            case .checkForUpdates: updater.checkForUpdates()
+            case .quit: NSApp.terminate(nil)
+            }
+        }
     }
 
     private func setStayAwake(_ on: Bool) {
@@ -345,24 +271,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         refreshMenu()
     }
 
-    @objc private func checkForUpdates() { updater.checkForUpdates() }
-
     @objc func showAbout() {
         NSApp.activate()
         // Empty build number drops the "(1)"
         NSApp.orderFrontStandardAboutPanel(options: [.applicationName: Yafie.fullName,
                                                      .applicationVersion: Bundle.main.shortVersion, .version: ""])
     }
-    @objc private func openTuner() { tuner.show() }
-    @objc private func openDrums() { drums.show() }
-    // Once the menu's tracking has unwound, since it asks first
-    @objc private func cleanKeyboard() { Task { @MainActor in cleaner.start() } }
-    @objc private func allowWindowSnapping() { snapper.openAccessibilitySettings() }
-    @objc private func allowAppPreviews() { previews.openSettings() }
-    @objc private func allowScreenSnipping() { snipper.openScreenRecordingSettings() }
-    @objc private func sleepNow() { controller.sleepNow() }
-    @objc private func finishSetup() { controller.finishSetup() }
-    @objc private func retryRestore() { controller.retryRestore() }
 
     private func updateIcon() {
         guard let button = statusItem?.button else { return }
@@ -412,6 +326,19 @@ private extension LidAwakeController.Status {
         case .needsSetup: "Needs your password once to finish setup"
         case .lowPowerNeedsSetup: "Needs your password once more for Low Power Mode"
         case .restoreFailed: "Couldn't turn sleep back on"
+        }
+    }
+
+    /// The pill beside Stay Awake in the menu
+    var badge: MenuBadge {
+        switch self {
+        case .off: MenuBadge(title: "Off", symbol: "moon.fill", tone: .plain)
+        case .waitingForPower: MenuBadge(title: "Waiting", symbol: "bolt.slash.fill", tone: .plain)
+        case .lowBattery: MenuBadge(title: "Low Battery", symbol: "battery.25", tone: .caution)
+        case .waitingForInternet: MenuBadge(title: "Offline", symbol: "wifi.slash", tone: .plain)
+        case .active: MenuBadge(title: "Awake", symbol: "sun.max.fill", tone: .good)
+        case .needsSetup, .lowPowerNeedsSetup: MenuBadge(title: "Setup", symbol: "key.fill", tone: .caution)
+        case .restoreFailed: MenuBadge(title: "Problem", symbol: "exclamationmark.triangle.fill", tone: .alert)
         }
     }
 
