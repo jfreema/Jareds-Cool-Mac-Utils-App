@@ -31,16 +31,10 @@
 ## Install
 
 1. Open the **jaredsmacutils.pkg** you downloaded.
-2. macOS blocks it the first time, because the app isn't signed with a paid Apple Developer ID. Click **Done**, then **Open Anyway** in **System Settings → Privacy & Security** (there for about an hour), then **Open Anyway** again, and enter your password.
+2. Click through the installer and enter your password. The app opens, and its icon appears in the menu bar.
+3. Click its icon in the menu bar and turn on **Open at Login**.
 
-   | 1. Click **Done** | 2. Click **Open Anyway** | 3. Click **Open Anyway** |
-   |---|---|---|
-   | <img src="docs/install-1-blocked.png" height="200" alt="The installer Not Opened, with Move to Trash and Done buttons"> | <img src="docs/install-2-open-anyway.png" width="380" alt="Privacy & Security settings: the installer was blocked to protect your Mac, with an Open Anyway button"> | <img src="docs/install-3-confirm.png" height="200" alt="Open the installer? with Move to Trash, Open Anyway and Done buttons"> |
-
-3. Click through the installer and enter your password. The app opens, and its icon appears in the menu bar.
-4. Click its icon in the menu bar and turn on **Open at Login**.
-
-To update, choose **Check for Updates…** in the app's menu. It installs the newest version and restarts, keeping your settings.
+To update, choose **Check for Updates…** in the app's menu. It installs the newest version and restarts, keeping your settings. Updating to 1.1.6 asks for the app's permissions once more, since it's now signed with an Apple Developer ID; see [troubleshooting](docs/troubleshooting.md#updating-to-116).
 
 ---
 
