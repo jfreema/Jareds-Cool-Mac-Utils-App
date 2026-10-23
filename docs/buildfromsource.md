@@ -36,20 +36,21 @@ Two certificates do it: **Developer ID Application** signs the app, with the har
 
 ## Release an update
 
-1. Raise `CFBundleShortVersionString` in `Resources/Info.plist`. **Check for Updates…** only offers a higher version.
-2. Commit and push. The Release workflow (`.github/workflows/release.yml`) does the rest on GitHub's Macs:
-   - runs the tests
-   - builds the installer with `./build.sh --pkg`, signs it and has Apple notarize it
-   - checks it the way **Check for Updates…** will
-   - commits the installer, `downloads/jaredsmacutils.pkg`, its update feed, `downloads/update.json`, and the README's version line to `main`
+Push to `main`. Every push that changes the app, meaning `Sources`, `Resources`, `Package.swift` or `build.sh` but not the art scripts, publishes it as a new version. The Release workflow (`.github/workflows/release.yml`) does it on GitHub's Macs:
 
-   Follow it under the repo's **Actions** tab. After it finishes, GitHub can take up to 5 minutes to serve the new files.
+- picks the version: the last number of the published one up by one, or the version in `Resources/Info.plist` if the push raised it, as for a new feature (1.1.4 → 1.2.0). **Check for Updates…** only offers a higher version.
+- runs the tests
+- builds the installer with `./build.sh --pkg`, signs it and has Apple notarize it
+- checks it the way **Check for Updates…** will
+- commits the installer, `downloads/jaredsmacutils.pkg`, its update feed, `downloads/update.json`, the version and the README's version line to `main`
+
+Follow it under the repo's **Actions** tab. After it finishes, GitHub can take up to 5 minutes to serve the new files. Pushes close together can go out as one release, and docs alone don't make one.
 
 **Check for Updates…** reads `downloads/update.json` and finds the app in the installer by its bundle ID, so a new version can have a new name. It goes in beside the old copy, which is then removed. Copies before 1.1.3 read `downloads/latest.json` instead, and only take an app named `Yafie.app`. So `latest.json` and `Yafie.pkg` stay at 1.1.3, the last release named Yafie, for good: old copies update to it first, then on to the new name. `build.sh` leaves them alone, and the workflow checks that they don't change.
 
 To try a build without publishing, choose **Actions → Release → Run workflow**, leaving **Publish** off. The installer is attached to the run.
 
-Building the release yourself still works: run `./build.sh --pkg`, then commit and push `downloads/` along with the version. The workflow sees that the version is already published, so it only checks the build.
+Building the release yourself still works: raise the version, run `./build.sh --pkg`, then commit and push `downloads/` along with it. The workflow sees that the version is already published, so it only checks the build.
 
 ## Icon and artwork
 
