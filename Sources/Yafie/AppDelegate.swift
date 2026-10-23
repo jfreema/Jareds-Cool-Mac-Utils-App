@@ -148,7 +148,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let model = menu.model
         let status = controller.status
         model.stayAwakeSummary = status.summary
-        model.stayAwakeBadge = status.badge
+        model.stayAwakeSymbol = status.symbol
         model.isOn = [
             .appPreviews: previews.isEnabled,
             .snapWindows: snapper.isEnabled,
@@ -337,16 +337,16 @@ private extension LidAwakeController.Status {
         }
     }
 
-    /// The pill beside Stay Awake in the menu
-    var badge: MenuBadge {
+    /// Beside the summary in the menu
+    var symbol: String {
         switch self {
-        case .off: MenuBadge(title: "Off", symbol: "moon.fill", tone: .plain)
-        case .waitingForPower: MenuBadge(title: "Waiting", symbol: "bolt.slash.fill", tone: .plain)
-        case .lowBattery: MenuBadge(title: "Low Battery", symbol: "battery.25", tone: .caution)
-        case .waitingForInternet: MenuBadge(title: "Offline", symbol: "wifi.slash", tone: .plain)
-        case .active: MenuBadge(title: "Awake", symbol: "sun.max.fill", tone: .good)
-        case .needsSetup, .lowPowerNeedsSetup: MenuBadge(title: "Setup", symbol: "key.fill", tone: .caution)
-        case .restoreFailed: MenuBadge(title: "Problem", symbol: "exclamationmark.triangle.fill", tone: .alert)
+        case .off: "moon.fill"
+        case .waitingForPower: "bolt.slash.fill"
+        case .lowBattery: "battery.25"
+        case .waitingForInternet: "wifi.slash"
+        case .active: "sun.max.fill"
+        case .needsSetup, .lowPowerNeedsSetup: "key.fill"
+        case .restoreFailed: "exclamationmark.triangle.fill"
         }
     }
 
