@@ -25,8 +25,16 @@ struct RevealWatchTests {
         #expect(watch.decide(sample(4)) == .hideAndReturn)
     }
 
+    @Test func givesThePointerLongerToReachTheMenuBarAfterTheShortcut() {
+        var watch = RevealWatch(start: 0)
+        #expect(watch.decide(sample(0.25)) == .stay)
+        #expect(watch.decide(sample(6.2)) == .stay)
+        #expect(watch.decide(sample(6.25)) == .hideAndReturn)
+    }
+
     @Test func comingBackToTheMenuBarStartsTheWaitOver() {
         var watch = RevealWatch(start: 0)
+        #expect(watch.decide(sample(0.25, inMenuBar: true)) == .stay)
         #expect(watch.decide(sample(1)) == .stay)
         #expect(watch.decide(sample(3, inMenuBar: true)) == .stay)
         #expect(watch.decide(sample(4)) == .stay)
@@ -61,7 +69,8 @@ struct RevealWatchTests {
     @Test func staysWhileAWindowOfYafiesHasTheKeyboard() {
         // Like the tuner, opened from Yafie's own icon
         var watch = RevealWatch(start: 0)
-        for time in stride(from: 0.0, through: 30, by: 0.25) {
+        #expect(watch.decide(sample(0, inMenuBar: true)) == .stay)
+        for time in stride(from: 0.25, through: 30, by: 0.25) {
             #expect(watch.decide(sample(time, key: true)) == .stay)
         }
         #expect(watch.decide(sample(31)) == .stay)

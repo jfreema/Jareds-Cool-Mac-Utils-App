@@ -233,7 +233,7 @@ struct MenuView: View {
             }
             section("Menu Bar") {
                 card {
-                    ToggleRow(model: model, toggle: .hiddenIcons, title: "Arrow to Show Hidden Icons")
+                    ToggleRow(model: model, toggle: .hiddenIcons, title: "Show Hidden Icons with control+option+H")
                 }
             }
             section("Tools") {

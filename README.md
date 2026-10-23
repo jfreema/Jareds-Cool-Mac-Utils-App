@@ -17,7 +17,7 @@
   </tr>
   <tr>
     <td width="50%"><b><a href="#screenshot-tool">Screenshot tool</a></b><br>⌃⌥P snips part of the screen to copy, save or mark up, or copies the text in it.</td>
-    <td width="50%"><b><a href="#hidden-menu-bar-icons">Hidden menu bar icons</a></b><br>An arrow brings back the menu bar icons that don't fit, as beside the notch.</td>
+    <td width="50%"><b><a href="#hidden-menu-bar-icons">Hidden menu bar icons</a></b><br>An arrow, or control+option+H, brings back the menu bar icons that don't fit, as beside the notch.</td>
   </tr>
   <tr>
     <td width="50%"><b><a href="#guitar-tuner">Guitar tuner</a></b><br>Shows the note you're playing and how sharp or flat it is.</td>
@@ -123,11 +123,11 @@ In the editor, drag to draw. Hold Shift to keep lines and arrows to 45° steps, 
 
 ## Hidden menu bar icons
 
-When the menu bar is full, macOS hides the icons that don't fit, with no sign they're there. On a MacBook with a notch, icons only go to the right of it, so an app with a long menu bar, like Chrome, can push several off, this app's icon included. An arrow brings them back.
+When the menu bar is full, macOS hides the icons that don't fit, with no sign they're there. On a MacBook with a notch, icons only go to the right of it, so an app with a long menu bar, like Chrome, can push several off, this app's icon included. An arrow, or control+option+H, brings them back.
 
-**Turn it on:** click the app's icon in the menu bar and turn on **Arrow to Show Hidden Icons**. A **‹** appears near the right end of the menu bar, where macOS hides icons last. If the app's own icon is one of the hidden ones, bring an app with a short menu bar to the front first, like Finder.
+**Turn it on:** click the app's icon in the menu bar and turn on **Show Hidden Icons with control+option+H**. A **‹** appears near the right end of the menu bar, where macOS hides icons last. If the app's own icon is one of the hidden ones, bring an app with a short menu bar to the front first, like Finder.
 
-**Use it:** click **‹**. For a moment, the app's name stands in for the other app's menus, so every icon that fits comes back, and the arrow turns to **›**. Click the icon you want. They hide again when you go back to your app, when you click **›** or press a key, or a moment after you're done with them. While they're out, the app has a Dock icon: macOS only gives the menu bar to apps with one.
+**Use it:** click **‹**, or press **control+option+H** when even the arrow doesn't fit. For a moment, the app's name stands in for the other app's menus, so every icon that fits comes back, and the arrow turns to **›**. Click the icon you want. They hide again when you go back to your app, when you click **›** or press a key, or a moment after you're done with them. While they're out, the app has a Dock icon: macOS only gives the menu bar to apps with one.
 
 Hold ⌘ and drag **‹** to move it. The icons to its right are the last ones macOS hides, so drag the ones you always want to see there too, like this app's icon.
 
