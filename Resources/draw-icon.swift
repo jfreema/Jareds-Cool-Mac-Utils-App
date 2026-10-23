@@ -181,7 +181,7 @@ func drawBoltChip(_ ctx: CGContext, center: CGPoint, size: CGFloat, tilt: CGFloa
         .path(in: CGRect(x: -size / 2, y: -size / 2, width: size, height: size)).cgPath.copy(using: &turn)!
     sticker(ctx, chip, Bubble.orange, outline: 14, lift: 18)
 
-    let weight = NSImage.SymbolConfiguration(pointSize: size / 2, weight: .black)
+    let weight = NSImage.SymbolConfiguration(pointSize: size * 0.58, weight: .black)
     guard let bolt = NSImage(systemSymbolName: "bolt.fill", accessibilityDescription: nil)?
         .withSymbolConfiguration(weight) else { fatalError("No bolt.fill symbol") }
     let box = CGRect(x: -bolt.size.width / 2, y: -bolt.size.height / 2, width: bolt.size.width,
