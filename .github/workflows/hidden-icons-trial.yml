@@ -1,0 +1,52 @@
+name: Hidden icons trial
+
+# Side branch only: tests, then tries the hidden icons arrow on a crowded menu bar. Never merged into main.
+
+on:
+  push:
+    branches: [claude/project-thread-0hkgnm]
+
+permissions:
+  contents: write  # to keep what happened on the branch
+
+jobs:
+  trial:
+    runs-on: macos-26
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Test
+        run: |
+          swift --version
+          swift build
+          swift test || swift test  # the TestingMacros glitch
+
+      - name: Try the arrow
+        run: .github/trial/run.sh "$RUNNER_TEMP/trial"
+
+      - name: Show what happened
+        if: always()
+        run: |
+          cat "$RUNNER_TEMP/trial/summary.txt" || true
+          cut -c 12- "$RUNNER_TEMP/trial/log.txt" | grep -v "^Timestamp" || true
+          cat "$RUNNER_TEMP/trial/yafie.txt" || true
+
+      # The artifact's storage can't be reached from where the trial is read, the branch can
+      - name: Keep what happened on the branch
+        if: always()
+        run: |
+          git config user.name jfreema
+          git config user.email 143004867+jfreema@users.noreply.github.com
+          rm -rf .github/trial/out
+          mkdir -p .github/trial/out
+          cp -R "$RUNNER_TEMP/trial/." .github/trial/out/ || true
+          git add -A .github/trial/out
+          git commit -qm "Trial: what happened in run $GITHUB_RUN_NUMBER"
+          git push origin HEAD:refs/heads/claude/project-thread-0hkgnm || echo "Not kept: the branch moved on"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: trial
+          path: ${{ runner.temp }}/trial
