@@ -28,9 +28,11 @@ Every build is signed with one self-signed certificate, **Yafie Code Signing**. 
    - runs the tests
    - builds the installer with `./build.sh --pkg` and signs it
    - checks it the way **Check for Updates…** will
-   - commits `downloads/Yafie.pkg`, `downloads/latest.json` and the README's version line to `main`
+   - commits the installer, `downloads/Yafie.pkg`, the update feeds, `downloads/update.json` and `downloads/latest.json`, and the README's version line to `main`
 
    Follow it under the repo's **Actions** tab. After it finishes, GitHub can take up to 5 minutes to serve the new files.
+
+**Check for Updates…** reads `downloads/update.json` and finds the app in the installer by its bundle ID, so a new version can have a new name. It goes in beside the old copy, which is then removed. Copies before 1.1.3 read `downloads/latest.json` instead, and only take an app named `Yafie.app`. So once the app is renamed, `latest.json` and `Yafie.pkg` must stay at the last release named Yafie: old copies update to that first, then on to the new name.
 
 To try a build without publishing, choose **Actions → Release → Run workflow**, leaving **Publish** off. The installer is attached to the run.
 

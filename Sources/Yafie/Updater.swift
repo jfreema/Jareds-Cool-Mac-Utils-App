@@ -1,10 +1,14 @@
 import AppKit
 import CryptoKit
+import ServiceManagement
 
 /// Updates from the repo's downloads folder
 @MainActor
 final class Updater {
     private(set) var isBusy = false
+
+    private static let repo = "jfreema/Jareds-Cool-Mac-Utils-App"
+    private static let reopensAtLogin = "reopensAtLogin"
 
     /// What build.sh --pkg publishes next to the installer
     struct Release: Decodable, Sendable {
@@ -18,10 +22,12 @@ final class Updater {
         init(_ message: String) { errorDescription = message }
     }
 
+    /// Copies before 1.1.3 read downloads/latest.json, and only take an app named Yafie.app. Once the app is renamed,
+    /// that feed stays at the last Yafie, so they come through an updater that can take the new name.
     private static var feed: URL {
         // Overridable for testing
         if let custom = UserDefaults.standard.string(forKey: "updateFeed"), let url = URL(string: custom) { return url }
-        return URL(string: "https://raw.githubusercontent.com/jfreema/yafie/main/downloads/latest.json")!
+        return URL(string: "https://raw.githubusercontent.com/\(repo)/main/downloads/update.json")!
     }
 
     /// Replaced on disk since launch
@@ -60,6 +66,7 @@ final class Updater {
                                 button: "Update") else { return }
         }
         let app = Bundle.main.bundleURL
+        let installed: URL
         do {
             // Translocated copies run from a read-only folder
             guard !app.path.contains("/AppTranslocation/") else {
@@ -69,14 +76,16 @@ final class Updater {
                 throw Failure("Yafie can't replace itself in \(app.deletingLastPathComponent().path). "
                               + "Download the new version from GitHub instead.")
             }
-            try await Self.replace(app, with: release, bundleID: Bundle.main.bundleIdentifier)
+            installed = try await Self.replace(app, with: release, bundleID: Bundle.main.bundleIdentifier)
         } catch {
             logger.error("Update failed: \(error.localizedDescription, privacy: .public)")
             Alert.show("Couldn't update Yafie", error.localizedDescription)
             return
         }
-        logger.notice("Updated to \(release.version, privacy: .public), restarting")
-        Self.relaunch()
+        logger.notice(
+            "Updated to \(release.version, privacy: .public) at \(installed.path, privacy: .public), restarting")
+        if installed.path != app.path { Self.handOverOpenAtLogin() }
+        Self.relaunch(installed)
     }
 
     nonisolated private static func latestRelease(from feed: URL) async throws -> Release {
@@ -89,8 +98,9 @@ final class Updater {
         return release
     }
 
-    /// Download, verify, swap in place
-    nonisolated static func replace(_ app: URL, with release: Release, bundleID: String?) async throws {
+    /// Download, verify, swap in. The new version keeps the name it has in the installer: under a new name, it goes in
+    /// beside the old copy, which is then removed. Returns where it ended up.
+    nonisolated static func replace(_ app: URL, with release: Release, bundleID: String?) async throws -> URL {
         let files = FileManager.default
         // Same volume as the app, so the swap is atomic
         let work = try files.url(for: .itemReplacementDirectory, in: .userDomainMask, appropriateFor: app, create: true)
@@ -109,29 +119,55 @@ final class Updater {
         // Unpack it instead of running Installer, which would want a password
         let expanded = work.appendingPathComponent("expanded")
         guard Shell.run("/usr/sbin/pkgutil", ["--expand-full", pkg.path, expanded.path], timeout: 60).status == 0,
-              let unpacked = findApp(in: expanded) else {
+              let unpacked = findApp(in: expanded, bundleID: bundleID) else {
             throw Failure("Couldn't unpack the downloaded installer.")
         }
-        let staged = work.appendingPathComponent(app.lastPathComponent)
+        let staged = work.appendingPathComponent(unpacked.lastPathComponent)
         try files.moveItem(at: unpacked, to: staged)
 
         let info = NSDictionary(contentsOf: staged.appendingPathComponent("Contents/Info.plist"))
-        guard info?["CFBundleIdentifier"] as? String == bundleID,
-              info?["CFBundleShortVersionString"] as? String == release.version,
+        guard info?["CFBundleShortVersionString"] as? String == release.version,
               Shell.run("/usr/bin/codesign", ["--verify", "--strict", staged.path]).status == 0 else {
             throw Failure("The downloaded app didn't check out.")
         }
-        _ = try files.replaceItemAt(app, withItemAt: staged)
+        // Same name, as macOS compares names, ignoring case
+        guard staged.lastPathComponent.lowercased() != app.lastPathComponent.lowercased() else {
+            _ = try files.replaceItemAt(app, withItemAt: staged)
+            return app
+        }
+        let renamed = app.deletingLastPathComponent()
+            .appendingPathComponent(staged.lastPathComponent, isDirectory: true)
+        if files.fileExists(atPath: renamed.path) {
+            // An earlier copy of the new version, say from its installer, but never someone else's app
+            guard identifier(of: renamed) == bundleID else {
+                throw Failure("Another app is already at \(renamed.path).")
+            }
+            _ = try files.replaceItemAt(renamed, withItemAt: staged)
+        } else {
+            try files.moveItem(at: staged, to: renamed)
+        }
+        do {
+            try files.removeItem(at: app)
+        } catch {
+            logger.error("Couldn't remove the old copy: \(error.localizedDescription, privacy: .public)")
+        }
+        return renamed
     }
 
-    /// Lands in <name>.pkg/Payload, and macOS counts .pkg folders as bundles too
-    nonisolated private static func findApp(in folder: URL) -> URL? {
-        guard let walk = FileManager.default.enumerator(at: folder, includingPropertiesForKeys: nil) else { return nil }
+    /// Lands in <name>.pkg/Payload, and macOS counts .pkg folders as bundles too. Found by bundle ID, since the
+    /// name can change.
+    nonisolated private static func findApp(in folder: URL, bundleID: String?) -> URL? {
+        guard let bundleID,
+              let walk = FileManager.default.enumerator(at: folder, includingPropertiesForKeys: nil) else { return nil }
         for case let url as URL in walk where url.pathExtension == "app" {
-            if url.lastPathComponent == "Yafie.app" { return url }
+            if identifier(of: url) == bundleID { return url }
             walk.skipDescendants()
         }
         return nil
+    }
+
+    nonisolated private static func identifier(of app: URL) -> String? {
+        NSDictionary(contentsOf: app.appendingPathComponent("Contents/Info.plist"))?["CFBundleIdentifier"] as? String
     }
 
     nonisolated private static func checkStatus(_ response: URLResponse) throws {
@@ -141,15 +177,39 @@ final class Updater {
         }
     }
 
-    /// Reopens once this process exits
-    static func relaunch() {
+    /// Reopens once this process exits, from where the app is now
+    static func relaunch(_ app: URL = Bundle.main.bundleURL) {
         let pid = ProcessInfo.processInfo.processIdentifier
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/bin/sh")
         process.arguments = ["-c", "while /bin/kill -0 \(pid) 2>/dev/null; do /bin/sleep 0.2; done; /usr/bin/open \"$0\"",
-                             Bundle.main.bundleURL.path]
+                             app.path]
         try? process.run()
         NSApp.terminate(nil)
+    }
+
+    /// Open at Login points at the app where it was. So after a move, it's turned off here and back on by the copy in
+    /// the new place, with restoreOpenAtLogin.
+    private static func handOverOpenAtLogin() {
+        guard SMAppService.mainApp.status == .enabled else { return }
+        do {
+            try SMAppService.mainApp.unregister()
+            UserDefaults.standard.set(true, forKey: reopensAtLogin)
+        } catch {
+            logger.error("Couldn't hand over Open at Login: \(error.localizedDescription, privacy: .public)")
+        }
+    }
+
+    /// At launch
+    static func restoreOpenAtLogin() {
+        guard UserDefaults.standard.bool(forKey: reopensAtLogin) else { return }
+        UserDefaults.standard.removeObject(forKey: reopensAtLogin)
+        do {
+            try SMAppService.mainApp.register()
+            logger.notice("Turned Open at Login back on after the move")
+        } catch {
+            logger.error("Couldn't turn Open at Login back on: \(error.localizedDescription, privacy: .public)")
+        }
     }
 }
 

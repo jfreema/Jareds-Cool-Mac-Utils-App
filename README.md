@@ -4,7 +4,7 @@
 
 <p align="center">A Mac menu bar app with only the features I use.</p>
 
-<p align="center"><a href="https://github.com/jfreema/yafie/raw/main/downloads/Yafie.pkg"><img src="docs/download.svg" width="260" alt="Download Yafie"></a></p>
+<p align="center"><a href="https://github.com/jfreema/Jareds-Cool-Mac-Utils-App/raw/main/downloads/Yafie.pkg"><img src="docs/download.svg" width="260" alt="Download Yafie"></a></p>
 
 <p align="center">Version 1.1.2 · macOS 14 or later · Apple silicon or Intel</p>
 

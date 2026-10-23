@@ -63,6 +63,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         snipper.start()
         updateIcon()
         quitOnTerminationSignals()
+        // After an update that moved the app to a new name
+        Updater.restoreOpenAtLogin()
         // A second copy asks this one to speak up
         DistributedNotificationCenter.default().addObserver(forName: Yafie.showMenuNotification, object: nil,
                                                             queue: .main) { [weak self] _ in

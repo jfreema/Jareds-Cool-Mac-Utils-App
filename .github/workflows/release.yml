@@ -1,8 +1,8 @@
 name: Release
 
 # Tests, builds, signs and checks Yafie whenever Resources/Info.plist changes on main. When that brings a new version,
-# it publishes it: commits downloads/Yafie.pkg, downloads/latest.json and the README's version line to main, which is
-# where Check for Updates looks. Run it by hand from the Actions tab to try a build without publishing.
+# it publishes it: commits the installer, the update feeds in downloads/ and the README's version line to main, which
+# is where Check for Updates looks. Run it by hand from the Actions tab to try a build without publishing.
 
 on:
   push:
@@ -39,9 +39,10 @@ jobs:
         id: version
         run: |
           version="$(/usr/libexec/PlistBuddy -c 'Print CFBundleShortVersionString' Resources/Info.plist)"
-          # Nothing is published before the first release
-          published="$(plutil -extract version raw -o - downloads/latest.json 2>/dev/null || echo none)"
-          echo "Info.plist says $version, downloads/latest.json says $published"
+          # Nothing is published before the first release, and update.json only from 1.1.3
+          published="$(plutil -extract version raw -o - downloads/update.json 2>/dev/null \
+            || plutil -extract version raw -o - downloads/latest.json 2>/dev/null || echo none)"
+          echo "Info.plist says $version, the published version is $published"
           echo "version=$version" >> "$GITHUB_OUTPUT"
           if [[ "$version" != "$published" ]]; then echo "new=true" >> "$GITHUB_OUTPUT"; else echo "new=false" >> "$GITHUB_OUTPUT"; fi
 
@@ -79,32 +80,48 @@ jobs:
 
       - name: Check it as Check for Updates will
         run: |
+          version="${{ steps.version.outputs.version }}"
+          # The installer update.json names
+          pkg="downloads/$(basename "$(plutil -extract url raw -o - downloads/update.json)")"
           expanded="$RUNNER_TEMP/expanded"
-          pkgutil --expand-full downloads/Yafie.pkg "$expanded"
-          app="$(find "$expanded" -name Yafie.app -maxdepth 3 | head -1)"
+          pkgutil --expand-full "$pkg" "$expanded"
+          # By bundle ID, as Check for Updates finds it, since the name can change
+          app=""
+          while IFS= read -r candidate; do
+            plist="$candidate/Contents/Info.plist"
+            id="$(/usr/libexec/PlistBuddy -c 'Print CFBundleIdentifier' "$plist" 2>/dev/null || true)"
+            if [[ "$id" == io.github.jfreema.yafie ]]; then app="$candidate"; break; fi
+          done < <(find "$expanded" -name '*.app' -maxdepth 3)
+          test -n "$app" || { echo "::error::No io.github.jfreema.yafie app in $pkg"; exit 1; }
           plist="$app/Contents/Info.plist"
-          test "$(/usr/libexec/PlistBuddy -c 'Print CFBundleShortVersionString' "$plist")" = "${{ steps.version.outputs.version }}"
-          test "$(/usr/libexec/PlistBuddy -c 'Print CFBundleIdentifier' "$plist")" = io.github.jfreema.yafie
+          test "$(/usr/libexec/PlistBuddy -c 'Print CFBundleShortVersionString' "$plist")" = "$version"
           codesign --verify --strict "$app"
           codesign -d -r- "$app" 2>&1 | grep -q "certificate leaf = H\"$CERTIFICATE_SHA1\"" \
             || { echo "::error::Signed with a different certificate than every earlier release"; exit 1; }
-          test "$(plutil -extract sha256 raw -o - downloads/latest.json)" = "$(shasum -a 256 downloads/Yafie.pkg | cut -d' ' -f1)"
-          echo "Yafie ${{ steps.version.outputs.version }} for $(lipo -archs "$app/Contents/MacOS/Yafie") checks out"
+          # Each feed at this version, update.json always, and latest.json until the app is renamed
+          for feed in downloads/update.json downloads/latest.json; do
+            [[ "$(plutil -extract version raw -o - "$feed")" == "$version" ]] || continue
+            test "downloads/$(basename "$(plutil -extract url raw -o - "$feed")")" = "$pkg"
+            test "$(plutil -extract sha256 raw -o - "$feed")" = "$(shasum -a 256 "$pkg" | cut -d' ' -f1)"
+            echo "$feed points to $pkg"
+          done
+          executable="$(/usr/libexec/PlistBuddy -c 'Print CFBundleExecutable' "$plist")"
+          echo "$(basename "$app") $version for $(lipo -archs "$app/Contents/MacOS/$executable") checks out"
 
       - name: Keep the installer with this run
         uses: actions/upload-artifact@v4
         with:
           name: Yafie-${{ steps.version.outputs.version }}
           path: |
-            downloads/Yafie.pkg
-            downloads/latest.json
+            downloads/*.pkg
+            downloads/*.json
 
       - name: Publish
         if: steps.version.outputs.new == 'true' && (github.event_name == 'push' || inputs.publish)
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add downloads/Yafie.pkg downloads/latest.json README.md
+          git add downloads README.md
           git commit -m "Release ${{ steps.version.outputs.version }}"
           git pull --rebase origin main
           git push origin HEAD:main

@@ -48,6 +48,7 @@ Put logic that can be pure, like geometry, drawing and parsing, in pure types wi
 - **The drum player only plays.** It never touches an input, so it can't switch a Bluetooth headset to call mode. Its clock runs on its audio thread, a sample at a time, so the metronome and loop stay in time. The app writes its commands to a pipe set never to wait and never to raise SIGPIPE, so a stuck or dead player can't block or kill Yafie.
 - **Trackpad drumming uses `NSTouch`**, so taps reach the pads only while the drum window is key and the pointer is over them. A tap can also arrive as a click, which the pads ignore.
 - **Keyboard cleaning drops every input event with an event tap**, where HID events enter the window server, so it needs Accessibility. The tap's source is on the main run loop on purpose: if the main thread hangs, macOS turns the tap off and input comes back, where a tap on its own thread could leave the Mac stuck. Secure input, like a focused password field, hides keystrokes from taps, so the cleaning window takes the keyboard, which ends other apps' secure input and catches any key that still gets past.
+- **Two update feeds.** From 1.1.3, Check for Updates reads `downloads/update.json` and finds the app in the installer by bundle ID, so a version with a new name goes in beside the old copy, which is removed, and Open at Login moves with it (`Updater.replace`). Copies before 1.1.3 read `downloads/latest.json` and only take `Yafie.app`. So once the app is renamed, `build.sh` must stop writing `latest.json` and `Yafie.pkg`, leaving them at the last Yafie, which old copies pass through.
 - **Global shortcuts go through `HotKeys`**, which owns Yafie's one Carbon handler. A second handler would take other features' key presses.
 - **⌘Q in the snip editor closes the editors, not Yafie.** While an editor is open, Yafie looks like a regular app, but quitting it would also stop Stay Awake and window snapping. **Quit Yafie** is in the menu, without the shortcut.
 - **A menu item takes its key even when it's disabled.** So the snip editor's single-key shortcuts (R, L, A, H, T, 1 to 4, W) only exist while an editor has the keyboard and no text is being typed (`SnipMenu.setSingleKeys`). Otherwise those letters couldn't be typed in a text or a Save dialog's name.
@@ -67,11 +68,11 @@ Every update to the published package raises the version in `Resources/Info.plis
 - **Anything else**, including fixes and additions to an existing feature, like a new tool in the snip editor: the last number up by one. For example, 1.1.0 → 1.1.1.
 - **A major version**, like 1.0.0, only when the user asks for one.
 
-**Raise it as part of every change**, without being asked. Count from the published version in `downloads/latest.json` (none before the first release), not from `Info.plist`. Changes that go out together share one raise, and if any of them is a new feature, that raise is a new feature's.
+**Raise it as part of every change**, without being asked. Count from the published version in `downloads/update.json` (`downloads/latest.json` before 1.1.3), not from `Info.plist`. Changes that go out together share one raise, and if any of them is a new feature, that raise is a new feature's.
 
 **Don't commit or push.** The user commits and pushes with GitHub Desktop. Pushing a new version to main publishes it to everyone: the Release workflow builds, signs and publishes the installer, and Check for Updates offers it. See [docs/buildfromsource.md](docs/buildfromsource.md#release-an-update).
 
-- **After a release,** the workflow pushes a commit of its own with the installer, `downloads/latest.json` and the README's version line, so the local copy is behind until that's pulled.
+- **After a release,** the workflow pushes a commit of its own with the installer, the update feeds and the README's version line, so the local copy is behind until that's pulled.
 - **Leave `downloads/` alone.** Don't build or commit it by hand.
 - **The README's version line** (`Version 0.8.0 · …`) is rewritten by `build.sh`. Keep its format, or change the `sed` in `build.sh` to match.
 

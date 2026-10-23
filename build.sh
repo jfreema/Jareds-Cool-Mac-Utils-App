@@ -100,14 +100,17 @@ EOF
     rm -rf "$WORK"
 
     # What Check for Updates reads. The hash lets it reject a stale or broken download.
-    cat > downloads/latest.json <<EOF
+    cat > downloads/update.json <<EOF
 {
   "version": "$VERSION",
-  "url": "https://github.com/jfreema/yafie/raw/main/downloads/$NAME.pkg",
+  "url": "https://github.com/jfreema/Jareds-Cool-Mac-Utils-App/raw/main/downloads/$NAME.pkg",
   "sha256": "$(shasum -a 256 "$PKG" | cut -d' ' -f1)"
 }
 EOF
+    # The same for copies before 1.1.3, which read latest.json and only take Yafie.app. Once the app is renamed,
+    # latest.json and Yafie.pkg stay at the last Yafie, whose Check for Updates can take the new name.
+    cp downloads/update.json downloads/latest.json
     # README shows the version next to the download link
     sed -i '' -E "s/Version [0-9.]+ ·/Version $VERSION ·/" README.md
-    echo "Built $PKG ($VERSION) and downloads/latest.json"
+    echo "Built $PKG ($VERSION), downloads/update.json and downloads/latest.json"
 fi
