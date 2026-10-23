@@ -9,6 +9,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let snipper = ScreenSnipper()
     private let previews = AppPreview()
     private let cleaner = KeyboardCleaner()
+    private let hiddenIcons = HiddenIcons()
     private lazy var drums = DrumMachineWindowController()
     private lazy var tuner: TunerWindowController = {
         let tuner = TunerWindowController()
@@ -47,6 +48,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         previews.start()
         snipper.onChange = { [weak self] in self?.refreshMenu() }
         snipper.start()
+        hiddenIcons.onChange = { [weak self] in self?.refreshMenu() }
+        hiddenIcons.willShow = { [weak self] in self?.menu.close() }
+        hiddenIcons.keepsRegular = { [weak self] in self?.snipper.editors.isOpen ?? false }
+        hiddenIcons.start()
         updateIcon()
         quitOnTerminationSignals()
         // After an update that moved the app to a new name
@@ -57,11 +62,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             MainActor.assumeIsolated { self?.showMenu() }
         }
         #if DEBUG
-        // Test hooks: Yafie --update-now, Yafie --tuner, Yafie --drums, Yafie --snip-editor <image file>
+        // Test hooks: Yafie --update-now, Yafie --tuner, Yafie --drums, Yafie --snip-editor <image file>,
+        // Yafie --show-hidden-icons (with the arrow on, after 3 seconds)
         let arguments = CommandLine.arguments
         if arguments.contains("--update-now") { updater.checkForUpdates(askFirst: false) }
         if arguments.contains("--tuner") { tuner.show() }
         if arguments.contains("--drums") { drums.show() }
+        if arguments.contains("--show-hidden-icons") {
+            Task { @MainActor [weak self] in
+                try? await Task.sleep(for: .seconds(3))
+                self?.hiddenIcons.show()
+            }
+        }
         if let index = arguments.firstIndex(of: "--snip-editor"), arguments.indices.contains(index + 1),
            let data = FileManager.default.contents(atPath: arguments[index + 1]), let snip = Snip(data: data) {
             snipper.editors.open(snip, returningTo: nil)
@@ -138,6 +150,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             .snapWindows: snapper.isEnabled,
             .snapThirds: snapper.usesThirds,
             .snipScreen: snipper.isEnabled,
+            .hiddenIcons: hiddenIcons.isEnabled,
             .stayAwake: controller.isEnabled,
             .requirePower: controller.requiresPower,
             .requireInternet: controller.requiresInternet,
@@ -184,6 +197,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         case .snapWindows: setSnapWindows(on)
         case .snapThirds: snapper.setUsesThirds(on)
         case .snipScreen: setSnipScreen(on)
+        case .hiddenIcons: hiddenIcons.setEnabled(on)
         case .stayAwake: setStayAwake(on)
         case .requirePower: controller.setRequiresPower(on)
         case .requireInternet: controller.setRequiresInternet(on)
