@@ -12,7 +12,7 @@ enum MenuToggle: Hashable {
 
 /// What a button in the menu does
 enum MenuCommand {
-    case allowAppPreviews, allowWindowSnapping, allowScreenSnipping
+    case allowScreenSnipping
     case openTuner, openDrums, cleanKeyboard
     case sleepNow, finishSetup, retryRestore
     case showAbout, checkForUpdates, quit
@@ -37,7 +37,6 @@ struct MenuBadge: Equatable {
 final class MenuModel {
     var isOn: [MenuToggle: Bool] = [:]
     var isDisabled: Set<MenuToggle> = []
-    var previewAction: MenuAction?
     var snapAction: MenuAction?
     var snipAction: MenuAction?
     var stayAwakeSummary = ""
@@ -86,6 +85,8 @@ final class MenuPanelController: NSObject, NSWindowDelegate {
     private var clickMonitor: Any?
     /// A click on the icon closes the panel by taking the focus, and then mustn't open it again
     private var closedAt: TimeInterval = 0
+    /// All of the menu. On a screen too short for it, the panel is shorter and scrolls.
+    private var contentSize = CGSize(width: MenuView.width, height: 400)
 
     var isOpen: Bool { panel.isVisible }
 
@@ -97,7 +98,8 @@ final class MenuPanelController: NSObject, NSWindowDelegate {
         guard ProcessInfo.processInfo.systemUptime - closedAt > 0.3 else { return }
         self.button = button
         willOpen?()
-        place(size: content.sizeThatFits(in: NSSize(width: MenuView.width, height: 10_000)))
+        contentSize = content.sizeThatFits(in: NSSize(width: MenuView.width, height: 10_000))
+        place()
         panel.makeKeyAndOrderFront(nil)
         button.highlight(true)
         clickMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown,
@@ -121,19 +123,20 @@ final class MenuPanelController: NSObject, NSWindowDelegate {
     }
 
     /// Hangs from the icon, like a menu, and inside the screen
-    private func place(size: CGSize) {
+    private func place() {
         guard let anchor = button?.window?.frame,
               let screen = button?.window?.screen ?? NSScreen.main else { return }
         let area = screen.visibleFrame
-        let x = min(max(anchor.minX, area.minX + 6), area.maxX - size.width - 6)
         let top = min(anchor.minY - 4, area.maxY)
-        panel.setFrame(NSRect(x: x.rounded(), y: (top - size.height).rounded(), width: size.width, height: size.height),
+        let height = min(contentSize.height.rounded(.up), top - area.minY - 6)
+        let x = min(max(anchor.minX, area.minX + 6), area.maxX - MenuView.width - 6)
+        panel.setFrame(NSRect(x: x.rounded(), y: (top - height).rounded(), width: MenuView.width, height: height),
                        display: true)
         panel.invalidateShadow()
     }
 
     private func makePanel() -> NSPanel {
-        let panel = MenuPanel(contentRect: NSRect(x: 0, y: 0, width: MenuView.width, height: 400),
+        let panel = MenuPanel(contentRect: NSRect(origin: .zero, size: contentSize),
                               styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: true)
         panel.onCancel = { [weak self] in self?.close() }
         // The panel follows the menu's height itself, keeping its top under the icon
@@ -150,12 +153,9 @@ final class MenuPanelController: NSObject, NSWindowDelegate {
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .transient, .ignoresCycle]
         panel.delegate = self
         model.onResize = { [weak self] size in
-            guard let self, size != self.panel.frame.size else { return }
-            if self.panel.isVisible {
-                self.place(size: size)
-            } else {
-                self.panel.setContentSize(size)
-            }
+            guard let self, size != self.contentSize else { return }
+            self.contentSize = size
+            if self.panel.isVisible { self.place() }
         }
         return panel
     }
@@ -220,10 +220,11 @@ private extension View {
 /// A chunky pill that presses down into its shadow
 private struct BubbleButtonStyle: ButtonStyle {
     var fill: Color = .white
-    var height: CGFloat = 28
+    var height: CGFloat = 26
+    var fontSize: CGFloat = 12.5
 
     func makeBody(configuration: Configuration) -> some View {
-        BubbleButtonBody(configuration: configuration, fill: fill, height: height)
+        BubbleButtonBody(configuration: configuration, fill: fill, height: height, fontSize: fontSize)
     }
 }
 
@@ -231,21 +232,22 @@ private struct BubbleButtonBody: View {
     let configuration: ButtonStyleConfiguration
     let fill: Color
     let height: CGFloat
+    let fontSize: CGFloat
     @Environment(\.isEnabled) private var isEnabled
 
     var body: some View {
         let lift: CGFloat = configuration.isPressed ? 0 : 2.5
         let shape = RoundedRectangle(cornerRadius: 8, style: .continuous)
         configuration.label
-            .font(Bubble.body(12.5))
+            .font(Bubble.body(fontSize))
             .foregroundStyle(Bubble.ink)
-            .padding(.horizontal, 10)
+            .padding(.horizontal, 9)
             .frame(minHeight: height)
             .background(shape.fill(configuration.isPressed ? fill.opacity(0.85) : fill))
             .overlay(shape.strokeBorder(Bubble.ink, lineWidth: Bubble.outline))
             .offset(x: 2.5 * 0.6 - lift * 0.6, y: 2.5 - lift)
             .background(shape.fill(Bubble.ink).offset(x: 1.5, y: 2.5))
-            .opacity(isEnabled ? 1 : 0.5)
+            .opacity(isEnabled ? 1 : 0.45)
             .contentShape(shape)
     }
 }
@@ -264,14 +266,14 @@ private struct BubbleSwitch: View {
                 .overlay(knob.strokeBorder(Bubble.ink.opacity(isOn ? 0 : 0.6), lineWidth: 1))
                 .overlay {
                     Image(systemName: "checkmark")
-                        .font(.system(size: 10, weight: .heavy))
+                        .font(.system(size: 9, weight: .heavy))
                         .foregroundStyle(Bubble.blue)
                         .opacity(isOn ? 1 : 0)
                 }
-                .frame(width: 18, height: 18)
+                .frame(width: 16, height: 16)
                 .padding(3)
         }
-        .frame(width: 44, height: 24)
+        .frame(width: 40, height: 22)
         .overlay(track.strokeBorder(Bubble.ink, lineWidth: Bubble.outline))
         .opacity(isEnabled ? 1 : 0.4)
         .animation(.spring(response: 0.25, dampingFraction: 0.7), value: isOn)
@@ -281,25 +283,42 @@ private struct BubbleSwitch: View {
 // MARK: Views
 
 struct MenuView: View {
-    static let width: CGFloat = 360
+    static let width: CGFloat = 400
 
     let model: MenuModel
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        let shape = RoundedRectangle(cornerRadius: 16, style: .continuous)
+        // Scrolls on a screen too short for all of it
+        ViewThatFits(in: .vertical) {
+            content
+            ScrollView(.vertical) { content }
+        }
+        .frame(width: Self.width)
+        .background(Bubble.blue)
+        .clipShape(shape)
+        .overlay(shape.strokeBorder(Bubble.ink, lineWidth: 2.5))
+        .onPreferenceChange(MenuSizeKey.self) { size in
+            MainActor.assumeIsolated { model.onResize(size) }
+        }
+    }
+
+    private var content: some View {
+        VStack(alignment: .leading, spacing: 9) {
             header
 
             section("App Preview") {
                 card {
                     ToggleRow(model: model, toggle: .appPreviews, title: "Show App Previews in the Dock")
-                    if let action = model.previewAction { ActionRow(model: model, action: action) }
                 }
             }
             section("Windows") {
                 card {
                     ToggleRow(model: model, toggle: .snapWindows, title: "Snap Windows with ⌃⌥ Arrow Keys")
-                    ToggleRow(model: model, toggle: .snapThirds, title: "Snap to Thirds on External Displays",
-                              indented: true)
+                    OptionStrip {
+                        OptionChip(model: model, toggle: .snapThirds, title: "Thirds on External Displays",
+                                   help: "Three columns instead of two on external displays")
+                    }
                     if let action = model.snapAction { ActionRow(model: model, action: action) }
                 }
             }
@@ -310,7 +329,7 @@ struct MenuView: View {
                 }
             }
             section("Tools") {
-                HStack(spacing: 10) {
+                HStack(spacing: 8) {
                     ToolTile(title: "Guitar Tuner", symbol: "tuningfork", chip: Bubble.yellow) {
                         model.onCommand(.openTuner)
                     }
@@ -322,57 +341,52 @@ struct MenuView: View {
                     }
                     .accessibilityLabel("Clean Keyboard and Trackpad")
                 }
+                .padding(.trailing, 2)
             }
             section("Stay Awake", badge: model.stayAwakeBadge) {
                 card {
-                    StatusRow(summary: model.stayAwakeSummary, symbol: model.stayAwakeBadge.symbol)
+                    StatusRow(model: model)
                     ToggleRow(model: model, toggle: .stayAwake, title: "Stay Awake with Lid Closed")
-                    ToggleRow(model: model, toggle: .requirePower, title: "Only While Connected to Power",
-                              indented: true)
-                    ToggleRow(model: model, toggle: .requireInternet, title: "Only While Connected to the Internet",
-                              indented: true)
-                    ToggleRow(model: model, toggle: .lowPower, title: "Low Power Mode with Lid Closed",
-                              indented: true)
-                    if let action = model.stayAwakeAction { ActionRow(model: model, action: action) }
+                    OptionStrip {
+                        OptionChip(model: model, toggle: .requirePower, title: "Plugged In Only",
+                                   help: "Stays awake only while connected to power")
+                        OptionChip(model: model, toggle: .requireInternet, title: "Online Only",
+                                   help: "Stays awake only while connected to the internet")
+                        OptionChip(model: model, toggle: .lowPower, title: "Low Power Mode",
+                                   help: "Turns on Low Power Mode while the lid is closed")
+                    }
                 }
             }
 
-            card {
-                ToggleRow(model: model, toggle: .openAtLogin, title: "Open at Login")
-            }
-            .padding(.top, 4)
             footer
+                .padding(.top, 2)
         }
-        .padding(14)
+        .padding(12)
         .frame(width: Self.width)
-        .background {
-            let shape = RoundedRectangle(cornerRadius: 16, style: .continuous)
-            shape.fill(Bubble.blue)
-                .overlay(shape.strokeBorder(Bubble.ink, lineWidth: 2.5))
-        }
         .fixedSize(horizontal: false, vertical: true)
         .background(GeometryReader { geometry in
             Color.clear.preference(key: MenuSizeKey.self, value: geometry.size)
         })
-        .onPreferenceChange(MenuSizeKey.self) { size in
-            MainActor.assumeIsolated { model.onResize(size) }
-        }
     }
 
     private var header: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Label("Utilities", systemImage: "bolt.fill")
-                .labelStyle(TagLabelStyle())
-                .padding(.horizontal, 7)
-                .padding(.vertical, 3)
-                .bubbleCard(fill: Bubble.orange, radius: 5, lift: 0)
+        HStack(spacing: 8) {
+            Image(systemName: "bolt.fill")
+                .font(.system(size: 11, weight: .black))
+                .foregroundStyle(Bubble.ink)
+                .frame(width: 22, height: 22)
+                .bubbleCard(fill: Bubble.orange, radius: 6, lift: 2)
+                .accessibilityHidden(true)
             Text(Yafie.name)
-                .font(Bubble.display(24))
+                .font(Bubble.display(19))
                 .foregroundStyle(.white)
                 .shadow(color: Bubble.ink, radius: 0, x: 1.5, y: 2)
+                .accessibilityAddTraits(.isHeader)
+            Spacer(minLength: 8)
+            OptionChip(model: model, toggle: .openAtLogin, title: "Open at Login",
+                       help: "Opens \(Yafie.name) when you log in")
         }
-        .padding(.bottom, 2)
-        .accessibilityElement(children: .combine)
+        .padding(.trailing, 2)
     }
 
     private var footer: some View {
@@ -394,16 +408,17 @@ struct MenuView: View {
             .buttonStyle(BubbleButtonStyle(fill: Bubble.yellow))
             .accessibilityLabel("Quit \(Yafie.name)")
         }
+        .padding(.trailing, 2)
         .padding(.bottom, 3)  // room for the shadows
     }
 
     private func section<Content: View>(_ title: String, badge: MenuBadge? = nil,
                                         @ViewBuilder content: () -> Content) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: 5) {
             HStack {
                 Text(title.uppercased())
-                    .font(.system(size: 11, weight: .black, design: .rounded))
-                    .kerning(1.4)
+                    .font(.system(size: 10.5, weight: .black, design: .rounded))
+                    .kerning(1.3)
                     .foregroundStyle(.white)
                     .accessibilityAddTraits(.isHeader)
                 Spacer()
@@ -423,18 +438,6 @@ struct MenuView: View {
 private struct MenuSizeKey: PreferenceKey {
     static let defaultValue = CGSize.zero
     static func reduce(value: inout CGSize, nextValue: () -> CGSize) { value = nextValue() }
-}
-
-/// "⚡ UTILITIES", like the battle plan app's "GAME" tag
-private struct TagLabelStyle: LabelStyle {
-    func makeBody(configuration: Configuration) -> some View {
-        HStack(spacing: 4) {
-            configuration.icon.font(.system(size: 9, weight: .black))
-            configuration.title.font(.system(size: 10, weight: .black, design: .rounded)).kerning(1.2)
-                .textCase(.uppercase)
-        }
-        .foregroundStyle(Bubble.ink)
-    }
 }
 
 private struct Badge: View {
@@ -469,30 +472,24 @@ private struct ToggleRow: View {
     let model: MenuModel
     let toggle: MenuToggle
     let title: String
-    var indented = false
 
     var body: some View {
         let isOn = model.binding(toggle)
         let isEnabled = !model.isDisabled.contains(toggle)
         let id = "\(toggle)"
         HStack(spacing: 12) {
-            if indented {
-                Image(systemName: "arrow.turn.down.right")
-                    .font(.system(size: 10, weight: .bold))
-                    .foregroundStyle(Bubble.ink.opacity(0.35))
-            }
             Text(title)
-                .font(Bubble.body(indented ? 12.5 : 13))
-                .foregroundStyle(Bubble.ink.opacity(isEnabled ? (indented ? 0.8 : 1) : 0.35))
+                .font(Bubble.body(13))
+                .foregroundStyle(Bubble.ink.opacity(isEnabled ? 1 : 0.35))
                 .fixedSize(horizontal: false, vertical: true)
             Spacer(minLength: 0)
             BubbleSwitch(isOn: isOn.wrappedValue)
                 .disabled(!isEnabled)
         }
-        .padding(.leading, indented ? 14 : 12)
+        .padding(.leading, 12)
         .padding(.trailing, 10)
-        .frame(minHeight: indented ? 34 : 40)
-        .background(model.hovered == id && isEnabled ? Bubble.hover : indented ? Bubble.tint : Color.white)
+        .frame(minHeight: 36)
+        .background(model.hovered == id && isEnabled ? Bubble.hover : Color.white)
         .rowDivider()
         .contentShape(Rectangle())
         .onTapGesture { if isEnabled { isOn.wrappedValue.toggle() } }
@@ -505,17 +502,63 @@ private struct ToggleRow: View {
     }
 }
 
-/// Allow…, Sleep Now and the like as a yellow pill, or a note when there's nothing to press
+/// The options under a switch, side by side
+private struct OptionStrip<Content: View>: View {
+    @ViewBuilder let content: Content
+
+    var body: some View {
+        HStack(spacing: 6) {
+            content
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 12)
+        .padding(.top, 6)
+        .padding(.bottom, 8)
+        .frame(maxWidth: .infinity)
+        .background(Bubble.tint)
+        .rowDivider()
+    }
+}
+
+/// An option as a pill that turns green with a check when on, like the battle plan app's Going button
+private struct OptionChip: View {
+    let model: MenuModel
+    let toggle: MenuToggle
+    let title: String
+    /// What it does, for the tooltip
+    let help: String
+
+    var body: some View {
+        let isOn = model.binding(toggle)
+        Button { isOn.wrappedValue.toggle() } label: {
+            HStack(spacing: 4) {
+                Image(systemName: isOn.wrappedValue ? "checkmark.circle.fill" : "circle")
+                    .font(.system(size: 11, weight: .bold))
+                    .accessibilityHidden(true)
+                Text(title)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+            }
+        }
+        .buttonStyle(BubbleButtonStyle(fill: isOn.wrappedValue ? Bubble.green : .white, height: 24, fontSize: 12))
+        .disabled(model.isDisabled.contains(toggle))
+        .help(help)
+        .accessibilityValue(isOn.wrappedValue ? "on" : "off")
+        .accessibilityAddTraits(.isToggle)
+    }
+}
+
+/// Allow… as a yellow pill, or a note when there's nothing to press
 private struct ActionRow: View {
     let model: MenuModel
     let action: MenuAction
 
     var body: some View {
-        HStack {
+        HStack(spacing: 8) {
             if let command = action.command {
                 Spacer(minLength: 0)
                 Button(action.title) { model.onCommand(command) }
-                    .buttonStyle(BubbleButtonStyle(fill: command == .retryRestore ? Bubble.orange : Bubble.yellow))
+                    .buttonStyle(BubbleButtonStyle(fill: Bubble.yellow, height: 24, fontSize: 12))
             } else {
                 Image(systemName: "exclamationmark.triangle.fill")
                     .font(.system(size: 11, weight: .bold))
@@ -528,35 +571,45 @@ private struct ActionRow: View {
             }
         }
         .padding(.horizontal, 12)
-        .padding(.top, 8)
-        .padding(.bottom, 10)
+        .padding(.top, 6)
+        .padding(.bottom, 8)
         .frame(maxWidth: .infinity)
         .background(Bubble.tint)
         .rowDivider()
     }
 }
 
-/// What Stay Awake is doing now, which the menu bar icon shows too
+/// What Stay Awake is doing now, which the menu bar icon shows too, with Sleep Now or the like beside it
 private struct StatusRow: View {
-    let summary: String
-    let symbol: String
+    let model: MenuModel
 
     var body: some View {
         HStack(spacing: 10) {
-            Image(systemName: symbol)
-                .font(.system(size: 13, weight: .bold))
-                .frame(width: 18)
-            Text(summary)
-                .font(Bubble.body(12.5))
-                .fixedSize(horizontal: false, vertical: true)
+            HStack(spacing: 8) {
+                Image(systemName: model.stayAwakeBadge.symbol)
+                    .font(.system(size: 12, weight: .bold))
+                    .frame(width: 16)
+                Text(model.stayAwakeSummary)
+                    .font(Bubble.body(12))
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .accessibilityElement(children: .combine)
             Spacer(minLength: 0)
+            if let action = model.stayAwakeAction, let command = action.command {
+                Button(action.title) { model.onCommand(command) }
+                    .buttonStyle(BubbleButtonStyle(fill: command == .retryRestore ? Bubble.orange : Bubble.yellow,
+                                                   height: 24, fontSize: 12))
+                    .fixedSize()
+            }
         }
         .foregroundStyle(Bubble.ink)
-        .padding(.horizontal, 12)
-        .frame(minHeight: 38)
+        .padding(.leading, 12)
+        .padding(.trailing, 10)
+        .padding(.top, 6)
+        .padding(.bottom, 8)
+        .frame(minHeight: 36)
         .background(Bubble.tint)
         .rowDivider()
-        .accessibilityElement(children: .combine)
     }
 }
 
@@ -569,12 +622,12 @@ private struct ToolTile: View {
 
     var body: some View {
         Button(action: action) {
-            VStack(spacing: 6) {
+            VStack(spacing: 4) {
                 Image(systemName: symbol)
-                    .font(.system(size: 15, weight: .bold))
+                    .font(.system(size: 13, weight: .bold))
                     .foregroundStyle(Bubble.ink)
-                    .frame(width: 32, height: 32)
-                    .bubbleCard(fill: chip, radius: 8, lift: 0)
+                    .frame(width: 26, height: 26)
+                    .bubbleCard(fill: chip, radius: 7, lift: 0)
                 Text(title)
                     .font(Bubble.body(11.5))
                     .foregroundStyle(Bubble.ink)
@@ -582,7 +635,7 @@ private struct ToolTile: View {
                     .minimumScaleFactor(0.8)
             }
             .frame(maxWidth: .infinity)
-            .padding(.vertical, 10)
+            .padding(.vertical, 7)
         }
         .buttonStyle(TileButtonStyle())
     }

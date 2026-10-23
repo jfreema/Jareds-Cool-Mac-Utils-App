@@ -157,15 +157,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         case .restoreFailed: MenuAction(title: "Turn Sleep Back On…", command: .retryRestore)
         case .off, .waitingForPower, .lowBattery, .waitingForInternet: nil
         }
-        // Allow Window Snapping…, or why the shortcut didn't take, when the status calls for one
-        model.snapAction = switch snapper.status {
-        case .needsPermission: MenuAction(title: "Allow Window Snapping…", command: .allowWindowSnapping)
-        case .shortcutTaken: MenuAction(title: "Another app is using a ⌃⌥ arrow key")
-        case .off, .on: nil
-        }
-        // While a permission is missing
-        model.previewAction = previews.needsPermission
-            ? MenuAction(title: "Allow App Previews…", command: .allowAppPreviews) : nil
+        // Why the shortcut didn't take
+        model.snapAction = snapper.status == .shortcutTaken
+            ? MenuAction(title: "Another app is using a ⌃⌥ arrow key") : nil
         // Allow Screen Snipping…, or why the shortcut didn't take, when the status calls for one
         model.snipAction = switch snipper.status {
         case .needsPermission: MenuAction(title: "Allow Screen Snipping…", command: .allowScreenSnipping)
@@ -205,8 +199,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         closeMenu { [weak self] in
             guard let self else { return }
             switch command {
-            case .allowAppPreviews: previews.openSettings()
-            case .allowWindowSnapping: snapper.openAccessibilitySettings()
             case .allowScreenSnipping: snipper.openScreenRecordingSettings()
             case .openTuner: tuner.show()
             case .openDrums: drums.show()

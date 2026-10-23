@@ -23,12 +23,12 @@ From 1.1.6, the app is signed with an Apple Developer ID and notarized, so macOS
 - **Check whether sleep is off right now:** `pmset -g | grep SleepDisabled` (`1` means off).
 - **Turn sleep back on by hand:** `sudo pmset disablesleep 0`
 - **Mac won't sleep after a crash or power loss.** If macOS crashes or loses power while sleep is off, the setting stays off through the restart until the app next starts and turns it back on. Open the app, or turn sleep back on by hand (above).
-- **Warning triangle after updating to 1.0.6.** **Low Power Mode with Lid Closed** needs your password once more. Click the app's icon and choose **Finish Setup…**, or turn that option off.
+- **Warning triangle after updating to 1.0.6.** **Low Power Mode** needs your password once more. Click the app's icon and choose **Finish Setup…**, or turn that option off.
 - **Check whether Low Power Mode is on right now:** `pmset -g | grep powermode` (`1` means on).
 - **Low Power Mode stays on after a crash or power loss.** Like sleep, it goes back to your setting the next time the app starts. Or turn it off in **System Settings → Battery**.
 - **Another app with a closed-lid mode.** Don't use it at the same time as this one. Both apps change the same setting.
-- **Sleeps even though you're online.** With **Only While Connected to the Internet** on, the app counts the Mac as offline when `https://captive.apple.com` doesn't load for about a minute, for example on a network that blocks it. Turn that option off.
-- **Sleeps on battery.** **Only While Connected to Power** is on, or the battery is at 10% or less.
+- **Sleeps even though you're online.** With **Online Only** on, the app counts the Mac as offline when `https://captive.apple.com` doesn't load for about a minute, for example on a network that blocks it. Turn that option off.
+- **Sleeps on battery.** **Plugged In Only** is on, or the battery is at 10% or less.
 - **Two of the app's processes in Activity Monitor.** The one without an icon is the watchdog, which turns sleep back on, and puts Low Power Mode back, if the app crashes. It ends by itself when the app quits.
 
 ## Guitar tuner
@@ -57,15 +57,14 @@ From 1.1.6, the app is signed with an Apple Developer ID and notarized, so macOS
 
 ## Window snapping
 
-- **The menu shows Allow Window Snapping….** The app doesn't have the Accessibility permission. Choose it, then turn the app on in the list that opens.
+- **The keys do nothing.** The app doesn't have the Accessibility permission. Turn on **Jared's Cool Mac Utilities App** in **System Settings → Privacy & Security → Accessibility**.
 - **"Another app is using a ⌃⌥ arrow key."** Another app, such as a window manager, has the same shortcut. Quit it or change its shortcut, then turn snapping off and on.
 - **A window doesn't fill its column exactly.** Some apps keep a minimum size, and Terminal rounds to whole characters. The app centers those on the column and keeps them on the display.
 - **A full-screen window doesn't move.** The app leaves full-screen windows alone. Leave full screen first.
 
 ## App preview
 
-- **The menu shows Allow App Previews….** The app is missing the Accessibility permission, or Screen & System Audio Recording for the pictures. Choose it, and turn on the app in the list that opens. After Screen & System Audio Recording, click **Quit & Reopen**.
-- **Titles but no pictures.** The app can't record the screen yet. See the item above.
+- **Titles but no pictures.** The app can't record the screen yet. Turn on **Jared's Cool Mac Utilities App** in **System Settings → Privacy & Security → Screen & System Audio Recording**, then click **Quit & Reopen**.
 - **Nothing appears over the Dock.** Check that the app is on in **Accessibility**, then turn **Show App Previews in the Dock** off and on.
 - **A window is missing.** Only windows on the current desktop show, plus minimized ones. Full-screen windows, which have desktops of their own, and small panels like palettes don't.
 - **The app's icon, or an old picture, instead of the window.** macOS can't picture minimized windows or a hidden app's windows, so they show the last picture taken of them, or the app's icon.

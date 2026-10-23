@@ -36,8 +36,6 @@ final class WindowSnapper {
         static let enabled = "snapWindows"
         static let thirds = "snapThirds"
     }
-    private static let accessibilitySettings =
-        URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility")!
 
     private var hotKeys: [HotKey] = []
     /// Watches for the permission while it's missing
@@ -59,10 +57,6 @@ final class WindowSnapper {
     func setUsesThirds(_ thirds: Bool) {
         usesThirds = thirds
         onChange?()
-    }
-
-    func openAccessibilitySettings() {
-        NSWorkspace.shared.open(Self.accessibilitySettings)
     }
 
     /// Matches the hotkeys and status to the switch and the permission
