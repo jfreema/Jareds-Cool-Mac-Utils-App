@@ -1,0 +1,23 @@
+--- 01-crowd
+com.apple.controlcenter     "NSStatusItem Preferred Position BentoBox-0" = 153;
+com.apple.controlcenter     "NSStatusItem VisibleCC BentoBox-0" = 1;
+com.apple.controlcenter     "NSStatusItem VisibleCC Clock" = 1;
+com.apple.Spotlight     "NSStatusItem VisibleCC Item-0" = 1;
+--- 02-arrow-seeded-0
+io.github.jfreema.yafie     "NSStatusItem Preferred Position HiddenIconsArrow" = 0;
+com.apple.controlcenter     "NSStatusItem Preferred Position BentoBox-0" = 153;
+com.apple.controlcenter     "NSStatusItem VisibleCC BentoBox-0" = 1;
+com.apple.controlcenter     "NSStatusItem VisibleCC Clock" = 1;
+com.apple.Spotlight     "NSStatusItem VisibleCC Item-0" = 1;
+--- 03-after-quitting
+io.github.jfreema.yafie     "NSStatusItem Preferred Position HiddenIconsArrow" = 0;
+com.apple.controlcenter     "NSStatusItem Preferred Position BentoBox-0" = 153;
+com.apple.controlcenter     "NSStatusItem VisibleCC BentoBox-0" = 1;
+com.apple.controlcenter     "NSStatusItem VisibleCC Clock" = 1;
+com.apple.Spotlight     "NSStatusItem VisibleCC Item-0" = 1;
+--- 99-end
+io.github.jfreema.yafie     "NSStatusItem Preferred Position HiddenIconsArrow" = 700;
+com.apple.controlcenter     "NSStatusItem Preferred Position BentoBox-0" = 153;
+com.apple.controlcenter     "NSStatusItem VisibleCC BentoBox-0" = 1;
+com.apple.controlcenter     "NSStatusItem VisibleCC Clock" = 1;
+com.apple.Spotlight     "NSStatusItem VisibleCC Item-0" = 1;

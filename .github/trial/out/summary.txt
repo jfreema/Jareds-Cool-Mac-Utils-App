@@ -1,13 +1,17 @@
-01-crowd: front Finder, menu bar Finder, icons shown 14 hidden 3, crowd shown [01 02 03 04 05 06 07 08 09 10 12], menus open 0, no arrow, pointer 600,268
-02-wide-in-front: front wide, menu bar wide, icons shown 8 hidden 9, crowd shown [01 02 03 04 06], menus open 0, no arrow, pointer 600,268
-03-arrow-added: front wide, menu bar wide, icons shown 8 hidden 11, crowd shown [01 02 03 05], menus open 0, arrow shown at x 780, pointer 600,268
-04-shortcut-soon-after: front Jared's Cool Mac Utilities App, menu bar Jared's Cool Mac Utilities App, icons shown 19 hidden 0, crowd shown [01 02 03 04 05 06 07 08 09 10 11 12 13 14], menus open 0, arrow shown at x 780, pointer 600,268
-05-pointer-away-4s-later: front Jared's Cool Mac Utilities App, menu bar Jared's Cool Mac Utilities App, icons shown 19 hidden 0, crowd shown [01 02 03 04 05 06 07 08 09 10 11 12 13 14], menus open 0, arrow shown at x 780, pointer 600,268
-06-pointer-away-7s-later: front wide, menu bar wide, icons shown 8 hidden 11, crowd shown [01 02 03 05], menus open 0, arrow shown at x 780, pointer 600,268
-07-shortcut-again: front Jared's Cool Mac Utilities App, menu bar Jared's Cool Mac Utilities App, icons shown 19 hidden 0, crowd shown [01 02 03 04 05 06 07 08 09 10 11 12 13 14], menus open 0, arrow shown at x 780, pointer 600,268
-08-shortcut-a-third-time: front wide, menu bar wide, icons shown 8 hidden 11, crowd shown [01 02 03 05], menus open 0, arrow shown at x 780, pointer 600,268
-09-pointer-in-menu-bar-6s: front Jared's Cool Mac Utilities App, menu bar Jared's Cool Mac Utilities App, icons shown 19 hidden 0, crowd shown [01 02 03 04 05 06 07 08 09 10 11 12 13 14], menus open 0, arrow shown at x 780, pointer 400,753
-10-pointer-left-4s-ago: front wide, menu bar wide, icons shown 8 hidden 11, crowd shown [01 02 03 05], menus open 0, arrow shown at x 780, pointer 600,268
-arrow at: 793 15
-11-arrow-clicked: front Jared's Cool Mac Utilities App, menu bar Jared's Cool Mac Utilities App, icons shown 19 hidden 0, crowd shown [01 02 03 04 05 06 07 08 09 10 11 12 13 14], menus open 0, arrow shown at x 780, pointer 793,753
-12-arrow-clicked-again: front wide, menu bar wide, icons shown 8 hidden 11, crowd shown [01 02 03 05], menus open 0, arrow shown at x 780, pointer 793,753
+01-crowd: Crowd12@409+34 Crowd10@443+35 Crowd09@478+37 Crowd08@515+37 Crowd07@552+36 Crowd06@588+37 Crowd05@625+37 Crowd04@662+37 Crowd03@699+37 Crowd02@736+36 Crowd01@772+35 Item-0@807+31 BentoBox-0@838+42 Clock@880+144
+02-arrow-seeded-0: Crowd11@419+32 Crowd09@451+37 Crowd08@488+37 Crowd07@525+36 Crowd06@561+37 Crowd05@598+37 Crowd04@635+37 Crowd03@672+37 Crowd02@709+36 Crowd01@745+35 HiddenIconsArrow@780+27 Item-0@807+31 BentoBox-0@838+42 Clock@880+144
+02-arrow-seeded-0: front Accessibility, menu bar Finder, icons shown 14 hidden 5, crowd shown [01 02 03 04 05 06 07 08 09 11], menus open 0, arrow shown at x 780, pointer 600,268
+pos-40: Crowd11@419+32 Crowd09@451+37 Crowd08@488+37 Crowd07@525+36 Crowd06@561+37 Crowd05@598+37 Crowd04@635+37 Crowd03@672+37 Crowd02@709+36 Crowd01@745+35 HiddenIconsArrow@780+27 Item-0@807+31 BentoBox-0@838+42 Clock@880+144
+pos-40 stored after: 40
+pos-100: Crowd11@419+32 Crowd09@451+37 Crowd08@488+37 Crowd07@525+36 Crowd06@561+37 Crowd05@598+37 Crowd04@635+37 Crowd03@672+37 Crowd02@709+36 Crowd01@745+35 HiddenIconsArrow@780+27 Item-0@807+31 BentoBox-0@838+42 Clock@880+144
+pos-100 stored after: 100
+pos-150: Crowd11@419+32 Crowd09@451+37 Crowd08@488+37 Crowd07@525+36 Crowd06@561+37 Crowd05@598+37 Crowd04@635+37 Crowd03@672+37 Crowd02@709+36 Crowd01@745+35 HiddenIconsArrow@780+27 Item-0@807+31 BentoBox-0@838+42 Clock@880+144
+pos-150 stored after: 150
+pos-250: Crowd11@419+32 Crowd09@451+37 Crowd08@488+37 Crowd07@525+36 Crowd06@561+37 Crowd05@598+37 Crowd04@635+37 Crowd03@672+37 Crowd02@709+36 Crowd01@745+35 HiddenIconsArrow@780+27 Item-0@807+31 BentoBox-0@838+42 Clock@880+144
+pos-250 stored after: 250
+pos-350: Crowd11@419+32 Crowd09@451+37 Crowd08@488+37 Crowd07@525+36 Crowd06@561+37 Crowd05@598+37 Crowd04@635+37 Crowd03@672+37 Crowd02@709+36 Crowd01@745+35 HiddenIconsArrow@780+27 Item-0@807+31 BentoBox-0@838+42 Clock@880+144
+pos-350 stored after: 350
+pos-500: Crowd11@419+32 Crowd09@451+37 Crowd08@488+37 Crowd07@525+36 Crowd06@561+37 Crowd05@598+37 Crowd04@635+37 Crowd03@672+37 Crowd02@709+36 Crowd01@745+35 HiddenIconsArrow@780+27 Item-0@807+31 BentoBox-0@838+42 Clock@880+144
+pos-500 stored after: 500
+pos-700: Crowd11@419+32 Crowd09@451+37 Crowd08@488+37 Crowd07@525+36 Crowd06@561+37 Crowd05@598+37 Crowd04@635+37 Crowd03@672+37 Crowd02@709+36 Crowd01@745+35 HiddenIconsArrow@780+27 Item-0@807+31 BentoBox-0@838+42 Clock@880+144
+pos-700 stored after: 700
