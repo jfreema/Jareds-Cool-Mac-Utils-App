@@ -1,0 +1,308 @@
+=== 01-crowd
+front: Finder, policy 0, menu bar: Finder
+trusted: true, screen capture: true
+screen (0.0, 0.0, 1024.0, 768.0) visible (0.0, 63.0, 1024.0, 674.0) safe top 0.0
+pointer (600.0, 268.0)
+  layer 25 #44 Control Center 'Crowd14' on false x 307 y 0 w 35 h 30
+  layer 25 #43 Control Center 'Crowd13' on false x 342 y 0 w 35 h 30
+  layer 25 #42 Control Center 'Crowd12' on true x 409 y 0 w 34 h 30
+  layer 25 #41 Control Center 'Crowd11' on false x 377 y 0 w 32 h 30
+  layer 25 #40 Control Center 'Crowd10' on true x 443 y 0 w 35 h 30
+  layer 25 #39 Control Center 'Crowd09' on true x 478 y 0 w 37 h 30
+  layer 25 #38 Control Center 'Crowd08' on true x 515 y 0 w 37 h 30
+  layer 25 #37 Control Center 'Crowd07' on true x 552 y 0 w 36 h 30
+  layer 25 #36 Control Center 'Crowd06' on true x 588 y 0 w 37 h 30
+  layer 25 #35 Control Center 'Crowd05' on true x 625 y 0 w 37 h 30
+  layer 25 #34 Control Center 'Crowd04' on true x 662 y 0 w 37 h 30
+  layer 25 #33 Control Center 'Crowd03' on true x 699 y 0 w 37 h 30
+  layer 25 #32 Control Center 'Crowd02' on true x 736 y 0 w 36 h 30
+  layer 25 #31 Control Center 'Crowd01' on true x 772 y 0 w 35 h 30
+  layer 25 #25 Control Center 'Item-0' on true x 807 y 0 w 31 h 30
+  layer 25 #21 Control Center 'BentoBox-0' on true x 838 y 0 w 42 h 30
+  layer 25 #19 Control Center 'Clock' on true x 880 y 0 w 144 h 30
+  layer 24 #14 Window Server 'Menubar' on true x 0 y 0 w 1024 h 30
+status windows on screen 14, off 3
+=== 02-wide-in-front
+front: wide, policy 0, menu bar: wide
+trusted: true, screen capture: true
+screen (0.0, 0.0, 1024.0, 768.0) visible (0.0, 60.0, 1024.0, 677.0) safe top 0.0
+pointer (600.0, 268.0)
+  layer 25 #44 Control Center 'Crowd14' on false x 307 y 0 w 35 h 30
+  layer 25 #43 Control Center 'Crowd13' on false x 342 y 0 w 35 h 30
+  layer 25 #42 Control Center 'Crowd12' on false x 377 y 0 w 34 h 30
+  layer 25 #41 Control Center 'Crowd11' on false x 411 y 0 w 32 h 30
+  layer 25 #40 Control Center 'Crowd10' on false x 443 y 0 w 35 h 30
+  layer 25 #39 Control Center 'Crowd09' on false x 478 y 0 w 37 h 30
+  layer 25 #38 Control Center 'Crowd08' on false x 515 y 0 w 37 h 30
+  layer 25 #37 Control Center 'Crowd07' on false x 552 y 0 w 36 h 30
+  layer 25 #36 Control Center 'Crowd06' on true x 625 y 0 w 37 h 30
+  layer 25 #35 Control Center 'Crowd05' on false x 588 y 0 w 37 h 30
+  layer 25 #34 Control Center 'Crowd04' on true x 662 y 0 w 37 h 30
+  layer 25 #33 Control Center 'Crowd03' on true x 699 y 0 w 37 h 30
+  layer 25 #32 Control Center 'Crowd02' on true x 736 y 0 w 36 h 30
+  layer 25 #31 Control Center 'Crowd01' on true x 772 y 0 w 35 h 30
+  layer 25 #25 Control Center 'Item-0' on true x 807 y 0 w 31 h 30
+  layer 25 #21 Control Center 'BentoBox-0' on true x 838 y 0 w 42 h 30
+  layer 25 #19 Control Center 'Clock' on true x 880 y 0 w 144 h 30
+  layer 24 #14 Window Server 'Menubar' on true x 0 y 0 w 1024 h 30
+status windows on screen 8, off 9
+=== 03-arrow-added
+front: wide, policy 0, menu bar: wide
+trusted: true, screen capture: true
+screen (0.0, 0.0, 1024.0, 768.0) visible (0.0, 60.0, 1024.0, 677.0) safe top 0.0
+pointer (600.0, 268.0)
+  layer 25 #55 Control Center 'HiddenIconsArrow' on true x 780 y 0 w 27 h 30
+  layer 25 #44 Control Center 'Crowd14' on false x 280 y 0 w 35 h 30
+  layer 25 #43 Control Center 'Crowd13' on false x 315 y 0 w 35 h 30
+  layer 25 #42 Control Center 'Crowd12' on false x 350 y 0 w 34 h 30
+  layer 25 #41 Control Center 'Crowd11' on false x 384 y 0 w 32 h 30
+  layer 25 #40 Control Center 'Crowd10' on false x 416 y 0 w 35 h 30
+  layer 25 #39 Control Center 'Crowd09' on false x 451 y 0 w 37 h 30
+  layer 25 #38 Control Center 'Crowd08' on false x 488 y 0 w 37 h 30
+  layer 25 #37 Control Center 'Crowd07' on false x 525 y 0 w 36 h 30
+  layer 25 #36 Control Center 'Crowd06' on false x 561 y 0 w 37 h 30
+  layer 25 #35 Control Center 'Crowd05' on true x 635 y 0 w 37 h 30
+  layer 25 #34 Control Center 'Crowd04' on false x 598 y 0 w 37 h 30
+  layer 25 #33 Control Center 'Crowd03' on true x 672 y 0 w 37 h 30
+  layer 25 #32 Control Center 'Crowd02' on true x 709 y 0 w 36 h 30
+  layer 25 #31 Control Center 'Crowd01' on true x 745 y 0 w 35 h 30
+  layer 25 #25 Control Center 'Item-0' on true x 807 y 0 w 31 h 30
+  layer 25 #21 Control Center 'BentoBox-0' on true x 838 y 0 w 42 h 30
+  layer 25 #19 Control Center 'Clock' on true x 880 y 0 w 144 h 30
+  layer 24 #14 Window Server 'Menubar' on true x 0 y 0 w 1024 h 30
+  layer 25 #54 Control Center 'Item-0' on false x 242 y 0 w 38 h 30
+status windows on screen 8, off 11
+=== 04-shortcut-soon-after
+front: Jared's Cool Mac Utilities App, policy 0, menu bar: Jared's Cool Mac Utilities App
+trusted: true, screen capture: true
+screen (0.0, 0.0, 1024.0, 768.0) visible (0.0, 58.0, 1024.0, 679.0) safe top 0.0
+pointer (600.0, 268.0)
+  layer 25 #55 Control Center 'HiddenIconsArrow' on true x 780 y 0 w 27 h 30
+  layer 25 #44 Control Center 'Crowd14' on true x 280 y 0 w 35 h 30
+  layer 25 #43 Control Center 'Crowd13' on true x 315 y 0 w 35 h 30
+  layer 25 #42 Control Center 'Crowd12' on true x 350 y 0 w 34 h 30
+  layer 25 #41 Control Center 'Crowd11' on true x 384 y 0 w 32 h 30
+  layer 25 #40 Control Center 'Crowd10' on true x 416 y 0 w 35 h 30
+  layer 25 #39 Control Center 'Crowd09' on true x 451 y 0 w 37 h 30
+  layer 25 #38 Control Center 'Crowd08' on true x 488 y 0 w 37 h 30
+  layer 25 #37 Control Center 'Crowd07' on true x 525 y 0 w 36 h 30
+  layer 25 #36 Control Center 'Crowd06' on true x 561 y 0 w 37 h 30
+  layer 25 #35 Control Center 'Crowd05' on true x 598 y 0 w 37 h 30
+  layer 25 #34 Control Center 'Crowd04' on true x 635 y 0 w 37 h 30
+  layer 25 #33 Control Center 'Crowd03' on true x 672 y 0 w 37 h 30
+  layer 25 #32 Control Center 'Crowd02' on true x 709 y 0 w 36 h 30
+  layer 25 #31 Control Center 'Crowd01' on true x 745 y 0 w 35 h 30
+  layer 25 #25 Control Center 'Item-0' on true x 807 y 0 w 31 h 30
+  layer 25 #21 Control Center 'BentoBox-0' on true x 838 y 0 w 42 h 30
+  layer 25 #19 Control Center 'Clock' on true x 880 y 0 w 144 h 30
+  layer 24 #14 Window Server 'Menubar' on true x 0 y 0 w 1024 h 30
+  layer 25 #54 Control Center 'Item-0' on true x 242 y 0 w 38 h 30
+status windows on screen 19, off 0
+=== 05-pointer-away-4s-later
+front: Jared's Cool Mac Utilities App, policy 0, menu bar: Jared's Cool Mac Utilities App
+trusted: true, screen capture: true
+screen (0.0, 0.0, 1024.0, 768.0) visible (0.0, 58.0, 1024.0, 679.0) safe top 0.0
+pointer (600.0, 268.0)
+  layer 25 #55 Control Center 'HiddenIconsArrow' on true x 780 y 0 w 27 h 30
+  layer 25 #44 Control Center 'Crowd14' on true x 280 y 0 w 35 h 30
+  layer 25 #43 Control Center 'Crowd13' on true x 315 y 0 w 35 h 30
+  layer 25 #42 Control Center 'Crowd12' on true x 350 y 0 w 34 h 30
+  layer 25 #41 Control Center 'Crowd11' on true x 384 y 0 w 32 h 30
+  layer 25 #40 Control Center 'Crowd10' on true x 416 y 0 w 35 h 30
+  layer 25 #39 Control Center 'Crowd09' on true x 451 y 0 w 37 h 30
+  layer 25 #38 Control Center 'Crowd08' on true x 488 y 0 w 37 h 30
+  layer 25 #37 Control Center 'Crowd07' on true x 525 y 0 w 36 h 30
+  layer 25 #36 Control Center 'Crowd06' on true x 561 y 0 w 37 h 30
+  layer 25 #35 Control Center 'Crowd05' on true x 598 y 0 w 37 h 30
+  layer 25 #34 Control Center 'Crowd04' on true x 635 y 0 w 37 h 30
+  layer 25 #33 Control Center 'Crowd03' on true x 672 y 0 w 37 h 30
+  layer 25 #32 Control Center 'Crowd02' on true x 709 y 0 w 36 h 30
+  layer 25 #31 Control Center 'Crowd01' on true x 745 y 0 w 35 h 30
+  layer 25 #25 Control Center 'Item-0' on true x 807 y 0 w 31 h 30
+  layer 25 #21 Control Center 'BentoBox-0' on true x 838 y 0 w 42 h 30
+  layer 25 #19 Control Center 'Clock' on true x 880 y 0 w 144 h 30
+  layer 24 #14 Window Server 'Menubar' on true x 0 y 0 w 1024 h 30
+  layer 25 #54 Control Center 'Item-0' on true x 242 y 0 w 38 h 30
+status windows on screen 19, off 0
+=== 06-pointer-away-7s-later
+front: wide, policy 0, menu bar: wide
+trusted: true, screen capture: true
+screen (0.0, 0.0, 1024.0, 768.0) visible (0.0, 60.0, 1024.0, 677.0) safe top 0.0
+pointer (600.0, 268.0)
+  layer 25 #55 Control Center 'HiddenIconsArrow' on true x 780 y 0 w 27 h 30
+  layer 25 #44 Control Center 'Crowd14' on false x 280 y 0 w 35 h 30
+  layer 25 #43 Control Center 'Crowd13' on false x 315 y 0 w 35 h 30
+  layer 25 #42 Control Center 'Crowd12' on false x 350 y 0 w 34 h 30
+  layer 25 #41 Control Center 'Crowd11' on false x 384 y 0 w 32 h 30
+  layer 25 #40 Control Center 'Crowd10' on false x 416 y 0 w 35 h 30
+  layer 25 #39 Control Center 'Crowd09' on false x 451 y 0 w 37 h 30
+  layer 25 #38 Control Center 'Crowd08' on false x 488 y 0 w 37 h 30
+  layer 25 #37 Control Center 'Crowd07' on false x 525 y 0 w 36 h 30
+  layer 25 #36 Control Center 'Crowd06' on false x 561 y 0 w 37 h 30
+  layer 25 #35 Control Center 'Crowd05' on true x 635 y 0 w 37 h 30
+  layer 25 #34 Control Center 'Crowd04' on false x 598 y 0 w 37 h 30
+  layer 25 #33 Control Center 'Crowd03' on true x 672 y 0 w 37 h 30
+  layer 25 #32 Control Center 'Crowd02' on true x 709 y 0 w 36 h 30
+  layer 25 #31 Control Center 'Crowd01' on true x 745 y 0 w 35 h 30
+  layer 25 #25 Control Center 'Item-0' on true x 807 y 0 w 31 h 30
+  layer 25 #21 Control Center 'BentoBox-0' on true x 838 y 0 w 42 h 30
+  layer 25 #19 Control Center 'Clock' on true x 880 y 0 w 144 h 30
+  layer 24 #14 Window Server 'Menubar' on true x 0 y 0 w 1024 h 30
+  layer 25 #54 Control Center 'Item-0' on false x 242 y 0 w 38 h 30
+status windows on screen 8, off 11
+=== 07-shortcut-again
+front: Jared's Cool Mac Utilities App, policy 0, menu bar: Jared's Cool Mac Utilities App
+trusted: true, screen capture: true
+screen (0.0, 0.0, 1024.0, 768.0) visible (0.0, 58.0, 1024.0, 679.0) safe top 0.0
+pointer (600.0, 268.0)
+  layer 25 #55 Control Center 'HiddenIconsArrow' on true x 780 y 0 w 27 h 30
+  layer 25 #44 Control Center 'Crowd14' on true x 280 y 0 w 35 h 30
+  layer 25 #43 Control Center 'Crowd13' on true x 315 y 0 w 35 h 30
+  layer 25 #42 Control Center 'Crowd12' on true x 350 y 0 w 34 h 30
+  layer 25 #41 Control Center 'Crowd11' on true x 384 y 0 w 32 h 30
+  layer 25 #40 Control Center 'Crowd10' on true x 416 y 0 w 35 h 30
+  layer 25 #39 Control Center 'Crowd09' on true x 451 y 0 w 37 h 30
+  layer 25 #38 Control Center 'Crowd08' on true x 488 y 0 w 37 h 30
+  layer 25 #37 Control Center 'Crowd07' on true x 525 y 0 w 36 h 30
+  layer 25 #36 Control Center 'Crowd06' on true x 561 y 0 w 37 h 30
+  layer 25 #35 Control Center 'Crowd05' on true x 598 y 0 w 37 h 30
+  layer 25 #34 Control Center 'Crowd04' on true x 635 y 0 w 37 h 30
+  layer 25 #33 Control Center 'Crowd03' on true x 672 y 0 w 37 h 30
+  layer 25 #32 Control Center 'Crowd02' on true x 709 y 0 w 36 h 30
+  layer 25 #31 Control Center 'Crowd01' on true x 745 y 0 w 35 h 30
+  layer 25 #25 Control Center 'Item-0' on true x 807 y 0 w 31 h 30
+  layer 25 #21 Control Center 'BentoBox-0' on true x 838 y 0 w 42 h 30
+  layer 25 #19 Control Center 'Clock' on true x 880 y 0 w 144 h 30
+  layer 24 #14 Window Server 'Menubar' on true x 0 y 0 w 1024 h 30
+  layer 25 #54 Control Center 'Item-0' on true x 242 y 0 w 38 h 30
+status windows on screen 19, off 0
+=== 08-shortcut-a-third-time
+front: wide, policy 0, menu bar: wide
+trusted: true, screen capture: true
+screen (0.0, 0.0, 1024.0, 768.0) visible (0.0, 60.0, 1024.0, 677.0) safe top 0.0
+pointer (600.0, 268.0)
+  layer 25 #55 Control Center 'HiddenIconsArrow' on true x 780 y 0 w 27 h 30
+  layer 25 #44 Control Center 'Crowd14' on false x 280 y 0 w 35 h 30
+  layer 25 #43 Control Center 'Crowd13' on false x 315 y 0 w 35 h 30
+  layer 25 #42 Control Center 'Crowd12' on false x 350 y 0 w 34 h 30
+  layer 25 #41 Control Center 'Crowd11' on false x 384 y 0 w 32 h 30
+  layer 25 #40 Control Center 'Crowd10' on false x 416 y 0 w 35 h 30
+  layer 25 #39 Control Center 'Crowd09' on false x 451 y 0 w 37 h 30
+  layer 25 #38 Control Center 'Crowd08' on false x 488 y 0 w 37 h 30
+  layer 25 #37 Control Center 'Crowd07' on false x 525 y 0 w 36 h 30
+  layer 25 #36 Control Center 'Crowd06' on false x 561 y 0 w 37 h 30
+  layer 25 #35 Control Center 'Crowd05' on true x 635 y 0 w 37 h 30
+  layer 25 #34 Control Center 'Crowd04' on false x 598 y 0 w 37 h 30
+  layer 25 #33 Control Center 'Crowd03' on true x 672 y 0 w 37 h 30
+  layer 25 #32 Control Center 'Crowd02' on true x 709 y 0 w 36 h 30
+  layer 25 #31 Control Center 'Crowd01' on true x 745 y 0 w 35 h 30
+  layer 25 #25 Control Center 'Item-0' on true x 807 y 0 w 31 h 30
+  layer 25 #21 Control Center 'BentoBox-0' on true x 838 y 0 w 42 h 30
+  layer 25 #19 Control Center 'Clock' on true x 880 y 0 w 144 h 30
+  layer 24 #14 Window Server 'Menubar' on true x 0 y 0 w 1024 h 30
+  layer 25 #54 Control Center 'Item-0' on false x 242 y 0 w 38 h 30
+status windows on screen 8, off 11
+=== 09-pointer-in-menu-bar-6s
+front: Jared's Cool Mac Utilities App, policy 0, menu bar: Jared's Cool Mac Utilities App
+trusted: true, screen capture: true
+screen (0.0, 0.0, 1024.0, 768.0) visible (0.0, 58.0, 1024.0, 679.0) safe top 0.0
+pointer (400.0, 753.0)
+  layer 25 #55 Control Center 'HiddenIconsArrow' on true x 780 y 0 w 27 h 30
+  layer 25 #44 Control Center 'Crowd14' on true x 280 y 0 w 35 h 30
+  layer 25 #43 Control Center 'Crowd13' on true x 315 y 0 w 35 h 30
+  layer 25 #42 Control Center 'Crowd12' on true x 350 y 0 w 34 h 30
+  layer 25 #41 Control Center 'Crowd11' on true x 384 y 0 w 32 h 30
+  layer 25 #40 Control Center 'Crowd10' on true x 416 y 0 w 35 h 30
+  layer 25 #39 Control Center 'Crowd09' on true x 451 y 0 w 37 h 30
+  layer 25 #38 Control Center 'Crowd08' on true x 488 y 0 w 37 h 30
+  layer 25 #37 Control Center 'Crowd07' on true x 525 y 0 w 36 h 30
+  layer 25 #36 Control Center 'Crowd06' on true x 561 y 0 w 37 h 30
+  layer 25 #35 Control Center 'Crowd05' on true x 598 y 0 w 37 h 30
+  layer 25 #34 Control Center 'Crowd04' on true x 635 y 0 w 37 h 30
+  layer 25 #33 Control Center 'Crowd03' on true x 672 y 0 w 37 h 30
+  layer 25 #32 Control Center 'Crowd02' on true x 709 y 0 w 36 h 30
+  layer 25 #31 Control Center 'Crowd01' on true x 745 y 0 w 35 h 30
+  layer 25 #25 Control Center 'Item-0' on true x 807 y 0 w 31 h 30
+  layer 25 #21 Control Center 'BentoBox-0' on true x 838 y 0 w 42 h 30
+  layer 25 #19 Control Center 'Clock' on true x 880 y 0 w 144 h 30
+  layer 24 #14 Window Server 'Menubar' on true x 0 y 0 w 1024 h 30
+  layer 25 #54 Control Center 'Item-0' on true x 242 y 0 w 38 h 30
+status windows on screen 19, off 0
+=== 10-pointer-left-4s-ago
+front: wide, policy 0, menu bar: wide
+trusted: true, screen capture: true
+screen (0.0, 0.0, 1024.0, 768.0) visible (0.0, 60.0, 1024.0, 677.0) safe top 0.0
+pointer (600.0, 268.0)
+  layer 25 #55 Control Center 'HiddenIconsArrow' on true x 780 y 0 w 27 h 30
+  layer 25 #44 Control Center 'Crowd14' on false x 280 y 0 w 35 h 30
+  layer 25 #43 Control Center 'Crowd13' on false x 315 y 0 w 35 h 30
+  layer 25 #42 Control Center 'Crowd12' on false x 350 y 0 w 34 h 30
+  layer 25 #41 Control Center 'Crowd11' on false x 384 y 0 w 32 h 30
+  layer 25 #40 Control Center 'Crowd10' on false x 416 y 0 w 35 h 30
+  layer 25 #39 Control Center 'Crowd09' on false x 451 y 0 w 37 h 30
+  layer 25 #38 Control Center 'Crowd08' on false x 488 y 0 w 37 h 30
+  layer 25 #37 Control Center 'Crowd07' on false x 525 y 0 w 36 h 30
+  layer 25 #36 Control Center 'Crowd06' on false x 561 y 0 w 37 h 30
+  layer 25 #35 Control Center 'Crowd05' on true x 635 y 0 w 37 h 30
+  layer 25 #34 Control Center 'Crowd04' on false x 598 y 0 w 37 h 30
+  layer 25 #33 Control Center 'Crowd03' on true x 672 y 0 w 37 h 30
+  layer 25 #32 Control Center 'Crowd02' on true x 709 y 0 w 36 h 30
+  layer 25 #31 Control Center 'Crowd01' on true x 745 y 0 w 35 h 30
+  layer 25 #25 Control Center 'Item-0' on true x 807 y 0 w 31 h 30
+  layer 25 #21 Control Center 'BentoBox-0' on true x 838 y 0 w 42 h 30
+  layer 25 #19 Control Center 'Clock' on true x 880 y 0 w 144 h 30
+  layer 24 #14 Window Server 'Menubar' on true x 0 y 0 w 1024 h 30
+  layer 25 #54 Control Center 'Item-0' on false x 242 y 0 w 38 h 30
+status windows on screen 8, off 11
+=== 11-arrow-clicked
+front: Jared's Cool Mac Utilities App, policy 0, menu bar: Jared's Cool Mac Utilities App
+trusted: true, screen capture: true
+screen (0.0, 0.0, 1024.0, 768.0) visible (0.0, 58.0, 1024.0, 679.0) safe top 0.0
+pointer (793.0, 753.0)
+  layer 25 #55 Control Center 'HiddenIconsArrow' on true x 780 y 0 w 27 h 30
+  layer 25 #44 Control Center 'Crowd14' on true x 280 y 0 w 35 h 30
+  layer 25 #43 Control Center 'Crowd13' on true x 315 y 0 w 35 h 30
+  layer 25 #42 Control Center 'Crowd12' on true x 350 y 0 w 34 h 30
+  layer 25 #41 Control Center 'Crowd11' on true x 384 y 0 w 32 h 30
+  layer 25 #40 Control Center 'Crowd10' on true x 416 y 0 w 35 h 30
+  layer 25 #39 Control Center 'Crowd09' on true x 451 y 0 w 37 h 30
+  layer 25 #38 Control Center 'Crowd08' on true x 488 y 0 w 37 h 30
+  layer 25 #37 Control Center 'Crowd07' on true x 525 y 0 w 36 h 30
+  layer 25 #36 Control Center 'Crowd06' on true x 561 y 0 w 37 h 30
+  layer 25 #35 Control Center 'Crowd05' on true x 598 y 0 w 37 h 30
+  layer 25 #34 Control Center 'Crowd04' on true x 635 y 0 w 37 h 30
+  layer 25 #33 Control Center 'Crowd03' on true x 672 y 0 w 37 h 30
+  layer 25 #32 Control Center 'Crowd02' on true x 709 y 0 w 36 h 30
+  layer 25 #31 Control Center 'Crowd01' on true x 745 y 0 w 35 h 30
+  layer 25 #25 Control Center 'Item-0' on true x 807 y 0 w 31 h 30
+  layer 25 #21 Control Center 'BentoBox-0' on true x 838 y 0 w 42 h 30
+  layer 25 #19 Control Center 'Clock' on true x 880 y 0 w 144 h 30
+  layer 24 #14 Window Server 'Menubar' on true x 0 y 0 w 1024 h 30
+  layer 25 #54 Control Center 'Item-0' on true x 242 y 0 w 38 h 30
+status windows on screen 19, off 0
+=== 12-arrow-clicked-again
+front: wide, policy 0, menu bar: wide
+trusted: true, screen capture: true
+screen (0.0, 0.0, 1024.0, 768.0) visible (0.0, 60.0, 1024.0, 677.0) safe top 0.0
+pointer (793.0, 753.0)
+  layer 25 #55 Control Center 'HiddenIconsArrow' on true x 780 y 0 w 27 h 30
+  layer 25 #44 Control Center 'Crowd14' on false x 280 y 0 w 35 h 30
+  layer 25 #43 Control Center 'Crowd13' on false x 315 y 0 w 35 h 30
+  layer 25 #42 Control Center 'Crowd12' on false x 350 y 0 w 34 h 30
+  layer 25 #41 Control Center 'Crowd11' on false x 384 y 0 w 32 h 30
+  layer 25 #40 Control Center 'Crowd10' on false x 416 y 0 w 35 h 30
+  layer 25 #39 Control Center 'Crowd09' on false x 451 y 0 w 37 h 30
+  layer 25 #38 Control Center 'Crowd08' on false x 488 y 0 w 37 h 30
+  layer 25 #37 Control Center 'Crowd07' on false x 525 y 0 w 36 h 30
+  layer 25 #36 Control Center 'Crowd06' on false x 561 y 0 w 37 h 30
+  layer 25 #35 Control Center 'Crowd05' on true x 635 y 0 w 37 h 30
+  layer 25 #34 Control Center 'Crowd04' on false x 598 y 0 w 37 h 30
+  layer 25 #33 Control Center 'Crowd03' on true x 672 y 0 w 37 h 30
+  layer 25 #32 Control Center 'Crowd02' on true x 709 y 0 w 36 h 30
+  layer 25 #31 Control Center 'Crowd01' on true x 745 y 0 w 35 h 30
+  layer 25 #25 Control Center 'Item-0' on true x 807 y 0 w 31 h 30
+  layer 25 #21 Control Center 'BentoBox-0' on true x 838 y 0 w 42 h 30
+  layer 25 #19 Control Center 'Clock' on true x 880 y 0 w 144 h 30
+  layer 24 #14 Window Server 'Menubar' on true x 0 y 0 w 1024 h 30
+  layer 25 #54 Control Center 'Item-0' on false x 242 y 0 w 38 h 30
+status windows on screen 8, off 11

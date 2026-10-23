@@ -1,0 +1,13 @@
+01-crowd: front Finder, menu bar Finder, icons shown 14 hidden 3, crowd shown [01 02 03 04 05 06 07 08 09 10 12], menus open 0, no arrow, pointer 600,268
+02-wide-in-front: front wide, menu bar wide, icons shown 8 hidden 9, crowd shown [01 02 03 04 06], menus open 0, no arrow, pointer 600,268
+03-arrow-added: front wide, menu bar wide, icons shown 8 hidden 11, crowd shown [01 02 03 05], menus open 0, arrow shown at x 780, pointer 600,268
+04-shortcut-soon-after: front Jared's Cool Mac Utilities App, menu bar Jared's Cool Mac Utilities App, icons shown 19 hidden 0, crowd shown [01 02 03 04 05 06 07 08 09 10 11 12 13 14], menus open 0, arrow shown at x 780, pointer 600,268
+05-pointer-away-4s-later: front Jared's Cool Mac Utilities App, menu bar Jared's Cool Mac Utilities App, icons shown 19 hidden 0, crowd shown [01 02 03 04 05 06 07 08 09 10 11 12 13 14], menus open 0, arrow shown at x 780, pointer 600,268
+06-pointer-away-7s-later: front wide, menu bar wide, icons shown 8 hidden 11, crowd shown [01 02 03 05], menus open 0, arrow shown at x 780, pointer 600,268
+07-shortcut-again: front Jared's Cool Mac Utilities App, menu bar Jared's Cool Mac Utilities App, icons shown 19 hidden 0, crowd shown [01 02 03 04 05 06 07 08 09 10 11 12 13 14], menus open 0, arrow shown at x 780, pointer 600,268
+08-shortcut-a-third-time: front wide, menu bar wide, icons shown 8 hidden 11, crowd shown [01 02 03 05], menus open 0, arrow shown at x 780, pointer 600,268
+09-pointer-in-menu-bar-6s: front Jared's Cool Mac Utilities App, menu bar Jared's Cool Mac Utilities App, icons shown 19 hidden 0, crowd shown [01 02 03 04 05 06 07 08 09 10 11 12 13 14], menus open 0, arrow shown at x 780, pointer 400,753
+10-pointer-left-4s-ago: front wide, menu bar wide, icons shown 8 hidden 11, crowd shown [01 02 03 05], menus open 0, arrow shown at x 780, pointer 600,268
+arrow at: 793 15
+11-arrow-clicked: front Jared's Cool Mac Utilities App, menu bar Jared's Cool Mac Utilities App, icons shown 19 hidden 0, crowd shown [01 02 03 04 05 06 07 08 09 10 11 12 13 14], menus open 0, arrow shown at x 780, pointer 793,753
+12-arrow-clicked-again: front wide, menu bar wide, icons shown 8 hidden 11, crowd shown [01 02 03 05], menus open 0, arrow shown at x 780, pointer 793,753
