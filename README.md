@@ -6,7 +6,7 @@
 
 <p align="center"><a href="https://github.com/jfreema/Jareds-Cool-Mac-Utils-App/raw/main/downloads/jaredsmacutils.pkg"><img src="docs/download.svg" width="204" alt="Download Jared's Cool Mac Utilities App"></a></p>
 
-<p align="center">Version 1.1.8 · macOS 14 or later · Apple silicon or Intel</p>
+<p align="center">Version 1.1.9 · macOS 14 or later · Apple silicon or Intel</p>
 
 <p align="center"><b>It used to be called Yafie.</b> If updating from Yafie gives you any trouble, <a href="#uninstall">uninstall Yafie</a>, then do a fresh install of Jared's Cool Mac Utilities App.</p>
 
@@ -62,7 +62,7 @@ Hold Control (⌃) and Option (⌥) and press an arrow key to put the front wind
 
 **Turn it on:**
 
-1. Click the app's icon in the menu bar and turn on **Snap Windows with ⌃⌥ Arrow Keys**.
+1. Click the app's icon in the menu bar and turn on **Snap Windows with control+option+arrow keys**.
 2. When macOS asks, click **Open System Settings**.
 3. Turn on **Jared's Cool Mac Utilities App** and enter your password or use Touch ID. The keys work within a couple of seconds.
 
@@ -90,7 +90,7 @@ Press ⌃⌥P to snip part of the screen, then copy it, save it, mark it up with
 
 **Turn it on:**
 
-1. Click the app's icon in the menu bar and turn on **Snipping Tool with ⌃⌥P**. Nothing appears yet: macOS just adds the app to its list, switched off.
+1. Click the app's icon in the menu bar and turn on **Snipping Tool with control+option+P**. Nothing appears yet: macOS just adds the app to its list, switched off.
 2. Choose **Allow Screen Snipping…** in the app's menu, then turn on **Jared's Cool Mac Utilities App** and enter your password or use Touch ID.
 
    | Find the **Screen & System Audio Recording** list | Turn on **Jared's Cool Mac Utilities App** |
@@ -172,7 +172,7 @@ Keeps a MacBook awake with its lid closed, plugged in or on battery.
 - **Online Only** keeps it awake only while it's online.
 - **Low Power Mode** turns on Low Power Mode while the lid is shut, so the Mac runs cooler, if slower. Open the lid and your own setting comes back. It leaves Low Power Mode alone while an external display is in use. This one starts out on.
 
-**While it's on**, the Mac won't sleep even when idle, though the display still turns off. Choose **Sleep Now** to sleep anyway. On battery, it sleeps as usual once the battery is down to 10%. Don't leave it in a bag while it's awake: with the lid closed, it can get hot, even in Low Power Mode.
+**While it's on**, the Mac won't sleep even when idle, though the display still turns off. To let it sleep, turn it off. To walk away while it stays awake, press **control+option+L**, which locks the screen as **Lock Screen** in the Apple menu does. On battery, it sleeps as usual once the battery is down to 10%. Don't leave it in a bag while it's awake: with the lid closed, it can get hot, even in Low Power Mode.
 
 Its menu bar icon shows what it's doing:
 

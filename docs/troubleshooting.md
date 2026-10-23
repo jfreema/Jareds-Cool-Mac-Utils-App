@@ -29,6 +29,7 @@ From 1.1.6, the app is signed with an Apple Developer ID and notarized, so macOS
 - **Another app with a closed-lid mode.** Don't use it at the same time as this one. Both apps change the same setting.
 - **Sleeps even though you're online.** With **Online Only** on, the app counts the Mac as offline when `https://captive.apple.com` doesn't load for about a minute, for example on a network that blocks it. Turn that option off.
 - **Sleeps on battery.** **Plugged In Only** is on, or the battery is at 10% or less.
+- **control+option+L doesn't lock the screen.** Another app is using that shortcut. Quit it, then click the app's icon in the menu bar to take the shortcut back. Or choose **Lock Screen** in the Apple menu.
 - **Two of the app's processes in Activity Monitor.** The one without an icon is the watchdog, which turns sleep back on, and puts Low Power Mode back, if the app crashes. It ends by itself when the app quits.
 
 ## Guitar tuner
@@ -58,7 +59,7 @@ From 1.1.6, the app is signed with an Apple Developer ID and notarized, so macOS
 ## Window snapping
 
 - **The keys do nothing.** The app doesn't have the Accessibility permission. Turn on **Jared's Cool Mac Utilities App** in **System Settings → Privacy & Security → Accessibility**.
-- **"Another app is using a ⌃⌥ arrow key."** Another app, such as a window manager, has the same shortcut. Quit it or change its shortcut, then turn snapping off and on.
+- **"Another app is using a control+option+arrow key."** Another app, such as a window manager, has the same shortcut. Quit it or change its shortcut, then turn snapping off and on.
 - **A window doesn't fill its column exactly.** Some apps keep a minimum size, and Terminal rounds to whole characters. The app centers those on the column and keeps them on the display.
 - **A full-screen window doesn't move.** The app leaves full-screen windows alone. Leave full screen first.
 
@@ -79,6 +80,6 @@ From 1.1.6, the app is signed with an Apple Developer ID and notarized, so macOS
 - **Nothing seems to happen when you turn on Snipping Tool.** macOS adds the app to its Screen & System Audio Recording list, switched off, without asking. Choose **Allow Screen Snipping…** in the app's menu to get there. See [Screenshot tool](../README.md#screenshot-tool).
 - **The menu vanished on your first snip.** macOS asked whether the app can bypass the system private window picker, which closes the menu. Click **Allow**, then snip again.
 - **macOS asks every month whether the app can record the screen.** Expected on macOS 15 and later, for every app that takes screenshots. Click **Allow**. If the snip you were taking comes out wrong, take it again.
-- **"Another app is using ⌃⌥P."** Another app has the same shortcut. Quit it or change its shortcut, then turn snipping off and on.
+- **"Another app is using control+option+P."** Another app has the same shortcut. Quit it or change its shortcut, then turn snipping off and on.
 - **An app's own ⌃⌥P stopped working.** While snipping is on, ⌃⌥P belongs to the snipping tool in every app. Turn snipping off to give it back.
 - **Copy Text says No text found, or gets words wrong.** It reads clear text best. Zoom in on small or blurry text, then snip it again.
