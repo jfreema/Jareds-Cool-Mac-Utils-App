@@ -131,7 +131,7 @@ final class Updater {
             throw Failure("The downloaded app didn't check out.")
         }
         // Once signed by a Developer ID, only take updates signed by the same team
-        if let team = team(of: app), team(of: staged) != team {
+        if let ours = team(of: app), team(of: staged) != ours {
             throw Failure("The download isn't signed by the same developer as this copy of \(Yafie.name).")
         }
         // Same name, as macOS compares names, ignoring case
