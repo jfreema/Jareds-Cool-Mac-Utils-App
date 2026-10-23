@@ -159,9 +159,14 @@ final class HiddenIcons: NSObject {
 
     private func addArrow() {
         guard arrow == nil else { return }
-        // At the right end the first time, by Control Center, where macOS hides icons last. Then wherever it's dragged.
+        // Left of the system icons the first time, then wherever it's dragged. 1.1.10 started it at 0, right of them,
+        // so it moves from there too.
         let defaults = UserDefaults.standard
-        if defaults.object(forKey: Self.positionKey) == nil { defaults.set(0.0, forKey: Self.positionKey) }
+        if (defaults.object(forKey: Self.positionKey) as? Double ?? 0) == 0 {
+            let position = Self.startingPosition(controlCenter: Self.controlCenterSettings())
+            defaults.set(position, forKey: Self.positionKey)
+            iconsLogger.notice("The arrow starts at \(position), left of the system icons")
+        }
         let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         item.autosaveName = Self.autosaveName
         item.isVisible = true  // in case macOS noted it as removed
@@ -180,6 +185,31 @@ final class HiddenIcons: NSObject {
         NSStatusBar.system.removeStatusItem(arrow)
         UserDefaults.standard.set(position, forKey: Self.positionKey)
         self.arrow = nil
+    }
+
+    /// Where the arrow starts: just left of the system icons, like sound, battery and Wi-Fi, and right of other apps'
+    /// icons, which macOS hides first. macOS lays icons out by the spots it keeps for them, higher further left, and
+    /// puts any without one left of those. Control Center keeps the system icons' spots. Its own icon and the clock
+    /// stay at the right end whatever theirs, and 0 is the right end.
+    nonisolated static func startingPosition(controlCenter settings: [String: Any]) -> Double {
+        let prefix = "NSStatusItem Preferred Position "
+        let spots = settings.compactMap { key, value -> Double? in
+            guard key.hasPrefix(prefix) else { return nil }
+            let name = key.dropFirst(prefix.count)
+            // Not turned off in the menu bar, under macOS 26's name or the one before
+            let isShown = ["NSStatusItem VisibleCC \(name)", "NSStatusItem Visible \(name)"].allSatisfy {
+                (settings[$0] as? NSNumber)?.boolValue ?? true
+            }
+            guard isShown, !name.hasPrefix("BentoBox"), !name.hasPrefix("Clock") else { return nil }
+            return (value as? NSNumber)?.doubleValue
+        }
+        return spots.max().map { $0 + 1 } ?? 0
+    }
+
+    private static func controlCenterSettings() -> [String: Any] {
+        let settings = CFPreferencesCopyMultiple(nil, "com.apple.controlcenter" as CFString, kCFPreferencesCurrentUser,
+                                                 kCFPreferencesAnyHost)
+        return settings as? [String: Any] ?? [:]
     }
 
     /// ‹ shows them, › hides them again
