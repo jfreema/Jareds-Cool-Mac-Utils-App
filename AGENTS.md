@@ -6,7 +6,7 @@ Notes for any coding agent working on Jared's Cool Mac Utilities App, which is Y
 
 A macOS menu bar app with seven features: stay awake with the lid closed, window snapping, app previews from the Dock, a screenshot tool, a guitar tuner, a drum machine and keyboard cleaning. It's Swift 6 with SwiftPM, with no Xcode project and no third-party dependencies. It runs on macOS 14 or later, on Apple silicon or Intel. It's an accessory app (`LSUIElement`), with no Dock icon or menu bar except while a snip editor is open. [README.md](README.md) is the user guide.
 
-**Names:** users see Jared's Cool Mac Utilities App (`Yafie.fullName`), or Jared's Mac App (`Yafie.name`, `CFBundleName`) in menus, alerts and tooltips. On disk it's `jaredsmacutils.app`, with the executable and installer named to match. It was called Yafie before 1.1.4, and still is inside: the Swift package and module, the bundle ID `io.github.jfreema.yafie`, the **Yafie Code Signing** certificate, `/etc/sudoers.d/yafie` and the log subsystem. Never rename those: users' permissions, settings and password-free setup depend on them.
+**Names:** users see Jared's Cool Mac Utilities App (`Yafie.fullName`), or Jared's Mac App (`Yafie.name`, `CFBundleName`) in menus, alerts and tooltips. On disk it's `jaredsmacutils.app`, with the executable and installer named to match. It was called Yafie before 1.1.4, and still is inside: the Swift package and module, the bundle ID `io.github.jfreema.yafie`, `/etc/sudoers.d/yafie` and the log subsystem. Never rename those: users' permissions, settings and password-free setup depend on them.
 
 ## Build and test
 
@@ -61,7 +61,7 @@ Put logic that can be pure, like geometry, drawing and parsing, in pure types wi
 
 ## Signing
 
-Every build is signed with one self-signed certificate, **Yafie Code Signing**. macOS ties users' permissions (Accessibility, Microphone, Screen Recording) to it. Never sign a release with anything else, or ad hoc, and never make a new certificate, or everyone has to grant the permissions again. The Release workflow refuses any other certificate. See [docs/buildfromsource.md](docs/buildfromsource.md#signing).
+From 1.1.6, releases are signed with Jared's Developer ID certificates, team `885XHF7XLL`, and notarized: Developer ID Application for the app, with the hardened runtime and `Resources/jaredsmacutils.entitlements`, and Developer ID Installer for the installer. macOS ties users' permissions (Accessibility, Microphone, Screen Recording) to the team. Never sign a release with another team, or ad hoc, or everyone has to grant the permissions again. The Release workflow refuses any other team, and Check for Updates refuses an update from one. A new capability under the hardened runtime, like Apple Events to other apps, needs its entitlement. See [docs/buildfromsource.md](docs/buildfromsource.md#signing).
 
 ## Versioning
 

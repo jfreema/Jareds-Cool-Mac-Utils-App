@@ -1,7 +1,7 @@
 import AppKit
 
 /// The app, called Jared's Cool Mac Utilities App from 1.1.4. Yafie, its name before, stays on inside: this module,
-/// the bundle ID, the signing certificate and the sudoers rule, which users' permissions and settings depend on.
+/// the bundle ID and the sudoers rule, which users' permissions and settings depend on.
 @main
 @MainActor
 enum Yafie {

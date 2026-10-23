@@ -11,6 +11,13 @@ The app was called Yafie before version 1.1.4. **Check for Updates…** in Yafie
 - **The update didn't work, or Yafie is still there.** Quit Yafie, delete `/Applications/Yafie.app`, then [download the installer](../README.md) and install the app fresh. It keeps your settings and permissions. If that doesn't help, [uninstall](../README.md#uninstall) it completely, then install it again.
 - **Doesn't open at login after the update.** Turn **Open at Login** off and on in the app's menu.
 
+## Updating to 1.1.6
+
+From 1.1.6, the app is signed with an Apple Developer ID and notarized, so macOS sees it as a new app once, and asks for its permissions again.
+
+- **A feature asks for a permission it had.** Allow it again, the way you did the first time. Later updates keep it.
+- **Its switch is on in System Settings, but the feature still asks.** That switch is for the copy from before 1.1.6. In **System Settings → Privacy & Security**, open **Accessibility** (or **Screen & System Audio Recording**), select **Jared's Cool Mac Utilities App**, click **−** to remove it, then choose the feature's **Allow…** item in the app's menu and turn it on again.
+
 ## Stay awake with the lid closed
 
 - **Check whether sleep is off right now:** `pmset -g | grep SleepDisabled` (`1` means off).
