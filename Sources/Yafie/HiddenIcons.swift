@@ -106,13 +106,36 @@ final class HiddenIcons: NSObject {
         stopWatching()
         updateArrow()
         let backTo = returning && Self.isIdleInFront ? previousApp : nil
+        // Giving up the menu bar puts the app before in front, even over a window opened from the icons
+        let keep = Self.iconAppInFront
         if madeRegular, !keepsRegular() { NSApp.setActivationPolicy(.accessory) }
         if let menuBar, NSApp.mainMenu === menuBar { NSApp.mainMenu = nil }
         menuBar = nil
         NSApp.handFocus(back: backTo)
+        if let keep { Self.bringBack(keep) }
         previousApp = nil
-        let back = backTo == nil ? "" : ", back to the app before"
+        let back = backTo != nil ? ", back to the app before"
+            : keep.map { ", keeping \($0.localizedName ?? "an app") in front" } ?? ""
         iconsLogger.notice("Hid the icons again: \(reason, privacy: .public)\(back, privacy: .public)")
+    }
+
+    /// An app with no menu bar of its own has the keyboard, like a note opened from one of the icons. It comes to the
+    /// front while the menu bar stays Yafie's.
+    private static var iconAppInFront: NSRunningApplication? {
+        guard let front = NSWorkspace.shared.frontmostApplication, front.processIdentifier != me,
+              front.activationPolicy != .regular else { return nil }
+        return front
+    }
+
+    /// Back to the front, as if from the app there now, as askForMenuBar does
+    private static func bringBack(_ app: NSRunningApplication) {
+        let pid = app.processIdentifier
+        Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(50))
+            guard let app = NSRunningApplication(processIdentifier: pid),
+                  let front = NSWorkspace.shared.frontmostApplication, front.processIdentifier != pid else { return }
+            app.activate(from: front, options: [])
+        }
     }
 
     /// Asks macOS to bring Yafie to the front, which gives it the menu bar. macOS 26 can turn that down while Yafie has
@@ -288,6 +311,7 @@ final class HiddenIcons: NSObject {
             time: ProcessInfo.processInfo.systemUptime,
             hasMenuBar: owner?.processIdentifier == Self.me,
             hasKeyWindow: NSApp.keyWindow != nil,
+            isIconAppInFront: Self.iconAppInFront != nil,
             isMenuOpen: !Set(Self.openMenus()).subtracting(openBefore).isEmpty,
             isPointerInMenuBar: Self.isPointerInMenuBar)
         let hadMenuBar = watch.hadMenuBar
@@ -364,6 +388,8 @@ struct RevealWatch {
         var hasMenuBar = true
         /// One of Yafie's windows has the keyboard, like the tuner opened from its own icon
         var hasKeyWindow = false
+        /// An app with no menu bar of its own is in front, like a note opened from one of the icons
+        var isIconAppInFront = false
         /// A menu, or a panel hanging from an icon, is open
         var isMenuOpen = false
         var isPointerInMenuBar = false
@@ -390,7 +416,7 @@ struct RevealWatch {
         hadMenuBar = true
         if sample.isMenuOpen { sawMenu = true }
         if sample.isPointerInMenuBar { wasInMenuBar = true }
-        guard !sample.hasKeyWindow, !sample.isMenuOpen, !sample.isPointerInMenuBar else {
+        guard !sample.hasKeyWindow, !sample.isIconAppInFront, !sample.isMenuOpen, !sample.isPointerInMenuBar else {
             awaySince = nil
             return .stay
         }

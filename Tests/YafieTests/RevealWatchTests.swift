@@ -4,10 +4,10 @@ import Testing
 @testable import Yafie
 
 struct RevealWatchTests {
-    private func sample(_ time: TimeInterval, menuBar: Bool = true, key: Bool = false, menu: Bool = false,
-                        inMenuBar: Bool = false) -> RevealWatch.Sample {
-        RevealWatch.Sample(time: time, hasMenuBar: menuBar, hasKeyWindow: key, isMenuOpen: menu,
-                           isPointerInMenuBar: inMenuBar)
+    private func sample(_ time: TimeInterval, menuBar: Bool = true, key: Bool = false, iconApp: Bool = false,
+                        menu: Bool = false, inMenuBar: Bool = false) -> RevealWatch.Sample {
+        RevealWatch.Sample(time: time, hasMenuBar: menuBar, hasKeyWindow: key, isIconAppInFront: iconApp,
+                           isMenuOpen: menu, isPointerInMenuBar: inMenuBar)
     }
 
     @Test func staysWhileThePointerIsInTheMenuBar() {
@@ -72,6 +72,17 @@ struct RevealWatchTests {
         #expect(watch.decide(sample(0, inMenuBar: true)) == .stay)
         for time in stride(from: 0.25, through: 30, by: 0.25) {
             #expect(watch.decide(sample(time, key: true)) == .stay)
+        }
+        #expect(watch.decide(sample(31)) == .stay)
+        #expect(watch.decide(sample(34)) == .hideAndReturn)
+    }
+
+    @Test func staysWhileAnAppOpenedFromOneOfThemIsInFront() {
+        // Like YANA's note, from its icon: YANA comes to the front, but the menu bar stays Yafie's
+        var watch = RevealWatch(start: 0)
+        #expect(watch.decide(sample(0, inMenuBar: true)) == .stay)
+        for time in stride(from: 0.25, through: 30, by: 0.25) {
+            #expect(watch.decide(sample(time, iconApp: true)) == .stay)
         }
         #expect(watch.decide(sample(31)) == .stay)
         #expect(watch.decide(sample(34)) == .hideAndReturn)

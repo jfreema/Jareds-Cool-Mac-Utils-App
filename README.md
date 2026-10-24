@@ -125,7 +125,7 @@ When the menu bar is full, macOS hides the icons that don't fit, with no sign th
 
 **Turn it on:** click the app's icon in the menu bar and turn on **Show Hidden Icons with control+option+H**. A **‹** appears just left of the system's icons, like sound and Wi-Fi, so macOS hides it only after other apps' icons. If the app's own icon is one of the hidden ones, bring an app with a short menu bar to the front first, like Finder.
 
-**Use it:** click **‹**, or press **control+option+H** when even the arrow doesn't fit. For a moment, the app's name stands in for the other app's menus, so every icon that fits comes back, and the arrow turns to **›**. Click the icon you want. They hide again when you go back to your app, when you click **›** or press a key, or a moment after you're done with them. While they're out, the app has a Dock icon: macOS only gives the menu bar to apps with one.
+**Use it:** click **‹**, or press **control+option+H** when even the arrow doesn't fit. For a moment, the app's name stands in for the other app's menus, so every icon that fits comes back, and the arrow turns to **›**. Click the icon you want. They hide again when you go back to your app, when you click **›** or press a key, or a moment after you're done with them. A window one of them opens, like a note, keeps them out until you leave it, and stays in front when they hide. While they're out, the app has a Dock icon: macOS only gives the menu bar to apps with one.
 
 Hold ⌘ and drag **‹** to move it. The icons to its right are the last ones macOS hides, so drag the ones you always want to see there too, like this app's icon.
 
