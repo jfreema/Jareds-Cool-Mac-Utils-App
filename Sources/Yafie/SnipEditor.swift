@@ -100,10 +100,11 @@ enum SnipMenu {
             item("Paste", #selector(NSText.paste(_:)), "v"),
             item("Select All", #selector(NSText.selectAll(_:)), "a"),
         ])
-        let tools = zip(["Box", "Line", "Arrow", "Highlight", "Text"], ["r", "l", "a", "h", "t"]).enumerated()
-            .map { index, tool in singleKey(tool.0, #selector(SnipEditorController.chooseTool(_:)), tool.1, tag: index) }
+        let tools = SnipTool.allCases.enumerated().map { index, tool in
+            singleKey(tool.name, #selector(SnipEditorController.chooseTool(_:)), tool.key, tag: index)
+        }
         let colors = Annotation.Color.allCases.enumerated().map { index, color in
-            singleKey(color.name, #selector(SnipEditorController.chooseColor(_:)), "\(index + 1)", tag: index)
+            singleKey(color.name, #selector(SnipEditorController.chooseColor(_:)), color.key, tag: index)
         }
         add("Tools", to: bar, tools + [.separator()] + colors + [
             .separator(),
@@ -157,22 +158,29 @@ final class SnipEditorController: NSObject, NSWindowDelegate, NSMenuItemValidati
         let screen = NSScreen.screens.first { NSMouseInRect(point, $0.frame, false) } ?? NSScreen.main
         let visible = screen?.visibleFrame ?? NSRect(x: 0, y: 0, width: 1440, height: 875)
         let size = SnipEditorLayout.contentSize(for: snip.size, on: visible)
-        window = NSWindow(contentRect: NSRect(origin: .zero, size: size),
-                          styleMask: [.titled, .closable, .miniaturizable, .resizable], backing: .buffered, defer: true)
+        let window = NSWindow(contentRect: NSRect(origin: .zero, size: size),
+                              styleMask: [.titled, .closable, .miniaturizable, .resizable], backing: .buffered,
+                              defer: true)
+        // The rest of the window is its title bar. Running the content up under it keeps the content's size, which
+        // would take the title bar off the window's height, so the content gets that back.
+        let titleBar = window.frame.height - size.height
+        window.useBubbleChrome()
+        window.setContentSize(NSSize(width: size.width, height: size.height + titleBar))
+        self.window = window
         super.init()
-        let content = NSHostingView(rootView: SnipEditorView(model: model,
+        let content = NSHostingView(rootView: SnipEditorView(model: model, titleBar: titleBar,
                                                              copy: { [weak self] in self?.copy(nil) },
                                                              save: { [weak self] in self?.saveSnip(nil) }))
-        // The window decides its size, down to the toolbar's minimum
-        content.sizingOptions = [.minSize]
+        // The window decides its size, down to the sidebar's height
+        content.sizingOptions = []
         window.contentView = content
+        window.minSize = NSSize(width: SnipEditorLayout.minimumWidth, height: SnipEditorLayout.minimumHeight + titleBar)
         window.title = snip.name
         window.isReleasedWhenClosed = false
         window.tabbingMode = .disallowed
         window.delegate = self
-        let frame = window.frameRect(forContentRect: NSRect(origin: .zero, size: size))
-        window.setFrameOrigin(NSPoint(x: (visible.midX - frame.width / 2).rounded(),
-                                      y: (visible.midY - frame.height / 2).rounded()))
+        window.setFrameOrigin(NSPoint(x: (visible.midX - window.frame.width / 2).rounded(),
+                                      y: (visible.midY - window.frame.height / 2).rounded()))
         observeChanges()
     }
 
@@ -197,7 +205,7 @@ final class SnipEditorController: NSObject, NSWindowDelegate, NSMenuItemValidati
 
     @objc func undoShape(_ sender: Any?) { model.undo() }
     @objc func redoShape(_ sender: Any?) { model.redo() }
-    @objc func chooseTool(_ sender: NSMenuItem) { model.tool = Annotation.Kind.allCases[sender.tag] }
+    @objc func chooseTool(_ sender: NSMenuItem) { model.tool = SnipTool.allCases[sender.tag] }
     @objc func chooseColor(_ sender: NSMenuItem) { model.color = Annotation.Color.allCases[sender.tag] }
     @objc func toggleThickness(_ sender: Any?) { model.thickness = model.thickness == .thin ? .thick : .thin }
 
@@ -207,11 +215,13 @@ final class SnipEditorController: NSObject, NSWindowDelegate, NSMenuItemValidati
         switch item.action {
         case #selector(undoShape(_:)): return model.canUndo && !model.isEditingText
         case #selector(redoShape(_:)): return model.canRedo && !model.isEditingText
-        case #selector(chooseTool(_:)): item.state = Annotation.Kind.allCases[item.tag] == model.tool ? .on : .off
-        case #selector(chooseColor(_:)): item.state = Annotation.Color.allCases[item.tag] == model.color ? .on : .off
+        case #selector(chooseTool(_:)): item.state = SnipTool.allCases[item.tag] == model.tool ? .on : .off
+        case #selector(chooseColor(_:)):
+            item.state = Annotation.Color.allCases[item.tag] == model.color ? .on : .off
+            return model.tool.hasColor
         case #selector(toggleThickness(_:)):
             item.state = model.thickness == .thick ? .on : .off
-            return model.tool != .highlight && model.tool != .text  // highlights are filled, and text has a size
+            return model.tool.hasThickness
         default: break
         }
         return true
@@ -276,6 +286,34 @@ protocol EditorSettings: AnyObject {
 
 extension UserDefaults: EditorSettings {}
 
+/// What a drag or click on the snip does: draw a kind of shape, or erase one
+enum SnipTool: String, CaseIterable, Sendable {
+    case box, line, arrow, highlight, blur, text, eraser
+
+    /// What it draws. The eraser takes shapes away instead.
+    var kind: Annotation.Kind? { Annotation.Kind(rawValue: rawValue) }
+    var name: String { rawValue.capitalized }
+
+    /// Its single-key shortcut
+    var key: String {
+        switch self {
+        case .box: "r"
+        case .line: "l"
+        case .arrow: "a"
+        case .highlight: "h"
+        case .blur: "b"
+        case .text: "t"
+        case .eraser: "e"
+        }
+    }
+
+    /// What it draws comes in a color, unless it's a blur
+    var hasColor: Bool { kind != nil && self != .blur }
+    /// Highlights and blurs are filled, and text has a size
+    var hasThickness: Bool { self == .box || self == .line || self == .arrow }
+    var hasOutline: Bool { hasThickness || self == .text }
+}
+
 /// One snip in the editor: its shapes, with undo and redo, and the tool, color, thickness, outline and text size for
 /// the next one
 @Observable @MainActor
@@ -291,20 +329,27 @@ final class SnipEditorModel {
     private(set) var draft: Annotation?
     /// Shapes added or taken away since the last Copy or Save
     private(set) var isChanged = false
+    /// The shape the eraser points at, which a click takes away
+    private(set) var erasable: Int?
     private var undos: [[Annotation]] = []
     private var redos: [[Annotation]] = []
+    /// Where the pointer is on the snip, and how near a shape counts as on it, in pixels
+    @ObservationIgnored private var pointer: (pixel: CGPoint, slop: CGFloat)?
+    @ObservationIgnored private var blurCache: CGImage??
 
     // The last ones used, for the next snip too
-    var tool: Annotation.Kind {
+    var tool: SnipTool {
         didSet {
-            defaults.set(tool.rawValue, forKey: Keys.tool)
+            // Not the eraser, since the next snip has no shapes to erase
+            if tool != .eraser { defaults.set(tool.rawValue, forKey: Keys.tool) }
             commitText()
+            aim()
         }
     }
     var thickness: Annotation.Thickness {
         didSet { defaults.set(thickness.rawValue, forKey: Keys.thickness) }
     }
-    /// Boxes, lines, arrows and text share an outline. Highlights have none.
+    /// Boxes, lines, arrows and text share an outline. Highlights and blurs have none.
     var outline: Annotation.Outline {
         didSet {
             defaults.set(outline.rawValue, forKey: Keys.outline)
@@ -318,7 +363,8 @@ final class SnipEditorModel {
             draft?.textSize = textSize
         }
     }
-    /// Boxes, lines, arrows and text share a color. The highlighter has its own, so highlights start yellow.
+    /// Boxes, lines, arrows and text share a color. The highlighter has its own, so highlights start yellow. Blurs
+    /// have none.
     var color: Annotation.Color {
         get { tool == .highlight ? highlightColor : penColor }
         set {
@@ -347,7 +393,7 @@ final class SnipEditorModel {
     init(snip: Snip, defaults: EditorSettings = UserDefaults.standard) {
         self.snip = snip
         self.defaults = defaults
-        tool = defaults.string(forKey: Keys.tool).flatMap(Annotation.Kind.init) ?? .box
+        tool = defaults.string(forKey: Keys.tool).flatMap(SnipTool.init) ?? .box
         penColor = defaults.string(forKey: Keys.color).flatMap(Annotation.Color.init) ?? .red
         highlightColor = defaults.string(forKey: Keys.highlightColor).flatMap(Annotation.Color.init) ?? .yellow
         thickness = defaults.string(forKey: Keys.thickness).flatMap(Annotation.Thickness.init) ?? .thin
@@ -363,11 +409,11 @@ final class SnipEditorModel {
     var hasUnsavedShapes: Bool { isChanged && !shapes.isEmpty }
     var isEditingText: Bool { draft != nil }
 
-    /// In the snip's pixels. Text is placed with beginText instead.
+    /// In the snip's pixels. Text is placed with beginText instead, and the eraser erases.
     func begin(at pixel: CGPoint) {
-        guard tool != .text else { return }
-        drawing = Annotation(kind: tool, color: color, thickness: thickness, start: pixel, end: pixel,
-                             outline: tool == .highlight ? .none : outline)
+        guard let kind = tool.kind, kind != .text else { return }
+        drawing = Annotation(kind: kind, color: color, thickness: thickness, start: pixel, end: pixel,
+                             outline: tool.hasOutline ? outline : .none)
     }
 
     /// A new text, its top left at that pixel
@@ -409,10 +455,39 @@ final class SnipEditorModel {
     }
 
     private func add(_ shape: Annotation) {
+        change(to: shapes + [shape])
+    }
+
+    /// The pointer moved on the snip, in its pixels, or off it
+    func point(at pixel: CGPoint?, slop: CGFloat) {
+        pointer = pixel.map { ($0, slop) }
+        aim()
+    }
+
+    /// Takes away the shape on top at that pixel, as a step to undo
+    func erase(at pixel: CGPoint, slop: CGFloat) {
+        guard tool == .eraser, let index = Annotation.topmost(at: pixel, in: shapes, scale: snip.scale, slop: slop)
+        else { return }
+        var next = shapes
+        next.remove(at: index)
+        change(to: next)
+    }
+
+    /// The eraser points at the shape on top under the pointer
+    private func aim() {
+        var target: Int?
+        if tool == .eraser, let pointer {
+            target = Annotation.topmost(at: pointer.pixel, in: shapes, scale: snip.scale, slop: pointer.slop)
+        }
+        if target != erasable { erasable = target }
+    }
+
+    private func change(to next: [Annotation]) {
         undos.append(shapes)
         redos.removeAll()
-        shapes.append(shape)
+        shapes = next
         isChanged = true
+        aim()
     }
 
     func undo() {
@@ -420,6 +495,7 @@ final class SnipEditorModel {
         redos.append(shapes)
         shapes = previous
         isChanged = true
+        aim()
     }
 
     func redo() {
@@ -427,141 +503,298 @@ final class SnipEditorModel {
         undos.append(shapes)
         shapes = next
         isChanged = true
+        aim()
     }
 
     /// After a Copy or Save
     func kept() { isChanged = false }
 
+    /// The snip blurred all over, for blurs to show, made the first time one needs it
+    var blurredSnip: CGImage? {
+        if blurCache == nil { blurCache = .some(SnipRenderer.blur(snip.image, scale: snip.scale)) }
+        return blurCache ?? nil
+    }
+
     /// The snip with its shapes, at full resolution
-    func rendered() -> CGImage? { SnipRenderer.render(snip.image, shapes, scale: snip.scale) }
+    func rendered() -> CGImage? {
+        SnipRenderer.render(snip.image, shapes, scale: snip.scale,
+                            blurred: shapes.contains { $0.kind == .blur } ? blurredSnip : nil)
+    }
 }
 
 extension Annotation.Color {
     var name: String { rawValue.capitalized }
+    /// Its single-key shortcut, 1 to 6
+    var key: String { String((Self.allCases.firstIndex(of: self) ?? 0) + 1) }
 }
 
 // MARK: Views
 
-/// The toolbar, then the snip with its shapes. All its state is in the model: the Command Line Tools can't build
-/// SwiftUI's @State.
+/// The sidebar, then the snip with its shapes, on bubble pop blue that runs up under the title bar. All its state is
+/// in the model: the Command Line Tools can't build SwiftUI's @State.
 struct SnipEditorView: View {
     let model: SnipEditorModel
+    let titleBar: CGFloat
     let copy: () -> Void
     let save: () -> Void
 
     var body: some View {
-        VStack(spacing: 0) {
-            SnipToolbar(model: model, copy: copy, save: save)
-                .frame(height: SnipEditorLayout.toolbarHeight)
-                // Inside the toolbar's height, so a snip at actual size gets every point it needs
-                .overlay(alignment: .bottom) { Divider() }
+        // The window is never shorter than the sidebar
+        HStack(alignment: .top, spacing: SnipEditorLayout.margin) {
+            SnipSidebar(model: model, copy: copy, save: save)
+                .frame(width: SnipEditorLayout.sidebarWidth)
             SnipCanvas(model: model)
         }
-        .frame(minWidth: SnipEditorLayout.minimumWidth,
-               minHeight: SnipEditorLayout.toolbarHeight + SnipEditorLayout.minimumCanvasHeight)
+        .padding(.top, SnipEditorLayout.topMargin)
+        .padding([.horizontal, .bottom], SnipEditorLayout.margin)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Bubble.blue.ignoresSafeArea())
+        .overlay(alignment: .top) {
+            // The snip's name up in the title bar, in chunky white type
+            Text(model.snip.name)
+                .font(Bubble.display(14))
+                .foregroundStyle(.white)
+                .shadow(color: Bubble.ink, radius: 0, x: 1, y: 1.5)
+                .lineLimit(1)
+                .truncationMode(.middle)
+                .padding(.horizontal, 80)  // clear of the close, minimize and zoom buttons
+                .frame(height: titleBar)
+                .offset(y: -titleBar)
+                .allowsHitTesting(false)
+                .accessibilityHidden(true)  // the window's title says it
+        }
     }
 }
 
-private struct SnipToolbar: View {
+/// The tools, colors and options down the left side, with undo and redo, Copy and Save at the bottom. Options that
+/// don't go with the tool fade.
+struct SnipSidebar: View {
     let model: SnipEditorModel
     let copy: () -> Void
     let save: () -> Void
 
     var body: some View {
-        HStack(spacing: 14) {
-            Picker("Tool", selection: Binding(get: { model.tool }, set: { model.tool = $0 })) {
-                Image(systemName: "rectangle").accessibilityLabel("Box").tag(Annotation.Kind.box)
-                Image(systemName: "line.diagonal").accessibilityLabel("Line").tag(Annotation.Kind.line)
-                Image(systemName: "arrow.up.right").accessibilityLabel("Arrow").tag(Annotation.Kind.arrow)
-                Image(systemName: "highlighter").accessibilityLabel("Highlight").tag(Annotation.Kind.highlight)
-                Image(systemName: "textformat").accessibilityLabel("Text").tag(Annotation.Kind.text)
-            }
-            .pickerStyle(.segmented)
-            .labelsHidden()
-            .fixedSize()
-            .help("Box (R), Line (L), Arrow (A), Highlight (H) or Text (T)")
-
-            HStack(spacing: 2) {
-                ForEach(Array(Annotation.Color.allCases.enumerated()), id: \.element) { index, color in
-                    Swatch(color: color, isCurrent: model.color == color) { model.color = color }
-                        .help("\(color.name) (\(index + 1))")
+        let tool = model.tool
+        VStack(alignment: .leading, spacing: 12) {
+            SidebarSection("Tools") {
+                VStack(spacing: 7) {
+                    ChoiceGrid([SnipTool.box, .line, .arrow, .highlight, .blur, .text], columns: 3) {
+                        ToolButton(tool: $0, model: model)
+                    }
+                    ToolButton(tool: .eraser, model: model, showsName: true)
                 }
             }
-
-            Picker("Thickness", selection: Binding(get: { model.thickness }, set: { model.thickness = $0 })) {
-                Text("Thin").tag(Annotation.Thickness.thin)
-                Text("Thick").tag(Annotation.Thickness.thick)
+            SidebarSection("Color") {
+                ChoiceGrid(Annotation.Color.allCases, columns: 3) { Swatch(color: $0, model: model) }
             }
-            .pickerStyle(.segmented)
-            .labelsHidden()
-            .fixedSize()
-            .disabled(model.tool == .highlight || model.tool == .text)  // highlights are filled, and text has a size
-            .help("Thin or thick lines (W)")
-
-            Picker("Outline", selection: Binding(get: { model.outline }, set: { model.outline = $0 })) {
-                ForEach(Annotation.Outline.allCases, id: \.self) { outline in
-                    Text(outline.rawValue.capitalized).tag(outline)
+            .disabled(!tool.hasColor)
+            SidebarSection("Thickness") {
+                ChoiceGrid(Annotation.Thickness.allCases, columns: 2) { thickness in
+                    ChoicePill(title: thickness.rawValue.capitalized, isChosen: model.thickness == thickness) {
+                        model.thickness = thickness
+                    }
+                    .help("Thin or thick lines (W)")
                 }
             }
-            .pickerStyle(.menu)
-            .fixedSize()
-            .disabled(model.tool == .highlight)  // highlights have none
-            .help("An outline around boxes, lines, arrows and text, so they stand out")
-
-            Picker("Size", selection: Binding(get: { model.textSize }, set: { model.textSize = $0 })) {
-                ForEach(Annotation.textSizes, id: \.self) { size in
-                    Text("\(Int(size)) pt").tag(size)
+            .disabled(!tool.hasThickness)
+            SidebarSection("Outline") {
+                ChoiceGrid(Annotation.Outline.allCases, columns: 2) { outline in
+                    ChoicePill(title: outline.rawValue.capitalized, isChosen: model.outline == outline) {
+                        model.outline = outline
+                    }
+                    .help("An outline around boxes, lines, arrows and text, so they stand out")
                 }
             }
-            .pickerStyle(.menu)
-            .fixedSize()
-            .disabled(model.tool != .text)
-            .help("Text size")
-
-            HStack(spacing: 4) {
-                Button { model.undo() } label: { Image(systemName: "arrow.uturn.backward") }
-                    .disabled(!model.canUndo)
-                    .help("Undo (⌘Z)")
-                    .accessibilityLabel("Undo")
-                Button { model.redo() } label: { Image(systemName: "arrow.uturn.forward") }
-                    .disabled(!model.canRedo)
-                    .help("Redo (⇧⌘Z)")
-                    .accessibilityLabel("Redo")
+            .disabled(!tool.hasOutline)
+            SidebarSection("Text Size") {
+                ChoiceGrid(Annotation.textSizes, columns: 3) { size in
+                    ChoicePill(title: "\(Int(size))", isChosen: model.textSize == size) { model.textSize = size }
+                        .help("\(Int(size)) points")
+                }
             }
-            .buttonStyle(.borderless)
+            .disabled(tool != .text)
 
             Spacer(minLength: 0)
-            Button("Copy", action: copy)
-                .help("Copy to Clipboard (⌘C)")
-            Button("Save…", action: save)
-                .help("Save (⌘S)")
+            VStack(spacing: 9) {
+                HStack(spacing: 7) {
+                    Button { model.undo() } label: { ActionLabel("Undo", symbol: "arrow.uturn.backward") }
+                        .buttonStyle(BubbleButtonStyle())
+                        .disabled(!model.canUndo)
+                        .help("Undo (⌘Z)")
+                    Button { model.redo() } label: { ActionLabel("Redo", symbol: "arrow.uturn.forward") }
+                        .buttonStyle(BubbleButtonStyle())
+                        .disabled(!model.canRedo)
+                        .help("Redo (⇧⌘Z)")
+                }
+                HStack(spacing: 7) {
+                    Button(action: copy) { Text("Copy").frame(maxWidth: .infinity) }
+                        .buttonStyle(BubbleButtonStyle(height: 30, fontSize: 13))
+                        .help("Copy to Clipboard (⌘C)")
+                    Button(action: save) { Text("Save…").frame(maxWidth: .infinity) }
+                        .buttonStyle(BubbleButtonStyle(fill: Bubble.yellow, height: 30, fontSize: 13))
+                        .help("Save (⌘S)")
+                }
+            }
         }
-        .padding(.horizontal, 12)
+        // Room for the shadows
+        .padding(.trailing, 2)
+        .padding(.bottom, 3)
     }
 }
 
+/// Controls under a name, small, white, upper case and letter-spaced, like the menu's section names. The name fades
+/// with its controls.
+private struct SidebarSection<Content: View>: View {
+    let title: String
+    let content: Content
+    @Environment(\.isEnabled) private var isEnabled
+
+    init(_ title: String, @ViewBuilder content: () -> Content) {
+        self.title = title
+        self.content = content()
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(title.uppercased())
+                .font(.system(size: 10.5, weight: .black, design: .rounded))
+                .kerning(1.3)
+                .foregroundStyle(Color.white.opacity(isEnabled ? 1 : 0.45))
+                .accessibilityAddTraits(.isHeader)
+            content
+        }
+    }
+}
+
+/// A few choices in rows, filling the sidebar's width, each as wide as the others in its row
+private struct ChoiceGrid<Item: Hashable, Cell: View>: View {
+    let items: [Item]
+    let columns: Int
+    let cell: (Item) -> Cell
+
+    init(_ items: [Item], columns: Int, @ViewBuilder cell: @escaping (Item) -> Cell) {
+        self.items = items
+        self.columns = columns
+        self.cell = cell
+    }
+
+    var body: some View {
+        VStack(spacing: 7) {
+            ForEach(Array(stride(from: 0, to: items.count, by: columns)), id: \.self) { first in
+                HStack(spacing: 7) {
+                    ForEach(items[first..<min(first + columns, items.count)], id: \.self) { cell($0) }
+                }
+            }
+        }
+    }
+}
+
+/// A tool's symbol on a tile, yellow while it's the one in use
+private struct ToolButton: View {
+    let tool: SnipTool
+    let model: SnipEditorModel
+    /// Its name too, beside the symbol
+    var showsName = false
+
+    var body: some View {
+        let isChosen = model.tool == tool
+        Button { model.tool = tool } label: {
+            HStack(spacing: 6) {
+                Image(systemName: tool.symbol)
+                    .font(.system(size: 15, weight: .bold))
+                if showsName { Text(tool.name) }
+            }
+            .frame(maxWidth: .infinity)
+        }
+        .buttonStyle(BubbleButtonStyle(fill: isChosen ? Bubble.yellow : .white, height: 32, fontSize: 13))
+        .help("\(tool.name) (\(tool.key.uppercased()))")
+        .accessibilityLabel(tool.name)
+        .accessibilityAddTraits(isChosen ? .isSelected : [])
+    }
+}
+
+private extension SnipTool {
+    var symbol: String {
+        switch self {
+        case .box: "rectangle"
+        case .line: "line.diagonal"
+        case .arrow: "arrow.up.right"
+        case .highlight: "highlighter"
+        case .blur: "drop.halffull"
+        case .text: "textformat"
+        case .eraser: "eraser"
+        }
+    }
+}
+
+/// A color on a chip, with a check while it's the one in use
 private struct Swatch: View {
     let color: Annotation.Color
-    let isCurrent: Bool
+    let model: SnipEditorModel
+
+    var body: some View {
+        let isChosen = model.color == color
+        Button { model.color = color } label: {
+            Image(systemName: "checkmark")
+                .font(.system(size: 12, weight: .black))
+                .foregroundStyle(color.takesWhiteCheck ? Color.white : Bubble.ink)
+                .opacity(isChosen ? 1 : 0)
+                .frame(maxWidth: .infinity)
+        }
+        .buttonStyle(BubbleButtonStyle(fill: Color(cgColor: color.cgColor), height: 26))
+        .help("\(color.name) (\(color.key))")
+        .accessibilityLabel(color.name)
+        .accessibilityAddTraits(isChosen ? .isSelected : [])
+    }
+}
+
+private extension Annotation.Color {
+    var takesWhiteCheck: Bool { self == .red || self == .blue || self == .black }
+}
+
+/// One of a few choices, as a pill that fills its cell and turns yellow when it's the one chosen
+private struct ChoicePill: View {
+    let title: String
+    let isChosen: Bool
     let choose: () -> Void
 
     var body: some View {
         Button(action: choose) {
-            Circle()
-                .fill(Color(cgColor: color.cgColor))
-                .frame(width: 16, height: 16)
-                .padding(3)
-                .overlay(Circle().strokeBorder(Color.primary.opacity(isCurrent ? 0.75 : 0), lineWidth: 2))
-                .contentShape(Circle())
+            Text(title)
+                .lineLimit(1)
+                .frame(maxWidth: .infinity)
         }
-        .buttonStyle(.plain)
-        .accessibilityLabel(color.name)
-        .accessibilityAddTraits(isCurrent ? .isSelected : [])
+        .buttonStyle(BubbleButtonStyle(fill: isChosen ? Bubble.yellow : .white, height: 24, fontSize: 12))
+        .accessibilityAddTraits(isChosen ? .isSelected : [])
     }
 }
 
-/// The snip, with its shapes over it. Dragging on the snip draws, and with the Text tool, a click places a text.
+/// A button's name with its symbol before it, filling the button
+private struct ActionLabel: View {
+    let title: String
+    let symbol: String
+
+    init(_ title: String, symbol: String) {
+        self.title = title
+        self.symbol = symbol
+    }
+
+    var body: some View {
+        HStack(spacing: 4) {
+            Image(systemName: symbol)
+                .font(.system(size: 11, weight: .bold))
+            Text(title)
+        }
+        .frame(maxWidth: .infinity)
+    }
+}
+
+/// The snip, outlined in ink on a hard shadow, with its shapes over it. Dragging on the snip draws, a click with the
+/// Text tool places a text, and a click with the eraser takes away the shape under it.
 private struct SnipCanvas: View {
+    /// How near a shape a click with the eraser takes it, in points
+    static let slop: CGFloat = 4
+
     let model: SnipEditorModel
 
     var body: some View {
@@ -569,23 +802,38 @@ private struct SnipCanvas: View {
         // Read here, so a change redraws
         let shapes = model.shapes + (model.drawing.map { [$0] } ?? [])
         let draft = model.draft
-        let isText = model.tool == .text
+        let tool = model.tool
+        let erasable = model.erasable
+        let blurred = shapes.contains { $0.kind == .blur } ? model.blurredSnip : nil
         GeometryReader { geometry in
             let fit = SnipFit(snip.pixelSize, scale: snip.scale, in: geometry.size)
+            let slop = Self.slop * fit.pixelsPerPoint
+            let edge = fit.frame.insetBy(dx: -Bubble.outline, dy: -Bubble.outline)
             ZStack {
+                // A hard shadow, then an outline just outside the snip
+                Rectangle()
+                    .fill(Bubble.ink)
+                    .frame(width: edge.width, height: edge.height)
+                    .position(x: edge.midX + 1.8, y: edge.midY + 3)
+                Rectangle()
+                    .fill(Bubble.ink)
+                    .frame(width: edge.width, height: edge.height)
+                    .position(x: edge.midX, y: edge.midY)
                 Image(decorative: snip.image, scale: 1)
                     .resizable()
                     .interpolation(.high)
                     .frame(width: fit.frame.width, height: fit.frame.height)
                     .position(x: fit.frame.midX, y: fit.frame.midY)
-                PointerArea(isText: isText)
+                PointerArea(pointer: Pointer(for: tool))
                     .frame(width: fit.frame.width, height: fit.frame.height)
                     .position(x: fit.frame.midX, y: fit.frame.midY)
                 Canvas { context, _ in
                     context.withCGContext { cg in
                         cg.translateBy(x: fit.frame.minX, y: fit.frame.minY)
                         cg.scaleBy(x: 1 / fit.pixelsPerPoint, y: 1 / fit.pixelsPerPoint)
-                        SnipRenderer.draw(shapes, in: cg, scale: snip.scale)
+                        // Cut off at the snip's edges, as when it's saved
+                        cg.clip(to: CGRect(origin: .zero, size: snip.pixelSize))
+                        SnipRenderer.draw(shapes, in: cg, scale: snip.scale, blurred: blurred, faded: erasable)
                     }
                 }
                 .allowsHitTesting(false)
@@ -603,7 +851,7 @@ private struct SnipCanvas: View {
             .contentShape(Rectangle())
             .gesture(DragGesture(minimumDistance: 0)
                 .onChanged { drag in
-                    guard !isText else { return }
+                    guard tool.kind != nil, tool != .text else { return }
                     if model.drawing == nil {
                         guard fit.frame.contains(drag.startLocation) else { return }
                         model.begin(at: fit.pixel(for: drag.startLocation))
@@ -611,12 +859,26 @@ private struct SnipCanvas: View {
                     model.move(to: fit.pixel(for: drag.location), constrained: NSEvent.modifierFlags.contains(.shift))
                 }
                 .onEnded { drag in
-                    guard isText else { return model.end() }
-                    guard fit.frame.contains(drag.startLocation) else { return model.commitText() }
-                    model.beginText(at: fit.pixel(for: drag.startLocation))
+                    let isOnSnip = fit.frame.contains(drag.startLocation)
+                    switch tool {
+                    case .text:
+                        guard isOnSnip else { return model.commitText() }
+                        model.beginText(at: fit.pixel(for: drag.startLocation))
+                    case .eraser:
+                        if isOnSnip { model.erase(at: fit.pixel(for: drag.startLocation), slop: slop) }
+                    default:
+                        model.end()
+                    }
                 })
+            // So the eraser can show which shape a click would take
+            .onContinuousHover { phase in
+                if case .active(let location) = phase, fit.frame.contains(location) {
+                    model.point(at: fit.pixel(for: location), slop: slop)
+                } else {
+                    model.point(at: nil, slop: slop)
+                }
+            }
         }
-        .clipped()
     }
 }
 
@@ -647,23 +909,44 @@ private struct TextEntry: View {
     }
 }
 
-/// The pointer over the snip: a crosshair, or an I-beam for text. Clicks go through it to the canvas.
+/// The pointer over the snip: a crosshair to draw, an I-beam for text and an arrow to erase
+private enum Pointer {
+    case crosshair, iBeam, arrow
+
+    init(for tool: SnipTool) {
+        switch tool {
+        case .text: self = .iBeam
+        case .eraser: self = .arrow
+        default: self = .crosshair
+        }
+    }
+}
+
+/// Shows the pointer over the snip. Clicks go through it to the canvas.
 private struct PointerArea: NSViewRepresentable {
-    let isText: Bool
+    let pointer: Pointer
 
     func makeNSView(context: Context) -> PointerView { PointerView() }
 
     func updateNSView(_ view: PointerView, context: Context) {
-        guard view.isText != isText else { return }
-        view.isText = isText
+        guard view.pointer != pointer else { return }
+        view.pointer = pointer
         view.window?.invalidateCursorRects(for: view)
     }
 }
 
 private final class PointerView: NSView {
-    var isText = false
+    var pointer = Pointer.crosshair
 
-    override func resetCursorRects() { addCursorRect(bounds, cursor: isText ? .iBeam : .crosshair) }
+    override func resetCursorRects() {
+        let cursor: NSCursor = switch pointer {
+        case .crosshair: .crosshair
+        case .iBeam: .iBeam
+        case .arrow: .arrow
+        }
+        addCursorRect(bounds, cursor: cursor)
+    }
+
     override func hitTest(_ point: NSPoint) -> NSView? { nil }
 
     override func setFrameSize(_ size: NSSize) {

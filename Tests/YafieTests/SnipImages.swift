@@ -15,6 +15,18 @@ enum SnipImages {
         return context.makeImage()!
     }
 
+    /// Black on the left half and white on the right, in sRGB, for a sharp edge down the middle
+    static func halves(width: Int = 400, height: Int = 300) -> CGImage {
+        let context = CGContext(data: nil, width: width, height: height, bitsPerComponent: 8, bytesPerRow: 0,
+                                space: CGColorSpace(name: CGColorSpace.sRGB)!,
+                                bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
+        context.setFillColor(CGColor(gray: 1, alpha: 1))
+        context.fill(CGRect(x: 0, y: 0, width: width, height: height))
+        context.setFillColor(CGColor(gray: 0, alpha: 1))
+        context.fill(CGRect(x: 0, y: 0, width: width / 2, height: height))
+        return context.makeImage()!
+    }
+
     /// Red, green and blue from 0 to 1 at a pixel, counting from the top left, in sRGB
     static func pixel(_ image: CGImage, _ x: Int, _ y: Int) -> [Double] {
         let context = CGContext(data: nil, width: 1, height: 1, bitsPerComponent: 8, bytesPerRow: 4,

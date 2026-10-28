@@ -20,8 +20,8 @@ struct AnnotationTests {
     }
 
     @Test(arguments: zip([1.0, -1, 1, -1], [1.0, 1, -1, -1]))
-    func shiftMakesBoxesAndHighlightsSquare(signX: CGFloat, signY: CGFloat) {
-        for kind in [Annotation.Kind.box, .highlight] {
+    func shiftMakesBoxesHighlightsAndBlursSquare(signX: CGFloat, signY: CGFloat) {
+        for kind in [Annotation.Kind.box, .highlight, .blur] {
             let end = Annotation.constrained(kind, from: CGPoint(x: 50, y: 50), to: CGPoint(x: 50 + 30 * signX, y: 50 + 80 * signY))
             #expect(end == CGPoint(x: 50 + 80 * signX, y: 50 + 80 * signY))
         }
@@ -54,6 +54,63 @@ struct AnnotationTests {
 
     @Test func aZeroLengthArrowDrawsNothing() {
         #expect(Annotation.head(from: CGPoint(x: 5, y: 5), to: CGPoint(x: 5, y: 5), length: 20) == nil)
+    }
+
+    @Test func aClickNearALineHitsIt() {
+        let line = Annotation(kind: .line, color: .red, thickness: .thin, start: .zero, end: CGPoint(x: 100, y: 0))
+        // A 2-point line is 4 pixels wide at 2 pixels a point, so it reaches 2 pixels each way, and the slop 4 more
+        #expect(line.isHit(by: CGPoint(x: 50, y: 6), scale: 2, slop: 4))
+        #expect(!line.isHit(by: CGPoint(x: 50, y: 7), scale: 2, slop: 4))
+        #expect(!line.isHit(by: CGPoint(x: 107, y: 0), scale: 2, slop: 4))
+        var outlined = line
+        outlined.outline = .white
+        #expect(outlined.isHit(by: CGPoint(x: 50, y: 8), scale: 2, slop: 4))
+    }
+
+    @Test func anArrowIsHitOnItsHeadToo() {
+        let arrow = Annotation(kind: .arrow, color: .red, thickness: .thick, start: .zero, end: CGPoint(x: 200, y: 0))
+        // Its head is 36 pixels long and 32 across where it meets the shaft, at 2 pixels a point
+        #expect(arrow.isHit(by: CGPoint(x: 170, y: 12), scale: 2, slop: 0))
+        #expect(!arrow.isHit(by: CGPoint(x: 170, y: 15), scale: 2, slop: 0))
+        #expect(!arrow.isHit(by: CGPoint(x: 100, y: 12), scale: 2, slop: 0))
+    }
+
+    @Test func boxesAreHitOnTheirEdgesAndHighlightsAndBlursAnywhere() {
+        let box = Annotation(kind: .box, color: .red, thickness: .thin, start: CGPoint(x: 100, y: 100),
+                             end: CGPoint(x: 200, y: 200))
+        #expect(box.isHit(by: CGPoint(x: 104, y: 150), scale: 2, slop: 2))
+        #expect(box.isHit(by: CGPoint(x: 96, y: 150), scale: 2, slop: 2))
+        #expect(!box.isHit(by: CGPoint(x: 150, y: 150), scale: 2, slop: 2))
+        for kind in [Annotation.Kind.highlight, .blur] {
+            var filled = box
+            filled.kind = kind
+            #expect(filled.isHit(by: CGPoint(x: 150, y: 150), scale: 2, slop: 2))
+            #expect(filled.isHit(by: CGPoint(x: 201, y: 150), scale: 2, slop: 2))
+            #expect(!filled.isHit(by: CGPoint(x: 210, y: 150), scale: 2, slop: 2))
+        }
+    }
+
+    @Test func textIsHitAnywhereOnItsLetters() {
+        let text = Annotation(kind: .text, color: .red, thickness: .thin, start: CGPoint(x: 100, y: 60),
+                              end: CGPoint(x: 100, y: 60), text: "Look here", textSize: 16)
+        let bounds = SnipRenderer.textBounds(text, scale: 2)
+        #expect(bounds.minX == 100 && bounds.minY == 60 && bounds.width > 100 && bounds.height > 30)
+        #expect(text.isHit(by: CGPoint(x: bounds.midX, y: bounds.midY), scale: 2, slop: 0))
+        #expect(!text.isHit(by: CGPoint(x: bounds.maxX + 5, y: bounds.midY), scale: 2, slop: 0))
+    }
+
+    @Test func theShapeOnTopIsTheOneDrawnLast() {
+        let line = Annotation(kind: .line, color: .red, thickness: .thin, start: CGPoint(x: 0, y: 50),
+                              end: CGPoint(x: 100, y: 50))
+        let highlight = Annotation(kind: .highlight, color: .yellow, thickness: .thin, start: .zero,
+                                   end: CGPoint(x: 100, y: 100))
+        let box = Annotation(kind: .box, color: .blue, thickness: .thin, start: CGPoint(x: 50, y: 0),
+                             end: CGPoint(x: 150, y: 100))
+        // The highlight came after the line, but highlights go under everything else
+        #expect(Annotation.topmost(at: CGPoint(x: 20, y: 50), in: [line, highlight, box], scale: 2, slop: 0) == 0)
+        #expect(Annotation.topmost(at: CGPoint(x: 20, y: 80), in: [line, highlight, box], scale: 2, slop: 0) == 1)
+        #expect(Annotation.topmost(at: CGPoint(x: 50, y: 50), in: [line, highlight, box], scale: 2, slop: 0) == 2)
+        #expect(Annotation.topmost(at: CGPoint(x: 200, y: 80), in: [line, highlight, box], scale: 2, slop: 0) == nil)
     }
 }
 
@@ -135,6 +192,62 @@ struct SnipRendererTests {
         for (x, y) in [(96, 150), (99, 150), (100, 150), (200, 48), (304, 150)] {
             #expect(SnipImages.pixel(plain, x, y) == SnipImages.pixel(outlined, x, y))
         }
+    }
+
+    @Test func blackAndWhiteAreBlackAndWhite() {
+        for (color, value) in [(Annotation.Color.black, 0.0), (.white, 1.0)] {
+            let line = Annotation(kind: .line, color: color, thickness: .thick, start: CGPoint(x: 100, y: 50),
+                                  end: CGPoint(x: 100, y: 250))
+            let image = SnipRenderer.render(SnipImages.plain(), [line], scale: 2)!
+            #expect(SnipImages.pixel(image, 100, 150).allSatisfy { abs($0 - value) < 0.02 })
+        }
+    }
+
+    @Test func aBlurSoftensWhatsUnderItAndNothingElse() {
+        let snip = SnipImages.halves()
+        let blur = Annotation(kind: .blur, color: .red, thickness: .thin, start: CGPoint(x: 150, y: 100),
+                              end: CGPoint(x: 250, y: 200))
+        let image = SnipRenderer.render(snip, [blur], scale: 2)!
+        // The sharp edge down the middle turns gray on both sides
+        let left = SnipImages.pixel(image, 195, 150)[0], right = SnipImages.pixel(image, 205, 150)[0]
+        #expect(left > 0.1 && left < right && right < 0.95)
+        // Just outside the blur, it's as sharp as ever
+        #expect(SnipImages.pixel(image, 195, 97) == SnipImages.pixel(snip, 195, 97))
+        #expect(SnipImages.pixel(image, 205, 203) == SnipImages.pixel(snip, 205, 203))
+        #expect(SnipImages.pixel(image, 147, 150) == SnipImages.pixel(snip, 147, 150))
+    }
+
+    @Test func aBlurAtTheSnipsEdgeDoesntFade() {
+        let snip = SnipImages.plain()
+        let blur = Annotation(kind: .blur, color: .red, thickness: .thin, start: .zero, end: CGPoint(x: 60, y: 60))
+        let image = SnipRenderer.render(snip, [blur], scale: 2)!
+        for (blurred, plain) in zip(SnipImages.pixel(image, 1, 1), SnipImages.pixel(snip, 1, 1)) {
+            #expect(abs(blurred - plain) < 0.02)
+        }
+    }
+
+    @Test func blursGoUnderTheOtherShapes() {
+        let box = Annotation(kind: .box, color: .red, thickness: .thick, start: CGPoint(x: 100, y: 50),
+                             end: CGPoint(x: 300, y: 250))
+        let blur = Annotation(kind: .blur, color: .red, thickness: .thin, start: CGPoint(x: 50, y: 100),
+                              end: CGPoint(x: 350, y: 200))
+        let image = SnipRenderer.render(SnipImages.halves(), [box, blur], scale: 2)!
+        #expect(SnipImages.isRed(SnipImages.pixel(image, 100, 150)))
+    }
+
+    @Test func theShapeTheEraserPointsAtIsFaint() {
+        let snip = SnipImages.plain()
+        let line = Annotation(kind: .line, color: .red, thickness: .thick, start: CGPoint(x: 100, y: 50),
+                              end: CGPoint(x: 100, y: 250))
+        // As the editor's canvas draws it
+        let context = CGContext(data: nil, width: snip.width, height: snip.height, bitsPerComponent: 8, bytesPerRow: 0,
+                                space: snip.colorSpace!, bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
+        context.draw(snip, in: CGRect(x: 0, y: 0, width: snip.width, height: snip.height))
+        context.translateBy(x: 0, y: CGFloat(snip.height))
+        context.scaleBy(x: 1, y: -1)
+        SnipRenderer.draw([line], in: context, scale: 2, faded: 0)
+        let faint = SnipImages.pixel(context.makeImage()!, 100, 150)
+        #expect(!SnipImages.isRed(faint) && faint[0] > faint[1] + 0.1)
     }
 
     @Test func keepsTheSnipsColorSpace() {
@@ -224,21 +337,22 @@ struct SnipEditorLayoutTests {
     private let display = CGRect(x: 0, y: 0, width: 1440, height: 875)
 
     @Test func actualSizeWhenItFits() {
-        #expect(SnipEditorLayout.contentSize(for: CGSize(width: 1000, height: 500), on: display)
-                == CGSize(width: 1000, height: 544))
+        // Beside the 148-point sidebar, with 14 points of blue between and around them, and 4 under the title bar
+        #expect(SnipEditorLayout.contentSize(for: CGSize(width: 1000, height: 600), on: display)
+                == CGSize(width: 1190, height: 618))
     }
 
     @Test func shrunkToFitNinetyPercentOfTheDisplay() {
         let size = SnipEditorLayout.contentSize(for: CGSize(width: 2000, height: 1200), on: display)
-        #expect(size == CGSize(width: 1239, height: 788))
+        #expect(size == CGSize(width: 1296, height: 682))
         // Same shape as the snip
-        #expect(abs((size.width / (size.height - SnipEditorLayout.toolbarHeight)) - 2000 / 1200) < 0.01)
+        let chrome = SnipEditorLayout.chrome
+        #expect(abs((size.width - chrome.width) / (size.height - chrome.height) - 2000 / 1200) < 0.01)
     }
 
-    @Test func neverNarrowerThanTheToolbar() {
+    @Test func neverShorterThanTheSidebar() {
         #expect(SnipEditorLayout.contentSize(for: CGSize(width: 100, height: 50), on: display)
-                == CGSize(width: SnipEditorLayout.minimumWidth,
-                          height: SnipEditorLayout.minimumCanvasHeight + SnipEditorLayout.toolbarHeight))
+                == CGSize(width: SnipEditorLayout.minimumWidth, height: SnipEditorLayout.minimumHeight))
     }
 }
 

@@ -87,7 +87,7 @@ Each display has two columns, or three on external displays with **Thirds on Ext
 
 ## Screenshot tool
 
-Press ⌃⌥P to snip part of the screen, then copy it, save it, mark it up with boxes, lines, arrows, highlights and text, or copy the text in it.
+Press ⌃⌥P to snip part of the screen, then copy it, save it, mark it up with boxes, lines, arrows, highlights, blurs and text, or copy the text in it.
 
 **Turn it on:**
 
@@ -105,12 +105,13 @@ Press ⌃⌥P to snip part of the screen, then copy it, save it, mark it up with
 
 **Copy Text** copies the words in the snip as plain text, line by line, even where you can't select them, like an error message, a paused video or a scanned PDF. Your Mac reads them itself, without sending the snip anywhere.
 
-In the editor, drag to draw. Hold Shift to keep lines and arrows to 45° steps, and boxes and highlights square. For text, click where it goes, type, and press Return. **Outline** puts white, red or black around boxes, lines, arrows and text, so they stand out on any snip, and **Size** sets text from 10 to 16 points.
+In the editor, pick a tool on the left and drag across the snip to draw. Hold Shift to keep lines and arrows to 45° steps, and boxes, highlights and blurs square. **Blur** blurs the area you drag across, to hide a name or a password. For text, click where it goes, type, and press Return. With the **Eraser**, click a shape to take it away: the one under the pointer fades first. **Outline** puts white, red or black around boxes, lines, arrows and text, so they stand out on any snip, and **Text Size** sets text from 10 to 24 points.
 
 | Keys | What they do |
 |---|---|
-| R, L, A, H, T | Box, line, arrow, highlight, text |
-| 1, 2, 3, 4 | Red, green, blue, yellow |
+| R, L, A, H, B, T | Box, line, arrow, highlight, blur, text |
+| E | Eraser |
+| 1 to 6 | Red, green, blue, yellow, black, white |
 | W | Thin or thick lines |
 | ⌘Z, ⇧⌘Z | Undo, redo |
 | ⌘C | Copy it with its shapes. The editor stays open. |

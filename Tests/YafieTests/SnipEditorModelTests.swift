@@ -1,6 +1,7 @@
 import AppKit
 import CoreGraphics
 import Foundation
+import SwiftUI
 import Testing
 @testable import Yafie
 
@@ -134,8 +135,110 @@ struct SnipEditorModelTests {
     }
 
     @Test func aTextSizeThatsNoLongerOfferedGoesBackTo16() {
-        settings.set("24", forKey: "snipTextSize")
+        settings.set("18", forKey: "snipTextSize")
         #expect(model().textSize == 16)
+        settings.set("24", forKey: "snipTextSize")
+        #expect(model().textSize == 24)
+    }
+
+    @Test func theBlurToolBlursTheAreaDraggedAcross() throws {
+        let model = SnipEditorModel(snip: Snip(image: SnipImages.halves(), scale: 2), defaults: settings)
+        model.tool = .blur
+        model.outline = .black
+        draw(model, from: CGPoint(x: 150, y: 100), to: CGPoint(x: 250, y: 200))
+        let blur = try #require(model.shapes.first)
+        #expect(blur.kind == .blur && blur.outline == Annotation.Outline.none)
+        #expect(blur.rect == CGRect(x: 150, y: 100, width: 100, height: 100))
+        // The sharp edge down the middle of the snip is gray where it's blurred
+        let gray = try #require(model.rendered().map { SnipImages.pixel($0, 198, 150)[0] })
+        #expect(gray > 0.1 && gray < 0.9)
+    }
+
+    @Test func theEraserTakesAwayTheShapeClickedOn() {
+        let model = model()
+        draw(model, from: CGPoint(x: 100, y: 50), to: CGPoint(x: 300, y: 250))
+        model.tool = .line
+        draw(model, from: CGPoint(x: 20, y: 280), to: CGPoint(x: 380, y: 280))
+        model.tool = .eraser
+        model.erase(at: CGPoint(x: 200, y: 284), slop: 8)
+        #expect(model.shapes.map(\.kind) == [.box])
+        // A box is only its edges
+        model.erase(at: CGPoint(x: 200, y: 150), slop: 8)
+        #expect(model.shapes.count == 1)
+        model.erase(at: CGPoint(x: 104, y: 150), slop: 8)
+        #expect(model.shapes.isEmpty && !model.hasUnsavedShapes)
+        model.undo()
+        model.undo()
+        #expect(model.shapes.map(\.kind) == [.box, .line] && model.hasUnsavedShapes)
+    }
+
+    @Test func theEraserTakesTheShapeOnTop() {
+        let model = model()
+        model.tool = .line
+        draw(model, from: CGPoint(x: 10, y: 100), to: CGPoint(x: 390, y: 100))
+        model.color = .blue
+        draw(model, from: CGPoint(x: 200, y: 10), to: CGPoint(x: 200, y: 290))
+        model.tool = .eraser
+        model.erase(at: CGPoint(x: 200, y: 100), slop: 8)
+        #expect(model.shapes.map(\.color) == [.red])
+    }
+
+    @Test func theEraserTakesText() {
+        let model = model()
+        model.tool = .text
+        model.beginText(at: CGPoint(x: 40, y: 30))
+        model.updateText("Look here")
+        model.commitText()
+        model.tool = .eraser
+        model.erase(at: CGPoint(x: 60, y: 45), slop: 8)
+        #expect(model.shapes.isEmpty)
+    }
+
+    @Test func aClickWithTheEraserOnNothingChangesNothing() {
+        let model = model()
+        draw(model, from: CGPoint(x: 100, y: 50), to: CGPoint(x: 300, y: 250))
+        model.kept()
+        model.tool = .eraser
+        model.erase(at: CGPoint(x: 20, y: 20), slop: 8)
+        #expect(model.shapes.count == 1 && !model.hasUnsavedShapes)
+        model.undo()
+        #expect(model.shapes.isEmpty && !model.canUndo)
+    }
+
+    @Test func theEraserPointsAtWhatAClickWouldTake() {
+        let model = model()
+        draw(model, from: CGPoint(x: 100, y: 50), to: CGPoint(x: 300, y: 250))
+        model.point(at: CGPoint(x: 100, y: 150), slop: 8)
+        #expect(model.erasable == nil)  // only the eraser points
+        model.tool = .eraser
+        #expect(model.erasable == 0)
+        model.point(at: CGPoint(x: 200, y: 150), slop: 8)
+        #expect(model.erasable == nil)
+        model.point(at: CGPoint(x: 300, y: 150), slop: 8)
+        #expect(model.erasable == 0)
+        model.erase(at: CGPoint(x: 300, y: 150), slop: 8)
+        #expect(model.erasable == nil)
+        model.undo()
+        #expect(model.erasable == 0)
+        model.point(at: nil, slop: 8)
+        #expect(model.erasable == nil)
+    }
+
+    @Test func theNextSnipStartsWithTheLastToolThatDraws() {
+        let first = model()
+        first.tool = .arrow
+        first.tool = .eraser
+        #expect(model().tool == .arrow)
+        first.tool = .blur
+        #expect(model().tool == .blur)
+    }
+
+    @Test func blursHaveNoColorAndTheEraserNoOptions() {
+        #expect(!SnipTool.blur.hasColor && !SnipTool.blur.hasThickness && !SnipTool.blur.hasOutline)
+        #expect(!SnipTool.eraser.hasColor && !SnipTool.eraser.hasThickness && !SnipTool.eraser.hasOutline)
+        #expect(SnipTool.text.hasColor && !SnipTool.text.hasThickness && SnipTool.text.hasOutline)
+        #expect(SnipTool.highlight.hasColor && !SnipTool.highlight.hasOutline)
+        #expect(SnipTool.allCases.filter(\.hasThickness) == [.box, .line, .arrow])
     }
 
     @Test func rendersItsShapesAtFullResolution() {
@@ -246,6 +349,12 @@ struct SnipMenuTests {
         #expect(quit.keyEquivalent.isEmpty)
     }
 
+    @Test func everySingleKeyIsDifferent() {
+        let keys = SnipTool.allCases.map(\.key) + Annotation.Color.allCases.map(\.key) + ["w"]
+        #expect(Set(keys).count == keys.count)
+        #expect(Annotation.Color.allCases.map(\.key) == ["1", "2", "3", "4", "5", "6"])
+    }
+
     @Test func singleKeysOnlyWhileTurnedOn() throws {
         _ = NSApplication.shared
         let menu = SnipMenu.make()
@@ -257,5 +366,17 @@ struct SnipMenuTests {
         #expect(box.keyEquivalent == "r" && box.keyEquivalentModifierMask.isEmpty)
         SnipMenu.setSingleKeys(false)
         #expect(box.keyEquivalent.isEmpty)
+    }
+}
+
+@MainActor
+struct SnipSidebarTests {
+    @Test func fitsTheWindowsSmallestSize() {
+        _ = NSApplication.shared
+        let model = SnipEditorModel(snip: Snip(image: SnipImages.plain(), scale: 2), defaults: MemorySettings())
+        let size = NSHostingView(rootView: SnipSidebar(model: model, copy: {}, save: {})).fittingSize
+        print("The snip editor's sidebar takes \(size.width) by \(size.height) points")
+        #expect(size.width <= SnipEditorLayout.sidebarWidth)
+        #expect(size.height + SnipEditorLayout.chrome.height <= SnipEditorLayout.minimumHeight)
     }
 }

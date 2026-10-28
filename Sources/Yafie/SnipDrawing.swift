@@ -1,4 +1,5 @@
 import CoreGraphics
+import CoreImage
 import CoreText
 import Foundation
 import ImageIO
@@ -44,10 +45,10 @@ struct Snip {
 
 /// One shape on a snip, in the snip's pixels: origin at the top left, y down
 struct Annotation: Equatable, Sendable {
-    enum Kind: String, CaseIterable, Sendable { case box, line, arrow, highlight, text }
+    enum Kind: String, CaseIterable, Sendable { case box, line, arrow, highlight, blur, text }
 
     enum Color: String, CaseIterable, Sendable {
-        case red, green, blue, yellow
+        case red, green, blue, yellow, black, white
 
         /// Fixed sRGB values, so the saved file matches the editor in light and dark mode
         var cgColor: CGColor {
@@ -56,11 +57,14 @@ struct Annotation: Equatable, Sendable {
             case .green: CGColor(srgbRed: 0.2, green: 0.78, blue: 0.35, alpha: 1)
             case .blue: CGColor(srgbRed: 0, green: 0.48, blue: 1, alpha: 1)
             case .yellow: CGColor(srgbRed: 1, green: 0.8, blue: 0, alpha: 1)
+            case .black: CGColor(srgbRed: 0, green: 0, blue: 0, alpha: 1)
+            case .white: CGColor(srgbRed: 1, green: 1, blue: 1, alpha: 1)
             }
         }
     }
 
-    /// Around a box, line, arrow or text, so it stands out on dark snips and light ones. Highlights have none.
+    /// Around a box, line, arrow or text, so it stands out on dark snips and light ones. Highlights and blurs have
+    /// none.
     enum Outline: String, CaseIterable, Sendable {
         case none, white, red, black
 
@@ -84,7 +88,7 @@ struct Annotation: Equatable, Sendable {
     }
 
     /// Text sizes to choose from, in points
-    static let textSizes: [CGFloat] = [10, 12, 14, 16]
+    static let textSizes: [CGFloat] = [10, 12, 14, 16, 20, 24]
     /// How far an outline shows past a box's, line's or arrow's edge, in points
     static let outlineWidth: CGFloat = 1.5
     /// The outline drawn along text's edges, in points. Half of it shows, the rest is under the letters: enough to set
@@ -102,10 +106,12 @@ struct Annotation: Equatable, Sendable {
     /// How much of the color a highlight lays down. Multiply, a real marker's look, barely shows on dark-mode
     /// screenshots, so highlights are plain translucent color.
     static let highlightOpacity: CGFloat = 0.4
+    /// How far a blur spreads each pixel, in points: far enough that no word under it can be read
+    static let blurRadius: CGFloat = 10
 
     var kind: Kind
     var color: Color
-    /// Line width. A highlight is filled, and text has a size of its own.
+    /// Line width. Highlights and blurs are filled, and text has a size of its own.
     var thickness: Thickness
     /// A text's top left
     var start: CGPoint
@@ -115,16 +121,16 @@ struct Annotation: Equatable, Sendable {
     var textSize: CGFloat = 16
     var outline = Outline.none
 
-    /// A box's or highlight's rectangle
+    /// A box's, highlight's or blur's rectangle
     var rect: CGRect {
         CGRect(x: min(start.x, end.x), y: min(start.y, end.y), width: abs(end.x - start.x), height: abs(end.y - start.y))
     }
 
-    /// Shift: lines and arrows at multiples of 45°, boxes and highlights square
+    /// Shift: lines and arrows at multiples of 45°, boxes, highlights and blurs square
     static func constrained(_ kind: Kind, from start: CGPoint, to end: CGPoint) -> CGPoint {
         let dx = end.x - start.x, dy = end.y - start.y
         switch kind {
-        case .box, .highlight:
+        case .box, .highlight, .blur:
             let side = max(abs(dx), abs(dy))
             return CGPoint(x: start.x + (dx < 0 ? -side : side), y: start.y + (dy < 0 ? -side : side))
         case .text:
@@ -152,25 +158,112 @@ struct Annotation: Equatable, Sendable {
                     right: CGPoint(x: base.x + uy * halfWidth, y: base.y - ux * halfWidth),
                     shaftEnd: length > headLength ? middle : nil)
     }
+
+    /// Whether a click at that point, in the snip's pixels, lands on the shape: on a box's edges, along a line or an
+    /// arrow, or anywhere on a highlight, blur or text. Slop, in pixels, makes thin lines easier to hit.
+    func isHit(by point: CGPoint, scale: CGFloat, slop: CGFloat) -> Bool {
+        let edge = outline == .none ? 0 : Self.outlineWidth * scale
+        let reach = thickness.width * scale / 2 + edge + slop
+        switch kind {
+        case .box:
+            return Self.distance(from: point, toEdgesOf: rect) <= reach
+        case .line:
+            return Self.distance(from: point, toLineFrom: start, to: end) <= reach
+        case .arrow:
+            if Self.distance(from: point, toLineFrom: start, to: end) <= reach { return true }
+            guard let head = Self.head(from: start, to: end, length: thickness.headLength * scale) else { return false }
+            let corners = [head.tip, head.left, head.right]
+            return Self.isInside(point, corners) || corners.indices.contains {
+                Self.distance(from: point, toLineFrom: corners[$0], to: corners[($0 + 1) % 3]) <= edge + slop
+            }
+        case .highlight, .blur:
+            return rect.insetBy(dx: -slop, dy: -slop).contains(point)
+        case .text:
+            return SnipRenderer.textBounds(self, scale: scale).insetBy(dx: -slop, dy: -slop).contains(point)
+        }
+    }
+
+    /// Which shape a click at that point lands on: the one on top, as they're drawn
+    static func topmost(at point: CGPoint, in shapes: [Annotation], scale: CGFloat, slop: CGFloat) -> Int? {
+        SnipRenderer.drawingOrder(shapes).last { shapes[$0].isHit(by: point, scale: scale, slop: slop) }
+    }
+
+    /// To the nearest edge, from inside the rectangle or out
+    private static func distance(from point: CGPoint, toEdgesOf rect: CGRect) -> CGFloat {
+        if rect.contains(point) {
+            return min(point.x - rect.minX, rect.maxX - point.x, point.y - rect.minY, rect.maxY - point.y)
+        }
+        return hypot(max(rect.minX - point.x, 0, point.x - rect.maxX), max(rect.minY - point.y, 0, point.y - rect.maxY))
+    }
+
+    private static func distance(from point: CGPoint, toLineFrom start: CGPoint, to end: CGPoint) -> CGFloat {
+        let dx = end.x - start.x, dy = end.y - start.y
+        let squared = dx * dx + dy * dy
+        // How far along the line the nearest point is, from 0 at the start to 1 at the end
+        let along = squared > 0 ? min(max(((point.x - start.x) * dx + (point.y - start.y) * dy) / squared, 0), 1) : 0
+        return hypot(point.x - (start.x + along * dx), point.y - (start.y + along * dy))
+    }
+
+    private static func isInside(_ point: CGPoint, _ triangle: [CGPoint]) -> Bool {
+        let sides = triangle.indices.map { index in
+            let (a, b) = (triangle[index], triangle[(index + 1) % 3])
+            return (b.x - a.x) * (point.y - a.y) - (b.y - a.y) * (point.x - a.x)
+        }
+        return sides.allSatisfy { $0 >= 0 } || sides.allSatisfy { $0 <= 0 }
+    }
 }
 
 enum SnipRenderer {
+    /// How much of a shape shows while the eraser points at it
+    static let fadedOpacity: CGFloat = 0.3
+
     /// Draws the shapes into a context whose units are the snip's pixels, origin at the top left. The editor's canvas
     /// and the export both use this, so what's saved is what was on screen.
-    /// - Parameter scale: the snip's pixels per point, 2 from a Retina display
-    static func draw(_ annotations: [Annotation], in context: CGContext, scale: CGFloat) {
-        // Highlights first, so they tint the snip but never the other shapes
-        for highlight in annotations where highlight.kind == .highlight {
-            let color = highlight.color.cgColor
-            context.setFillColor(color.copy(alpha: Annotation.highlightOpacity) ?? color)
-            context.fill(highlight.rect)
-        }
-        // Each with its outline right under it, so a later shape's outline sets it off from earlier ones
-        for annotation in annotations where annotation.kind != .highlight {
-            if annotation.kind == .text {
-                drawText(annotation, in: context, scale: scale)
-                continue
+    /// - Parameters:
+    ///   - scale: the snip's pixels per point, 2 from a Retina display
+    ///   - blurred: the snip blurred all over, from blur(_:scale:), which shows through blurs
+    ///   - faded: the shape the eraser points at, drawn faint
+    static func draw(_ annotations: [Annotation], in context: CGContext, scale: CGFloat, blurred: CGImage? = nil,
+                     faded: Int? = nil) {
+        for index in drawingOrder(annotations) {
+            if index == faded {
+                context.saveGState()
+                context.setAlpha(fadedOpacity)
+                context.beginTransparencyLayer(auxiliaryInfo: nil)
             }
+            draw(annotations[index], in: context, scale: scale, blurred: blurred)
+            if index == faded {
+                context.endTransparencyLayer()
+                context.restoreGState()
+            }
+        }
+    }
+
+    /// Blurs first, then highlights, so they change the snip but never the other shapes. Then the rest in order.
+    static func drawingOrder(_ annotations: [Annotation]) -> [Int] {
+        let layer: (Annotation.Kind) -> Int = { $0 == .blur ? 0 : $0 == .highlight ? 1 : 2 }
+        return (0...2).flatMap { level in annotations.indices.filter { layer(annotations[$0].kind) == level } }
+    }
+
+    private static func draw(_ annotation: Annotation, in context: CGContext, scale: CGFloat, blurred: CGImage?) {
+        switch annotation.kind {
+        case .blur:
+            guard let blurred else { return }
+            context.saveGState()
+            context.clip(to: annotation.rect)
+            // Upright, since y runs down
+            context.translateBy(x: 0, y: CGFloat(blurred.height))
+            context.scaleBy(x: 1, y: -1)
+            context.draw(blurred, in: CGRect(x: 0, y: 0, width: blurred.width, height: blurred.height))
+            context.restoreGState()
+        case .highlight:
+            let color = annotation.color.cgColor
+            context.setFillColor(color.copy(alpha: Annotation.highlightOpacity) ?? color)
+            context.fill(annotation.rect)
+        case .text:
+            drawText(annotation, in: context, scale: scale)
+        case .box, .line, .arrow:
+            // With its outline right under it, so a later shape's outline sets it off from earlier ones
             if let outline = annotation.outline.cgColor {
                 drawShape(annotation, color: outline, widenedBy: Annotation.outlineWidth * scale, in: context,
                           scale: scale)
@@ -205,7 +298,7 @@ enum SnipRenderer {
             } else {
                 context.fillPath()
             }
-        case .text, .highlight:
+        case .text, .highlight, .blur:
             break
         }
     }
@@ -242,18 +335,45 @@ enum SnipRenderer {
             ?? CTFontCreateWithName("Helvetica-Bold" as CFString, size * scale, nil)
     }
 
+    /// Where a text's letters go, in the snip's pixels: from its top left, as wide as its line and as tall as its font
+    static func textBounds(_ annotation: Annotation, scale: CGFloat) -> CGRect {
+        let font = textFont(size: annotation.textSize, scale: scale)
+        let attributes = [NSAttributedString.Key(kCTFontAttributeName as String): font]
+        let line = CTLineCreateWithAttributedString(NSAttributedString(string: annotation.text, attributes: attributes))
+        let width = CTLineGetTypographicBounds(line, nil, nil, nil)
+        return CGRect(x: annotation.start.x, y: annotation.start.y, width: CGFloat(width),
+                      height: CTFontGetAscent(font) + CTFontGetDescent(font))
+    }
+
+    /// The snip blurred all over, which blurs show through, so overlapping ones match. Its edges blur with copies of
+    /// themselves, so they don't fade.
+    static func blur(_ snip: CGImage, scale: CGFloat) -> CGImage? {
+        let image = CIImage(cgImage: snip)
+        guard let filter = CIFilter(name: "CIGaussianBlur", parameters: [
+            kCIInputImageKey: image.clampedToExtent(), kCIInputRadiusKey: Annotation.blurRadius * scale,
+        ]), let blurred = filter.outputImage else { return nil }
+        return CIContext().createCGImage(blurred, from: image.extent, format: .RGBA8, colorSpace: colorSpace(of: snip))
+    }
+
     /// The snip with its shapes at full resolution, in the snip's own color space so nothing shifts
-    static func render(_ snip: CGImage, _ annotations: [Annotation], scale: CGFloat) -> CGImage? {
-        let space = snip.colorSpace.flatMap { $0.model == .rgb ? $0 : nil } ?? CGColorSpace(name: CGColorSpace.sRGB)!
+    /// - Parameter blurred: the snip blurred all over, if it's been blurred already
+    static func render(_ snip: CGImage, _ annotations: [Annotation], scale: CGFloat,
+                       blurred: CGImage? = nil) -> CGImage? {
         guard let context = CGContext(data: nil, width: snip.width, height: snip.height, bitsPerComponent: 8,
-                                      bytesPerRow: 0, space: space,
+                                      bytesPerRow: 0, space: colorSpace(of: snip),
                                       bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return nil }
         let height = CGFloat(snip.height)
         context.draw(snip, in: CGRect(x: 0, y: 0, width: CGFloat(snip.width), height: height))
         context.translateBy(x: 0, y: height)
         context.scaleBy(x: 1, y: -1)
-        draw(annotations, in: context, scale: scale)
+        let blurs = annotations.contains { $0.kind == .blur }
+        draw(annotations, in: context, scale: scale, blurred: blurred ?? (blurs ? blur(snip, scale: scale) : nil))
         return context.makeImage()
+    }
+
+    /// The snip's own, or sRGB for a snip that isn't in color
+    private static func colorSpace(of snip: CGImage) -> CGColorSpace {
+        snip.colorSpace.flatMap { $0.model == .rgb ? $0 : nil } ?? CGColorSpace(name: CGColorSpace.sRGB)!
     }
 
     /// A PNG, or a TIFF for the clipboard, that keeps the dpi, so apps that read it show the snip at its on-screen size
@@ -296,19 +416,27 @@ struct SnipFit: Equatable {
     }
 }
 
-/// The editor window's measurements, in points
+/// The editor window's measurements under its title bar, in points: the sidebar, then the snip, with blue around both
 enum SnipEditorLayout {
-    static let toolbarHeight: CGFloat = 44
-    /// Room for the whole toolbar
-    static let minimumWidth: CGFloat = 900
-    static let minimumCanvasHeight: CGFloat = 120
+    /// Blue around the sidebar and the snip, with room for their outlines and shadows
+    static let margin: CGFloat = 14
+    /// Under the title bar, which is blue too
+    static let topMargin: CGFloat = 4
+    static let sidebarWidth: CGFloat = 148
+    /// Room for all of the sidebar
+    static let minimumHeight: CGFloat = 570
+    static let minimumCanvasWidth: CGFloat = 200
 
-    /// The window's content size for a snip: actual size under the toolbar, shrunk to fit 90% of the display's
-    /// visible area, and never narrower than the toolbar
+    /// Beside and above and below the snip at actual size
+    static let chrome = CGSize(width: 3 * margin + sidebarWidth, height: topMargin + margin)
+    static let minimumWidth = chrome.width + minimumCanvasWidth
+
+    /// The window's content size for a snip: actual size beside the sidebar, shrunk to fit 90% of the display's
+    /// visible area, and never shorter than the sidebar
     static func contentSize(for snip: CGSize, on visible: CGRect) -> CGSize {
-        let room = CGSize(width: visible.width * 0.9, height: visible.height * 0.9 - toolbarHeight)
+        let room = CGSize(width: visible.width * 0.9 - chrome.width, height: visible.height * 0.9 - chrome.height)
         let fit = min(1, room.width / snip.width, room.height / snip.height)
-        return CGSize(width: max((snip.width * fit).rounded(), minimumWidth),
-                      height: max((snip.height * fit).rounded(), minimumCanvasHeight) + toolbarHeight)
+        return CGSize(width: chrome.width + max((snip.width * fit).rounded(), minimumCanvasWidth),
+                      height: max(chrome.height + (snip.height * fit).rounded(), minimumHeight))
     }
 }

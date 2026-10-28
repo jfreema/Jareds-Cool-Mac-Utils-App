@@ -2,7 +2,7 @@ import AppKit
 import SwiftUI
 
 /// Bubble pop: saturated blue, white cards with thick ink outlines and hard offset shadows, chunky rounded type. The
-/// menu and the tuner, drum machine and keyboard cleaning windows share it.
+/// menu, the snip editor and the tuner, drum machine and keyboard cleaning windows share it.
 enum Bubble {
     static let blue = Color(red: 0.17, green: 0.37, blue: 0.94)
     static let ink = Color(red: 0.09, green: 0.12, blue: 0.24)
@@ -37,8 +37,8 @@ extension View {
     }
 }
 
-extension NSPanel {
-    /// Blue to the edges, under a see-through title bar that keeps the close button. Light, so the system controls
+extension NSWindow {
+    /// Blue to the edges, under a see-through title bar that keeps the window's buttons. Light, so the system controls
     /// on its white cards don't turn dark in Dark Mode.
     func useBubbleChrome() {
         styleMask.insert(.fullSizeContentView)
