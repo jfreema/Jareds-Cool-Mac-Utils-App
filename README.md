@@ -107,7 +107,7 @@ Press ⌃⌥P to snip part of the screen, then copy it, save it, mark it up with
 
 In the editor, pick a tool on the left and drag across the snip to draw. Hold Shift to keep lines and arrows to 45° steps, and boxes, highlights and blurs square. Shapes sit on a soft shadow, so they stand out on any snip, and **Opacity** makes them see-through, down to 10%. **Blur** blurs the area you drag across, to hide a name or a password. For text, click where it goes, type, and press Return. It goes on a rounded label in the color, and **Text Size** sets it from 10 to 24 points. With the **Eraser**, click a shape to take it away: the one under the pointer fades first.
 
-To change a shape, click it. Drag it to move it, drag its dots to resize it, pick another color, opacity, thickness or text size for it, or press Delete.
+To change a shape, click it. The one you just drew is picked up already, so you can change it straight away. Drag it to move it, drag its dots to resize it, pick another color, opacity, thickness or text size for it, or press Delete.
 
 | Keys | What they do |
 |---|---|

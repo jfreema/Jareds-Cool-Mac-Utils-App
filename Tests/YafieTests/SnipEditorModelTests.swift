@@ -87,11 +87,16 @@ struct SnipEditorModelTests {
         #expect(!model.hasUnsavedShapes)
     }
 
-    @Test func switchingThicknessLeavesDrawnShapesAlone() {
+    @Test func theShapeJustDrawnTakesTheOptionsUntilAClickElsewhere() {
         let model = model()
         draw(model, from: CGPoint(x: 10, y: 10), to: CGPoint(x: 100, y: 100))
+        #expect(model.selected == 0)
         model.thickness = .thick
-        #expect(model.shapes.first?.thickness == .thin)
+        model.opacity = 0.5
+        #expect(model.shapes.first?.thickness == .thick && model.shapes.first?.opacity == 0.5)
+        draw(model, from: CGPoint(x: 200, y: 200), to: CGPoint(x: 200, y: 200))
+        model.thickness = .thin
+        #expect(model.selected == nil && model.shapes.first?.thickness == .thick)
     }
 
     @Test func theHighlighterHasItsOwnColorStartingYellow() {
@@ -210,6 +215,7 @@ struct SnipEditorModelTests {
         let model = model()
         model.tool = .line
         draw(model, from: CGPoint(x: 10, y: 100), to: CGPoint(x: 390, y: 100))
+        draw(model, from: CGPoint(x: 5, y: 5), to: CGPoint(x: 5, y: 5))  // a click, which lets go of it
         model.color = .blue
         draw(model, from: CGPoint(x: 200, y: 10), to: CGPoint(x: 200, y: 290))
         model.tool = .eraser
@@ -462,7 +468,8 @@ struct SnipSelectionTests {
     @Test func aDragOnNothingDrawsWithTheTool() {
         let model = boxed(.line)
         drag(model, from: CGPoint(x: 20, y: 280), to: CGPoint(x: 380, y: 280))
-        #expect(model.shapes.map(\.kind) == [.box, .line] && model.selected == nil)
+        // Picked up, so the options change it straight away
+        #expect(model.shapes.map(\.kind) == [.box, .line] && model.selected == 1)
     }
 
     @Test func aClickOnAShapeSelectsItAndChangesNothing() {
@@ -552,7 +559,7 @@ struct SnipSelectionTests {
         drag(model, from: CGPoint(x: 20, y: 20), to: CGPoint(x: 200, y: 60))
         model.tool = .arrow
         drag(model, from: CGPoint(x: 100, y: 40), to: CGPoint(x: 300, y: 200))
-        #expect(model.shapes.map(\.kind) == [.highlight, .arrow] && model.selected == nil)
+        #expect(model.shapes.map(\.kind) == [.highlight, .arrow] && model.selected == 1)
         model.point(at: CGPoint(x: 60, y: 40), reach: reach)
         #expect(model.hovered == nil)
         model.point(at: CGPoint(x: 60, y: 57), reach: reach)
@@ -608,6 +615,22 @@ struct SnipSelectionTests {
         #expect(model.shapes.map(\.text) == ["One", "Two"] && !model.isEditingText)
     }
 
+    @Test func theOpacitySliderChangesTheShapeJustMade() {
+        let model = model(.arrow)
+        drag(model, from: CGPoint(x: 20, y: 200), to: CGPoint(x: 300, y: 60))
+        model.slideOpacity(to: 0.6, ended: false)
+        model.slideOpacity(to: 0.4, ended: true)
+        #expect(model.shapes.map(\.opacity) == [0.4] && model.selected == 0)
+        // And the text just placed
+        model.tool = .text
+        click(model, at: CGPoint(x: 40, y: 260))
+        model.updateText("Here")
+        model.commitText()
+        #expect(model.selected == 1)
+        model.slideOpacity(to: 0.7, ended: true)
+        #expect(model.shapes.map(\.opacity) == [0.4, 0.7])
+    }
+
     @Test func theOpacitySliderChangesTheSelectedShapeInOneStep() {
         let model = boxed()
         click(model, at: CGPoint(x: 102, y: 150))
@@ -643,6 +666,7 @@ struct SnipSelectionTests {
     @Test func deleteTakesAwayTheSelectedShape() {
         let model = boxed()
         drag(model, from: CGPoint(x: 20, y: 20), to: CGPoint(x: 60, y: 40))
+        click(model, at: CGPoint(x: 200, y: 150))
         model.deleteSelected()
         #expect(model.shapes.count == 2)
         click(model, at: CGPoint(x: 102, y: 150))

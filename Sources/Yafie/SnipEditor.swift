@@ -344,7 +344,8 @@ final class SnipEditorModel {
     private(set) var draft: Annotation?
     /// Shapes added, changed or taken away since the last Copy or Save
     private(set) var isChanged = false
-    /// The shape picked up, with its handles showing, which the options and Delete change
+    /// The shape picked up, with its handles showing, which the options and Delete change: the one clicked, or the
+    /// one just drawn
     private(set) var selected: Int?
     /// The shape under the pointer that the eraser would take, or a press pick up, and the selected shape's handle
     /// under it
@@ -648,8 +649,11 @@ final class SnipEditorModel {
         add(shape)
     }
 
+    /// A new shape is picked up, so the options change it straight away, until a press elsewhere lets go of it
     private func add(_ shape: Annotation) {
         change(to: shapes + [shape])
+        selected = shapes.count - 1
+        aim()
     }
 
     /// Takes away the shape on top at that pixel, as a step to undo
