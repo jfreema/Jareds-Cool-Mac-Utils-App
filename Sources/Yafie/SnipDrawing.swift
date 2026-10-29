@@ -1,3 +1,4 @@
+import AppKit
 import CoreGraphics
 import CoreImage
 import CoreText
@@ -61,19 +62,12 @@ struct Annotation: Equatable, Sendable {
             case .white: CGColor(srgbRed: 1, green: 1, blue: 1, alpha: 1)
             }
         }
-    }
 
-    /// Around a box, line, arrow or text, so it stands out on dark snips and light ones. Highlights and blurs have
-    /// none.
-    enum Outline: String, CaseIterable, Sendable {
-        case none, white, red, black
-
-        var cgColor: CGColor? {
+        /// The letters on a text's label in this color: white, or the menu's dark ink on a light color
+        var labelInk: CGColor {
             switch self {
-            case .none: nil
-            case .white: CGColor(gray: 1, alpha: 1)
-            case .red: Color.red.cgColor
-            case .black: CGColor(gray: 0, alpha: 1)
+            case .red, .blue, .black: CGColor(srgbRed: 1, green: 1, blue: 1, alpha: 1)
+            case .green, .yellow, .white: CGColor(srgbRed: 0.09, green: 0.12, blue: 0.24, alpha: 1)
             }
         }
     }
@@ -84,25 +78,18 @@ struct Annotation: Equatable, Sendable {
         /// Line width, in points
         var width: CGFloat { self == .thin ? 2 : 5 }
         /// Arrowhead length, in points. A thick head is shorter for its width, so it doesn't swamp the arrow.
-        var headLength: CGFloat { self == .thin ? 10 : 18 }
+        var headLength: CGFloat { self == .thin ? 12 : 20 }
     }
 
     /// Text sizes to choose from, in points
     static let textSizes: [CGFloat] = [10, 12, 14, 16, 20, 24]
-    /// How far an outline shows past a box's, line's or arrow's edge, in points
-    static let outlineWidth: CGFloat = 1.5
-    /// The outline drawn along text's edges, in points. Half of it shows, the rest is under the letters: enough to set
-    /// them off without filling in their holes.
-    static let textOutlineWidth: CGFloat = 1.5
-
-    struct Head: Equatable {
-        var tip: CGPoint
-        var left: CGPoint
-        var right: CGPoint
-        /// Where the shaft stops, inside the head so the tip stays sharp. Nil when the head is the whole arrow.
-        var shaftEnd: CGPoint?
-    }
-
+    /// A soft shadow under boxes, lines, arrows and text labels, so they stand out on any snip: how far down it falls
+    /// and how far it spreads, in points, and how dark it is
+    static let shadowOffset: CGFloat = 1.5
+    static let shadowBlur: CGFloat = 4
+    static let shadowOpacity: CGFloat = 0.35
+    /// How round a box's, highlight's or blur's corners are, in points
+    static let cornerRadius: CGFloat = 5
     /// How much of the color a highlight lays down. Multiply, a real marker's look, barely shows on dark-mode
     /// screenshots, so highlights are plain translucent color.
     static let highlightOpacity: CGFloat = 0.4
@@ -113,17 +100,21 @@ struct Annotation: Equatable, Sendable {
     var color: Color
     /// Line width. Highlights and blurs are filled, and text has a size of its own.
     var thickness: Thickness
-    /// A text's top left
+    /// A text's top left, its label's
     var start: CGPoint
     var end: CGPoint
     var text = ""
     /// In points
     var textSize: CGFloat = 16
-    var outline = Outline.none
 
     /// A box's, highlight's or blur's rectangle
     var rect: CGRect {
         CGRect(x: min(start.x, end.x), y: min(start.y, end.y), width: abs(end.x - start.x), height: abs(end.y - start.y))
+    }
+
+    /// Room around a text's letters on its label, in points
+    static func labelPadding(_ textSize: CGFloat) -> CGSize {
+        CGSize(width: (0.45 * textSize).rounded(), height: (0.2 * textSize).rounded())
     }
 
     /// Shift: lines and arrows at multiples of 45°, boxes, highlights and blurs square
@@ -143,49 +134,103 @@ struct Annotation: Equatable, Sendable {
         }
     }
 
-    /// A triangle 0.9 times as wide as it's long, shrunk to fit a shorter arrow
-    static func head(from start: CGPoint, to end: CGPoint, length full: CGFloat) -> Head? {
+    /// A tapered arrow's outline: thin at the tail, wider where the shaft meets the head, and the head out to the tip
+    /// at the end. A short arrow is all head, smaller. Nil when it has no length.
+    /// - Parameters:
+    ///   - width: the line width, in pixels
+    ///   - full: the head's length, in pixels, when there's room. It's 0.9 times as wide.
+    static func arrowOutline(from start: CGPoint, to end: CGPoint, width: CGFloat,
+                             headLength full: CGFloat) -> [CGPoint]? {
         let dx = end.x - start.x, dy = end.y - start.y
         let length = hypot(dx, dy)
         guard length > 0 else { return nil }
         let headLength = min(full, length)
-        let halfWidth = 0.45 * headLength
-        let (ux, uy) = (dx / length, dy / length)
-        let base = CGPoint(x: end.x - ux * headLength, y: end.y - uy * headLength)
-        let middle = CGPoint(x: end.x - ux * headLength / 2, y: end.y - uy * headLength / 2)
-        return Head(tip: end,
-                    left: CGPoint(x: base.x - uy * halfWidth, y: base.y + ux * halfWidth),
-                    right: CGPoint(x: base.x + uy * halfWidth, y: base.y - ux * halfWidth),
-                    shaftEnd: length > headLength ? middle : nil)
+        let headHalf = 0.45 * headLength
+        // So far along the arrow, and so far to one side of it
+        func point(_ along: CGFloat, _ side: CGFloat) -> CGPoint {
+            CGPoint(x: start.x + (dx * along - dy * side) / length, y: start.y + (dy * along + dx * side) / length)
+        }
+        let base = length - headLength
+        let head = [point(base, headHalf), end, point(base, -headHalf)]
+        guard base > 0 else { return head }
+        let neck = min(0.75 * width, 0.6 * headHalf), tail = 0.25 * width
+        return [point(0, tail), point(base, neck)] + head + [point(base, -neck), point(0, -tail)]
     }
 
     /// Whether a click at that point, in the snip's pixels, lands on the shape: on a box's edges, along a line or an
-    /// arrow, or anywhere on a highlight, blur or text. Slop, in pixels, makes thin lines easier to hit.
-    func isHit(by point: CGPoint, scale: CGFloat, slop: CGFloat) -> Bool {
-        let edge = outline == .none ? 0 : Self.outlineWidth * scale
-        let reach = thickness.width * scale / 2 + edge + slop
+    /// arrow, or anywhere on a highlight, blur or text label. Slop, in pixels, makes thin lines easier to hit. With
+    /// edgesOnly, a highlight or a blur is only hit near its edges too, so a drag inside one can draw on it.
+    func isHit(by point: CGPoint, scale: CGFloat, slop: CGFloat, edgesOnly: Bool = false) -> Bool {
+        let reach = thickness.width * scale / 2 + slop
         switch kind {
         case .box:
             return Self.distance(from: point, toEdgesOf: rect) <= reach
         case .line:
             return Self.distance(from: point, toLineFrom: start, to: end) <= reach
         case .arrow:
-            if Self.distance(from: point, toLineFrom: start, to: end) <= reach { return true }
-            guard let head = Self.head(from: start, to: end, length: thickness.headLength * scale) else { return false }
-            let corners = [head.tip, head.left, head.right]
-            return Self.isInside(point, corners) || corners.indices.contains {
-                Self.distance(from: point, toLineFrom: corners[$0], to: corners[($0 + 1) % 3]) <= edge + slop
+            guard let outline = Self.arrowOutline(from: start, to: end, width: thickness.width * scale,
+                                                  headLength: thickness.headLength * scale) else { return false }
+            return Self.isInside(point, outline) || outline.indices.contains {
+                Self.distance(from: point, toLineFrom: outline[$0], to: outline[($0 + 1) % outline.count]) <= slop
             }
         case .highlight, .blur:
+            if edgesOnly { return Self.distance(from: point, toEdgesOf: rect) <= slop }
             return rect.insetBy(dx: -slop, dy: -slop).contains(point)
         case .text:
-            return SnipRenderer.textBounds(self, scale: scale).insetBy(dx: -slop, dy: -slop).contains(point)
+            return SnipRenderer.labelBounds(self, scale: scale).insetBy(dx: -slop, dy: -slop).contains(point)
         }
     }
 
     /// Which shape a click at that point lands on: the one on top, as they're drawn
     static func topmost(at point: CGPoint, in shapes: [Annotation], scale: CGFloat, slop: CGFloat) -> Int? {
         SnipRenderer.drawingOrder(shapes).last { shapes[$0].isHit(by: point, scale: scale, slop: slop) }
+    }
+
+    /// What's dragged to resize it: a box's, highlight's or blur's corners, clockwise from the top left, or a line's or
+    /// an arrow's ends. Text has none, since its size is the Text Size.
+    var handles: [CGPoint] {
+        switch kind {
+        case .box, .highlight, .blur:
+            let rect = rect
+            return [CGPoint(x: rect.minX, y: rect.minY), CGPoint(x: rect.maxX, y: rect.minY),
+                    CGPoint(x: rect.maxX, y: rect.maxY), CGPoint(x: rect.minX, y: rect.maxY)]
+        case .line, .arrow:
+            return [start, end]
+        case .text:
+            return []
+        }
+    }
+
+    /// The handle within reach of that point, the nearest if more are
+    func handle(near point: CGPoint, reach: CGFloat) -> Int? {
+        let distances = handles.map { hypot($0.x - point.x, $0.y - point.y) }
+        return distances.indices.filter { distances[$0] <= reach }.min { distances[$0] < distances[$1] }
+    }
+
+    /// With that handle dragged to the point, and the opposite corner or the other end where it was. Shift keeps it
+    /// square, or at 45° steps, as when it was drawn.
+    func resized(handle index: Int, to point: CGPoint, constrained: Bool) -> Annotation {
+        var shape = self
+        switch kind {
+        case .box, .highlight, .blur:
+            let opposite = handles[(index + 2) % 4]
+            shape.start = opposite
+            shape.end = constrained ? Self.constrained(kind, from: opposite, to: point) : point
+        case .line, .arrow:
+            let other = index == 0 ? end : start
+            let moved = constrained ? Self.constrained(kind, from: other, to: point) : point
+            if index == 0 { shape.start = moved } else { shape.end = moved }
+        case .text:
+            break
+        }
+        return shape
+    }
+
+    func moved(by offset: CGSize) -> Annotation {
+        var shape = self
+        shape.start = CGPoint(x: start.x + offset.width, y: start.y + offset.height)
+        shape.end = CGPoint(x: end.x + offset.width, y: end.y + offset.height)
+        return shape
     }
 
     /// To the nearest edge, from inside the rectangle or out
@@ -204,12 +249,16 @@ struct Annotation: Equatable, Sendable {
         return hypot(point.x - (start.x + along * dx), point.y - (start.y + along * dy))
     }
 
-    private static func isInside(_ point: CGPoint, _ triangle: [CGPoint]) -> Bool {
-        let sides = triangle.indices.map { index in
-            let (a, b) = (triangle[index], triangle[(index + 1) % 3])
-            return (b.x - a.x) * (point.y - a.y) - (b.y - a.y) * (point.x - a.x)
+    /// Whether a line from the point out to the right crosses the polygon's edges an odd number of times
+    private static func isInside(_ point: CGPoint, _ polygon: [CGPoint]) -> Bool {
+        var inside = false
+        for index in polygon.indices {
+            let a = polygon[index], b = polygon[(index + 1) % polygon.count]
+            if (a.y > point.y) != (b.y > point.y), point.x < a.x + (point.y - a.y) / (b.y - a.y) * (b.x - a.x) {
+                inside.toggle()
+            }
         }
-        return sides.allSatisfy { $0 >= 0 } || sides.allSatisfy { $0 <= 0 }
+        return inside
     }
 }
 
@@ -246,103 +295,144 @@ enum SnipRenderer {
     }
 
     private static func draw(_ annotation: Annotation, in context: CGContext, scale: CGFloat, blurred: CGImage?) {
+        let color = annotation.color.cgColor
+        let width = annotation.thickness.width * scale
+        let corners = Annotation.cornerRadius * scale
+        context.saveGState()
+        defer { context.restoreGState() }
         switch annotation.kind {
         case .blur:
             guard let blurred else { return }
-            context.saveGState()
-            context.clip(to: annotation.rect)
+            context.addPath(roundedRect(annotation.rect, radius: corners))
+            context.clip()
             // Upright, since y runs down
             context.translateBy(x: 0, y: CGFloat(blurred.height))
             context.scaleBy(x: 1, y: -1)
             context.draw(blurred, in: CGRect(x: 0, y: 0, width: blurred.width, height: blurred.height))
-            context.restoreGState()
         case .highlight:
-            let color = annotation.color.cgColor
             context.setFillColor(color.copy(alpha: Annotation.highlightOpacity) ?? color)
-            context.fill(annotation.rect)
+            context.addPath(roundedRect(annotation.rect, radius: corners))
+            context.fillPath()
         case .text:
-            drawText(annotation, in: context, scale: scale)
-        case .box, .line, .arrow:
-            // With its outline right under it, so a later shape's outline sets it off from earlier ones
-            if let outline = annotation.outline.cgColor {
-                drawShape(annotation, color: outline, widenedBy: Annotation.outlineWidth * scale, in: context,
-                          scale: scale)
-            }
-            drawShape(annotation, color: annotation.color.cgColor, widenedBy: 0, in: context, scale: scale)
-        }
-    }
-
-    /// A box, line or arrow in one color. Widened on every side, it's the outline that goes under it.
-    private static func drawShape(_ annotation: Annotation, color: CGColor, widenedBy extra: CGFloat,
-                                  in context: CGContext, scale: CGFloat) {
-        context.setStrokeColor(color)
-        context.setFillColor(color)
-        context.setLineWidth(annotation.thickness.width * scale + 2 * extra)
-        context.setLineCap(.round)
-        context.setLineJoin(.miter)
-        let (start, end) = (annotation.start, annotation.end)
-        switch annotation.kind {
+            // Never blank once it's placed
+            guard !annotation.text.isEmpty else { return }
+            drawLabel(annotation, in: context, scale: scale, letters: true)
         case .box:
-            context.stroke(annotation.rect)
+            castShadow(in: context, scale: scale)
+            context.setStrokeColor(color)
+            context.setLineWidth(width)
+            context.addPath(roundedRect(annotation.rect, radius: corners))
+            context.strokePath()
         case .line:
-            context.strokeLineSegments(between: [start, end])
+            castShadow(in: context, scale: scale)
+            context.setStrokeColor(color)
+            context.setLineWidth(width)
+            context.setLineCap(.round)
+            context.strokeLineSegments(between: [annotation.start, annotation.end])
         case .arrow:
-            guard let head = Annotation.head(from: start, to: end, length: annotation.thickness.headLength * scale)
-            else { return }
-            if let shaftEnd = head.shaftEnd { context.strokeLineSegments(between: [start, shaftEnd]) }
-            context.addLines(between: [head.tip, head.left, head.right])
-            context.closePath()
-            if extra > 0 {
-                context.setLineWidth(2 * extra)
-                context.drawPath(using: .fillStroke)
-            } else {
-                context.fillPath()
-            }
-        case .text, .highlight, .blur:
-            break
+            guard let path = arrowPath(annotation, scale: scale) else { return }
+            castShadow(in: context, scale: scale)
+            context.setFillColor(color)
+            context.addPath(path)
+            context.fillPath()
         }
     }
 
-    /// Bold, in the color, with its outline behind it, its top left at the start point
-    private static func drawText(_ annotation: Annotation, in context: CGContext, scale: CGFloat) {
+    /// A tapered arrow with a round tail and its other corners softened
+    private static func arrowPath(_ annotation: Annotation, scale: CGFloat) -> CGPath? {
+        let width = annotation.thickness.width * scale
+        let (start, end) = (annotation.start, annotation.end)
+        guard var outline = Annotation.arrowOutline(from: start, to: end, width: width,
+                                                    headLength: annotation.thickness.headLength * scale)
+        else { return nil }
+        // Less on a small head, and where the head meets a short shaft, so the curves fit
+        let length = hypot(end.x - start.x, end.y - start.y)
+        let head = min(annotation.thickness.headLength * scale, length)
+        let soft = min(0.3 * width, 0.1 * head)
+        guard outline.count > 3 else { return roundedPath(outline, radii: outline.map { _ in soft }) }
+        let neck = min(soft, length - head)
+        // Square corners just behind the tail, each rounded by the tail's half width, into a half circle
+        let tail = hypot(outline[0].x - start.x, outline[0].y - start.y)
+        let behind = { (point: CGPoint) in
+            CGPoint(x: point.x - (end.x - start.x) / length * tail, y: point.y - (end.y - start.y) / length * tail)
+        }
+        outline = [behind(outline[0])] + outline + [behind(outline[outline.count - 1])]
+        return roundedPath(outline, radii: [tail, 0, neck, soft, soft, soft, neck, 0, tail])
+    }
+
+    /// A text's label, rounded, in its color on a soft shadow, with the letters on it in white or dark ink. Without
+    /// them, it's the label for a text being typed, which the editor's text field draws over.
+    static func drawLabel(_ annotation: Annotation, in context: CGContext, scale: CGFloat, letters: Bool = false) {
+        let bounds = labelBounds(annotation, scale: scale)
+        context.saveGState()
+        castShadow(in: context, scale: scale)
+        context.setFillColor(annotation.color.cgColor)
+        context.addPath(roundedRect(bounds, radius: 0.3 * bounds.height))
+        context.fillPath()
+        context.restoreGState()
+        guard letters else { return }
         let font = textFont(size: annotation.textSize, scale: scale)
-        func line(_ attributes: [CFString: Any]) -> CTLine {
-            var all = attributes
-            all[kCTFontAttributeName] = font
-            let keyed = Dictionary(uniqueKeysWithValues: all.map { (NSAttributedString.Key($0.key as String), $0.value) })
-            return CTLineCreateWithAttributedString(NSAttributedString(string: annotation.text, attributes: keyed))
-        }
-        var lines = [line([kCTForegroundColorAttributeName: annotation.color.cgColor])]
-        if let outline = annotation.outline.cgColor {
-            // As a percentage of the size, centered on the letters' edges
-            let width = Annotation.textOutlineWidth / annotation.textSize * 100
-            lines.insert(line([kCTStrokeWidthAttributeName: width, kCTStrokeColorAttributeName: outline]), at: 0)
-        }
+        let padding = Annotation.labelPadding(annotation.textSize)
         context.saveGState()
         context.textMatrix = CGAffineTransform(scaleX: 1, y: -1)  // upright, since y runs down
-        context.setLineJoin(.round)
-        let baseline = CGPoint(x: annotation.start.x, y: annotation.start.y + CTFontGetAscent(font))
-        for line in lines {
-            context.textPosition = baseline
-            CTLineDraw(line, context)
-        }
+        context.textPosition = CGPoint(x: bounds.minX + padding.width * scale,
+                                       y: bounds.minY + padding.height * scale + CTFontGetAscent(font))
+        CTLineDraw(line(annotation.text, font: font, color: annotation.color.labelInk), context)
         context.restoreGState()
     }
 
-    /// The system font in bold, in the snip's pixels
-    static func textFont(size: CGFloat, scale: CGFloat) -> CTFont {
-        CTFontCreateUIFontForLanguage(.emphasizedSystem, size * scale, nil)
-            ?? CTFontCreateWithName("Helvetica-Bold" as CFString, size * scale, nil)
+    /// A text's label in the snip's pixels, from its top left: its letters, with room around them
+    static func labelBounds(_ annotation: Annotation, scale: CGFloat) -> CGRect {
+        let font = textFont(size: annotation.textSize, scale: scale)
+        let width = CGFloat(CTLineGetTypographicBounds(line(annotation.text, font: font), nil, nil, nil))
+        let padding = Annotation.labelPadding(annotation.textSize)
+        return CGRect(x: annotation.start.x, y: annotation.start.y, width: width + 2 * padding.width * scale,
+                      height: CTFontGetAscent(font) + CTFontGetDescent(font) + 2 * padding.height * scale)
     }
 
-    /// Where a text's letters go, in the snip's pixels: from its top left, as wide as its line and as tall as its font
-    static func textBounds(_ annotation: Annotation, scale: CGFloat) -> CGRect {
-        let font = textFont(size: annotation.textSize, scale: scale)
-        let attributes = [NSAttributedString.Key(kCTFontAttributeName as String): font]
-        let line = CTLineCreateWithAttributedString(NSAttributedString(string: annotation.text, attributes: attributes))
-        let width = CTLineGetTypographicBounds(line, nil, nil, nil)
-        return CGRect(x: annotation.start.x, y: annotation.start.y, width: CGFloat(width),
-                      height: CTFontGetAscent(font) + CTFontGetDescent(font))
+    /// The system font's rounded design in bold, like the menu's, in the snip's pixels
+    static func textFont(size: CGFloat, scale: CGFloat) -> CTFont {
+        let bold = NSFont.systemFont(ofSize: size * scale, weight: .bold)
+        let rounded = bold.fontDescriptor.withDesign(.rounded).flatMap { NSFont(descriptor: $0, size: size * scale) }
+        return (rounded ?? bold) as CTFont
+    }
+
+    private static func line(_ text: String, font: CTFont, color: CGColor? = nil) -> CTLine {
+        var attributes: [NSAttributedString.Key: Any] = [NSAttributedString.Key(kCTFontAttributeName as String): font]
+        if let color { attributes[NSAttributedString.Key(kCTForegroundColorAttributeName as String)] = color }
+        return CTLineCreateWithAttributedString(NSAttributedString(string: text, attributes: attributes))
+    }
+
+    /// A soft shadow under what's drawn next, until the state's restored. Shadows ignore the context's transform, so
+    /// it's turned into the context's own units, for the shadow to look the same on screen as when it's saved.
+    private static func castShadow(in context: CGContext, scale: CGFloat) {
+        let transform = context.ctm
+        let offset = CGSize(width: 0, height: Annotation.shadowOffset * scale).applying(transform)
+        let blur = Annotation.shadowBlur * scale * sqrt(abs(transform.a * transform.d - transform.b * transform.c))
+        context.setShadow(offset: offset, blur: blur, color: CGColor(gray: 0, alpha: Annotation.shadowOpacity))
+    }
+
+    /// A rectangle with its corners rounded, by less when it's too small for them
+    private static func roundedRect(_ rect: CGRect, radius: CGFloat) -> CGPath {
+        let radius = max(0, min(radius, rect.width / 2, rect.height / 2))
+        return CGPath(roundedRect: rect, cornerWidth: radius, cornerHeight: radius, transform: nil)
+    }
+
+    /// A closed path through the points, each corner rounded by its own radius
+    private static func roundedPath(_ points: [CGPoint], radii: [CGFloat]) -> CGPath {
+        let path = CGMutablePath()
+        let first = points[0], last = points[points.count - 1]
+        path.move(to: CGPoint(x: (first.x + last.x) / 2, y: (first.y + last.y) / 2))
+        for index in points.indices {
+            if radii[index] > 0 {
+                path.addArc(tangent1End: points[index], tangent2End: points[(index + 1) % points.count],
+                            radius: radii[index])
+            } else {
+                path.addLine(to: points[index])
+            }
+        }
+        path.closeSubpath()
+        return path
     }
 
     /// The snip blurred all over, which blurs show through, so overlapping ones match. Its edges blur with copies of
@@ -424,7 +514,7 @@ enum SnipEditorLayout {
     static let topMargin: CGFloat = 4
     static let sidebarWidth: CGFloat = 148
     /// Room for all of the sidebar
-    static let minimumHeight: CGFloat = 570
+    static let minimumHeight: CGFloat = 480
     static let minimumCanvasWidth: CGFloat = 200
 
     /// Beside and above and below the snip at actual size

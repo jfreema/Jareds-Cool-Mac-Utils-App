@@ -22,9 +22,8 @@ struct SnipEditorModelTests {
 
     @Test func startsWithAThinRedBox() {
         let model = model()
-        #expect(model.tool == .box && model.color == .red && model.thickness == .thin)
-        #expect(model.outline == .white && model.textSize == 16)
-        #expect(!model.canUndo && !model.canRedo && !model.hasUnsavedShapes)
+        #expect(model.tool == .box && model.color == .red && model.thickness == .thin && model.textSize == 16)
+        #expect(!model.canUndo && !model.canRedo && !model.hasUnsavedShapes && model.selected == nil)
     }
 
     @Test func aDragDrawsWithTheCurrentToolColorAndThickness() {
@@ -39,15 +38,7 @@ struct SnipEditorModelTests {
         model.end()
         #expect(model.drawing == nil)
         #expect(model.shapes == [Annotation(kind: .arrow, color: .blue, thickness: .thick, start: CGPoint(x: 10, y: 10),
-                                            end: CGPoint(x: 60, y: 30), outline: .white)])
-    }
-
-    @Test func highlightsHaveNoOutline() {
-        let model = model()
-        model.tool = .highlight
-        model.outline = .black
-        draw(model, from: CGPoint(x: 10, y: 10), to: CGPoint(x: 60, y: 30))
-        #expect(model.shapes.first?.outline == Annotation.Outline.none)
+                                            end: CGPoint(x: 60, y: 30))])
     }
 
     @Test func aDragShorterThanFourPointsMakesNoShape() {
@@ -122,16 +113,15 @@ struct SnipEditorModelTests {
         #expect(next.color == .blue)
     }
 
-    @Test func remembersTheLastToolColorThicknessOutlineAndSize() {
+    @Test func remembersTheLastToolColorThicknessAndSize() {
         let first = model()
         first.tool = .arrow
         first.color = .yellow
         first.thickness = .thick
-        first.outline = .black
         first.textSize = 12
         let second = model()
         #expect(second.tool == .arrow && second.color == .yellow && second.thickness == .thick)
-        #expect(second.outline == .black && second.textSize == 12)
+        #expect(second.textSize == 12)
     }
 
     @Test func aTextSizeThatsNoLongerOfferedGoesBackTo16() {
@@ -144,10 +134,9 @@ struct SnipEditorModelTests {
     @Test func theBlurToolBlursTheAreaDraggedAcross() throws {
         let model = SnipEditorModel(snip: Snip(image: SnipImages.halves(), scale: 2), defaults: settings)
         model.tool = .blur
-        model.outline = .black
         draw(model, from: CGPoint(x: 150, y: 100), to: CGPoint(x: 250, y: 200))
         let blur = try #require(model.shapes.first)
-        #expect(blur.kind == .blur && blur.outline == Annotation.Outline.none)
+        #expect(blur.kind == .blur)
         #expect(blur.rect == CGRect(x: 150, y: 100, width: 100, height: 100))
         // The sharp edge down the middle of the snip is gray where it's blurred
         let gray = try #require(model.rendered().map { SnipImages.pixel($0, 198, 150)[0] })
@@ -207,20 +196,21 @@ struct SnipEditorModelTests {
 
     @Test func theEraserPointsAtWhatAClickWouldTake() {
         let model = model()
+        let reach = SnipEditorModel.Reach(shape: 8, handle: 14)
         draw(model, from: CGPoint(x: 100, y: 50), to: CGPoint(x: 300, y: 250))
-        model.point(at: CGPoint(x: 100, y: 150), slop: 8)
-        #expect(model.erasable == nil)  // only the eraser points
+        model.point(at: CGPoint(x: 100, y: 150), reach: reach)
+        #expect(model.erasable == nil && model.hovered == 0)  // only the eraser points
         model.tool = .eraser
         #expect(model.erasable == 0)
-        model.point(at: CGPoint(x: 200, y: 150), slop: 8)
+        model.point(at: CGPoint(x: 200, y: 150), reach: reach)
         #expect(model.erasable == nil)
-        model.point(at: CGPoint(x: 300, y: 150), slop: 8)
+        model.point(at: CGPoint(x: 300, y: 150), reach: reach)
         #expect(model.erasable == 0)
         model.erase(at: CGPoint(x: 300, y: 150), slop: 8)
         #expect(model.erasable == nil)
         model.undo()
         #expect(model.erasable == 0)
-        model.point(at: nil, slop: 8)
+        model.point(at: nil, reach: reach)
         #expect(model.erasable == nil)
     }
 
@@ -234,11 +224,12 @@ struct SnipEditorModelTests {
     }
 
     @Test func blursHaveNoColorAndTheEraserNoOptions() {
-        #expect(!SnipTool.blur.hasColor && !SnipTool.blur.hasThickness && !SnipTool.blur.hasOutline)
-        #expect(!SnipTool.eraser.hasColor && !SnipTool.eraser.hasThickness && !SnipTool.eraser.hasOutline)
-        #expect(SnipTool.text.hasColor && !SnipTool.text.hasThickness && SnipTool.text.hasOutline)
-        #expect(SnipTool.highlight.hasColor && !SnipTool.highlight.hasOutline)
+        #expect(!SnipTool.blur.hasColor && !SnipTool.blur.hasThickness)
+        #expect(!SnipTool.eraser.hasColor && !SnipTool.eraser.hasThickness)
+        #expect(SnipTool.text.hasColor && !SnipTool.text.hasThickness)
+        #expect(SnipTool.highlight.hasColor && !SnipTool.highlight.hasThickness)
         #expect(SnipTool.allCases.filter(\.hasThickness) == [.box, .line, .arrow])
+        #expect(Annotation.Kind.allCases.allSatisfy { SnipTool($0).kind == $0 })
     }
 
     @Test func rendersItsShapesAtFullResolution() {
@@ -270,8 +261,7 @@ struct SnipEditorTextTests {
         model.commitText()
         #expect(!model.isEditingText)
         #expect(model.shapes == [Annotation(kind: .text, color: .red, thickness: .thin, start: CGPoint(x: 40, y: 30),
-                                            end: CGPoint(x: 40, y: 30), text: "Look here", textSize: 16,
-                                            outline: .white)])
+                                            end: CGPoint(x: 40, y: 30), text: "Look here", textSize: 16)])
         #expect(model.canUndo && model.hasUnsavedShapes)
     }
 
@@ -308,13 +298,12 @@ struct SnipEditorTextTests {
         #expect(model.shapes.map(\.text) == ["One"] && !model.isEditingText)
     }
 
-    @Test func colorSizeAndOutlineApplyToTheTextBeingTyped() {
+    @Test func colorAndSizeApplyToTheTextBeingTyped() {
         let model = model()
         model.beginText(at: CGPoint(x: 40, y: 30))
         model.color = .blue
         model.textSize = 12
-        model.outline = .black
-        #expect(model.draft?.color == .blue && model.draft?.textSize == 12 && model.draft?.outline == .black)
+        #expect(model.draft?.color == .blue && model.draft?.textSize == 12)
     }
 
     @Test func textUsesThePenColorNotTheHighlighters() {
@@ -350,9 +339,22 @@ struct SnipMenuTests {
     }
 
     @Test func everySingleKeyIsDifferent() {
-        let keys = SnipTool.allCases.map(\.key) + Annotation.Color.allCases.map(\.key) + ["w"]
+        let keys = SnipTool.allCases.map(\.key) + Annotation.Color.allCases.map(\.key) + ["w", SnipMenu.deleteKey]
         #expect(Set(keys).count == keys.count)
         #expect(Annotation.Color.allCases.map(\.key) == ["1", "2", "3", "4", "5", "6"])
+    }
+
+    @Test func theDeleteKeyDeletesOnlyWhileSingleKeysAreOn() throws {
+        _ = NSApplication.shared
+        let menu = SnipMenu.make()
+        NSApp.mainMenu = menu
+        defer { NSApp.mainMenu = nil }
+        let delete = try #require(items(menu).first { $0.title == "Delete" })
+        #expect(delete.action == #selector(SnipEditorController.deleteShape(_:)) && delete.keyEquivalent.isEmpty)
+        SnipMenu.setSingleKeys(true)
+        #expect(delete.keyEquivalent == "\u{8}" && delete.keyEquivalentModifierMask.isEmpty)
+        SnipMenu.setSingleKeys(false)
+        #expect(delete.keyEquivalent.isEmpty)
     }
 
     @Test func singleKeysOnlyWhileTurnedOn() throws {
@@ -378,5 +380,246 @@ struct SnipSidebarTests {
         print("The snip editor's sidebar takes \(size.width) by \(size.height) points")
         #expect(size.width <= SnipEditorLayout.sidebarWidth)
         #expect(size.height + SnipEditorLayout.chrome.height <= SnipEditorLayout.minimumHeight)
+    }
+}
+
+@MainActor
+struct SnipSelectionTests {
+    /// In memory, so the tests neither change Yafie's settings nor leave files behind
+    private let settings = MemorySettings()
+    /// 4 points from a shape and 7 from a handle, at 2 pixels a point, as the canvas has them at actual size
+    private let reach = SnipEditorModel.Reach(shape: 8, handle: 14)
+
+    private func model(_ tool: SnipTool = .box) -> SnipEditorModel {
+        let model = SnipEditorModel(snip: Snip(image: SnipImages.plain(), scale: 2), defaults: settings)
+        model.tool = tool
+        return model
+    }
+
+    /// A press on the snip, dragged and let go
+    private func drag(_ model: SnipEditorModel, from start: CGPoint, to end: CGPoint, shift: Bool = false) {
+        model.pressDown(at: start, onSnip: true, reach: reach)
+        model.pressMoved(to: start, constrained: shift)
+        model.pressMoved(to: end, constrained: shift)
+        model.pressUp()
+    }
+
+    private func click(_ model: SnipEditorModel, at point: CGPoint) { drag(model, from: point, to: point) }
+
+    /// A box from 100, 50 to 300, 250
+    private func boxed(_ tool: SnipTool = .box) -> SnipEditorModel {
+        let model = model(.box)
+        drag(model, from: CGPoint(x: 100, y: 50), to: CGPoint(x: 300, y: 250))
+        model.tool = tool
+        return model
+    }
+
+    @Test func aDragOnNothingDrawsWithTheTool() {
+        let model = boxed(.line)
+        drag(model, from: CGPoint(x: 20, y: 280), to: CGPoint(x: 380, y: 280))
+        #expect(model.shapes.map(\.kind) == [.box, .line] && model.selected == nil)
+    }
+
+    @Test func aClickOnAShapeSelectsItAndChangesNothing() {
+        let model = boxed()
+        click(model, at: CGPoint(x: 102, y: 150))
+        #expect(model.selected == 0 && model.shapes.count == 1 && !model.isGrabbing)
+        // Only the box's drawing to undo
+        model.undo()
+        #expect(model.shapes.isEmpty && !model.canUndo && model.selected == nil)
+    }
+
+    @Test func aClickOnNothingLetsGoOfIt() {
+        let model = boxed()
+        click(model, at: CGPoint(x: 102, y: 150))
+        click(model, at: CGPoint(x: 200, y: 150))
+        #expect(model.selected == nil && model.shapes.count == 1)
+    }
+
+    @Test func draggingAShapeMovesItAsOneStepToUndo() {
+        let model = boxed()
+        drag(model, from: CGPoint(x: 100, y: 150), to: CGPoint(x: 130, y: 170))
+        #expect(model.selected == 0 && model.shapes.first?.rect == CGRect(x: 130, y: 70, width: 200, height: 200))
+        model.undo()
+        #expect(model.shapes.first?.rect == CGRect(x: 100, y: 50, width: 200, height: 200) && model.selected == 0)
+        model.redo()
+        #expect(model.shapes.first?.rect == CGRect(x: 130, y: 70, width: 200, height: 200))
+    }
+
+    @Test func shiftMovesItStraight() {
+        let model = boxed()
+        drag(model, from: CGPoint(x: 100, y: 150), to: CGPoint(x: 130, y: 160), shift: true)
+        #expect(model.shapes.first?.rect == CGRect(x: 130, y: 50, width: 200, height: 200))
+    }
+
+    @Test func draggingAHandleOfTheSelectedShapeResizesIt() {
+        let model = boxed()
+        click(model, at: CGPoint(x: 102, y: 150))
+        drag(model, from: CGPoint(x: 298, y: 248), to: CGPoint(x: 350, y: 280))
+        #expect(model.shapes.first?.rect == CGRect(x: 100, y: 50, width: 252, height: 232))
+        drag(model, from: CGPoint(x: 352, y: 282), to: CGPoint(x: 360, y: 270), shift: true)
+        #expect(model.shapes.first?.rect == CGRect(x: 100, y: 50, width: 260, height: 260))
+        #expect(model.canUndo && model.selected == 0)
+    }
+
+    @Test func theCornerOfAShapeThatIsntSelectedMovesIt() {
+        let model = boxed()
+        drag(model, from: CGPoint(x: 300, y: 250), to: CGPoint(x: 310, y: 260))
+        #expect(model.shapes.first?.rect == CGRect(x: 110, y: 60, width: 200, height: 200))
+    }
+
+    @Test func aLinesEndsAreItsHandles() {
+        let model = model(.line)
+        drag(model, from: CGPoint(x: 20, y: 280), to: CGPoint(x: 380, y: 280))
+        click(model, at: CGPoint(x: 200, y: 281))
+        drag(model, from: CGPoint(x: 378, y: 280), to: CGPoint(x: 300, y: 200))
+        #expect(model.shapes.first?.start == CGPoint(x: 20, y: 280))
+        #expect(model.shapes.first?.end == CGPoint(x: 300 + 2, y: 200))
+    }
+
+    @Test func theOptionsChangeTheSelectedShapeAndTheNextOne() {
+        let model = boxed()
+        click(model, at: CGPoint(x: 102, y: 150))
+        model.color = .blue
+        model.thickness = .thick
+        #expect(model.shapes.first?.color == .blue && model.shapes.first?.thickness == .thick)
+        model.undo()
+        #expect(model.shapes.first?.color == .blue && model.shapes.first?.thickness == .thin)
+        model.undo()
+        #expect(model.shapes.first?.color == .red)
+        click(model, at: CGPoint(x: 200, y: 150))
+        drag(model, from: CGPoint(x: 20, y: 20), to: CGPoint(x: 60, y: 40))
+        #expect(model.shapes.last?.color == .blue && model.shapes.last?.thickness == .thick)
+    }
+
+    @Test func theOptionsShowTheSelectedShapes() {
+        let model = boxed()
+        model.color = .green
+        model.thickness = .thick
+        click(model, at: CGPoint(x: 102, y: 150))
+        #expect(model.color == .red && model.thickness == .thin && model.options == .box)
+        click(model, at: CGPoint(x: 200, y: 150))
+        #expect(model.color == .green && model.thickness == .thick)
+    }
+
+    @Test func aDragInsideAHighlightDrawsOnItAndOneOnItsEdgeMovesIt() {
+        let model = model(.highlight)
+        drag(model, from: CGPoint(x: 20, y: 20), to: CGPoint(x: 200, y: 60))
+        model.tool = .arrow
+        drag(model, from: CGPoint(x: 100, y: 40), to: CGPoint(x: 300, y: 200))
+        #expect(model.shapes.map(\.kind) == [.highlight, .arrow] && model.selected == nil)
+        model.point(at: CGPoint(x: 60, y: 40), reach: reach)
+        #expect(model.hovered == nil)
+        model.point(at: CGPoint(x: 60, y: 57), reach: reach)
+        #expect(model.hovered == 0)
+        drag(model, from: CGPoint(x: 60, y: 57), to: CGPoint(x: 70, y: 67))
+        #expect(model.selected == 0 && model.shapes.first?.rect == CGRect(x: 30, y: 30, width: 180, height: 40))
+        // Once it's selected, from anywhere on it
+        model.point(at: CGPoint(x: 60, y: 50), reach: reach)
+        #expect(model.hovered == 0)
+        drag(model, from: CGPoint(x: 60, y: 50), to: CGPoint(x: 50, y: 40))
+        #expect(model.shapes.first?.rect == CGRect(x: 20, y: 20, width: 180, height: 40))
+        #expect(model.shapes.count == 2)
+    }
+
+    @Test func aSelectedHighlightHasTheHighlightersOptions() {
+        let model = model(.highlight)
+        drag(model, from: CGPoint(x: 20, y: 20), to: CGPoint(x: 200, y: 60))
+        model.tool = .arrow
+        click(model, at: CGPoint(x: 100, y: 58))
+        #expect(model.options == .highlight && model.color == .yellow && !model.options.hasThickness)
+        model.color = .green
+        #expect(model.shapes.first?.color == .green)
+        // The highlighter's color, not the pen's
+        click(model, at: CGPoint(x: 300, y: 200))
+        #expect(model.color == .red)
+        model.tool = .highlight
+        #expect(model.color == .green)
+    }
+
+    @Test func aSelectedTextTakesATextSize() {
+        let model = model(.text)
+        model.beginText(at: CGPoint(x: 40, y: 30))
+        model.updateText("Look here")
+        model.commitText()
+        // A click on it picks it up instead of starting another
+        click(model, at: CGPoint(x: 60, y: 45))
+        #expect(model.selected == 0 && !model.isEditingText && model.options == .text)
+        model.textSize = 24
+        #expect(model.shapes.first?.textSize == 24 && model.shapes.count == 1)
+        click(model, at: CGPoint(x: 300, y: 200))
+        #expect(model.isEditingText && model.draft?.start == CGPoint(x: 300, y: 200) && model.draft?.textSize == 24)
+    }
+
+    @Test func aClickWhileTypingPlacesTheText() {
+        let model = model(.text)
+        click(model, at: CGPoint(x: 40, y: 30))
+        model.updateText("One")
+        click(model, at: CGPoint(x: 200, y: 150))
+        #expect(model.shapes.map(\.text) == ["One"] && model.draft?.start == CGPoint(x: 200, y: 150))
+        model.updateText("Two")
+        model.pressDown(at: CGPoint(x: 400, y: 150), onSnip: false, reach: reach)
+        model.pressUp()
+        #expect(model.shapes.map(\.text) == ["One", "Two"] && !model.isEditingText)
+    }
+
+    @Test func deleteTakesAwayTheSelectedShape() {
+        let model = boxed()
+        drag(model, from: CGPoint(x: 20, y: 20), to: CGPoint(x: 60, y: 40))
+        model.deleteSelected()
+        #expect(model.shapes.count == 2)
+        click(model, at: CGPoint(x: 102, y: 150))
+        model.deleteSelected()
+        #expect(model.shapes.map(\.rect) == [CGRect(x: 20, y: 20, width: 40, height: 20)] && model.selected == nil)
+        model.undo()
+        #expect(model.shapes.count == 2 && model.selected == nil)
+    }
+
+    @Test func choosingAToolLetsGoOfTheSelection() {
+        let model = boxed()
+        click(model, at: CGPoint(x: 102, y: 150))
+        model.tool = .arrow
+        #expect(model.selected == nil)
+    }
+
+    @Test func theEraserErasesInsteadOfSelecting() {
+        let model = boxed(.eraser)
+        click(model, at: CGPoint(x: 102, y: 150))
+        #expect(model.shapes.isEmpty && model.selected == nil)
+    }
+
+    @Test func pressesOffTheSnipDoNothing() {
+        let model = boxed()
+        click(model, at: CGPoint(x: 102, y: 150))
+        model.pressDown(at: CGPoint(x: 0, y: 150), onSnip: false, reach: reach)
+        model.pressMoved(to: CGPoint(x: 100, y: 200), constrained: false)
+        model.pressUp()
+        #expect(model.shapes.count == 1 && model.selected == nil)
+    }
+
+    @Test func aPressThatNeverEndedEndsWhenTheNextOneStarts() {
+        let model = model()
+        model.pressDown(at: CGPoint(x: 100, y: 50), onSnip: true, reach: reach)
+        model.pressMoved(to: CGPoint(x: 300, y: 250), constrained: false)
+        #expect(model.pressStart == CGPoint(x: 100, y: 50))
+        model.pressDown(at: CGPoint(x: 20, y: 20), onSnip: true, reach: reach)
+        #expect(model.shapes.count == 1 && model.pressStart == CGPoint(x: 20, y: 20))
+        model.pressUp()
+        #expect(model.pressStart == nil)
+    }
+
+    @Test func thePointerFindsShapesAndTheSelectedShapesHandles() {
+        let model = boxed()
+        model.point(at: CGPoint(x: 300, y: 250), reach: reach)
+        #expect(model.hovered == 0 && model.hoveredHandle == nil)
+        click(model, at: CGPoint(x: 102, y: 150))
+        model.point(at: CGPoint(x: 296, y: 247), reach: reach)
+        #expect(model.hoveredHandle == 2)
+        model.point(at: CGPoint(x: 200, y: 150), reach: reach)
+        #expect(model.hovered == nil && model.hoveredHandle == nil)
+        model.pressDown(at: CGPoint(x: 102, y: 150), onSnip: true, reach: reach)
+        #expect(model.isGrabbing)
+        model.pressUp()
+        #expect(!model.isGrabbing)
     }
 }

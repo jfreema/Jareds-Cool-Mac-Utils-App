@@ -105,7 +105,9 @@ Press ⌃⌥P to snip part of the screen, then copy it, save it, mark it up with
 
 **Copy Text** copies the words in the snip as plain text, line by line, even where you can't select them, like an error message, a paused video or a scanned PDF. Your Mac reads them itself, without sending the snip anywhere.
 
-In the editor, pick a tool on the left and drag across the snip to draw. Hold Shift to keep lines and arrows to 45° steps, and boxes, highlights and blurs square. **Blur** blurs the area you drag across, to hide a name or a password. For text, click where it goes, type, and press Return. With the **Eraser**, click a shape to take it away: the one under the pointer fades first. **Outline** puts white, red or black around boxes, lines, arrows and text, so they stand out on any snip, and **Text Size** sets text from 10 to 24 points.
+In the editor, pick a tool on the left and drag across the snip to draw. Hold Shift to keep lines and arrows to 45° steps, and boxes, highlights and blurs square. Shapes sit on a soft shadow, so they stand out on any snip. **Blur** blurs the area you drag across, to hide a name or a password. For text, click where it goes, type, and press Return. It goes on a rounded label in the color, and **Text Size** sets it from 10 to 24 points. With the **Eraser**, click a shape to take it away: the one under the pointer fades first.
+
+To change a shape, click it. Drag it to move it, drag its dots to resize it, pick another color, thickness or text size for it, or press Delete.
 
 | Keys | What they do |
 |---|---|
@@ -113,6 +115,7 @@ In the editor, pick a tool on the left and drag across the snip to draw. Hold Sh
 | E | Eraser |
 | 1 to 6 | Red, green, blue, yellow, black, white |
 | W | Thin or thick lines |
+| Delete | Take away the shape you clicked |
 | ⌘Z, ⇧⌘Z | Undo, redo |
 | ⌘C | Copy it with its shapes. The editor stays open. |
 | ⌘S | Save it with its shapes. The editor closes. |

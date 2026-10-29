@@ -106,7 +106,7 @@ On Windows: low-level keyboard and mouse hooks (`SetWindowsHookEx` with `WH_KEYB
 
 On the Mac: macOS's own `screencapture` makes the selection (`ScreenSnipper`), then the app's menu offers **Copy to Clipboard**, **Copy Text** (Vision, in `TextRecognizer`), **Open in Editor** (`SnipEditor`, drawn by `SnipDrawing`) and **Save…**.
 
-On Windows, Snipping Tool covers most of this: Windows+Shift+S or Print Screen snips, it marks up, and its **Text actions** copy the text in a snip. What it lacks is this app's editor, with its outlined boxes, arrows and highlights, and the bubble pop look.
+On Windows, Snipping Tool covers most of this: Windows+Shift+S or Print Screen snips, it marks up, and its **Text actions** copy the text in a snip. What it lacks is this app's editor, with its soft-shadowed boxes, tapered arrows and text labels, shapes you can move and resize, and the bubble pop look.
 
 If it's built, the Mac design maps neatly. Snipping Tool can make the selection for another app and hand the snip back (`ms-screenclip://capture/image?rectangle&redirect-uri=…`), as `screencapture` does for the Mac version, though only for a packaged app, which a Store app is. **Copy Text** uses `Windows.Media.Ocr`, which reads text on the PC, as Vision does on the Mac. The editor is a rewrite in WPF's drawing, keeping `SnipDrawing`'s geometry and tests.
 

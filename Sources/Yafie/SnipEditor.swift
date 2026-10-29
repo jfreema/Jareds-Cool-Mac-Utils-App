@@ -62,6 +62,9 @@ final class SnipEditors: NSObject {
 /// The menu bar while an editor is open. Its items carry every shortcut.
 @MainActor
 enum SnipMenu {
+    /// The Delete key, as a menu item's key
+    static let deleteKey = "\u{8}"
+
     /// The single-key shortcuts, like R for Box, are only there while an editor has the keyboard and no text is being
     /// typed. A menu item takes its key even while it's disabled, so otherwise typing r in a text, or in a Save
     /// dialog's name, would do nothing.
@@ -90,7 +93,7 @@ enum SnipMenu {
             item("Close", #selector(NSWindow.performClose(_:)), "w"),
         ])
         // Cut, Copy, Paste and Select All are the standard ones, so text fields get them too. Copy copies the snip when
-        // an editor has the keyboard.
+        // an editor has the keyboard. Delete, on the Delete key, takes away the selected shape.
         add("Edit", to: bar, [
             item("Undo", #selector(SnipEditorController.undoShape(_:)), "z"),
             item("Redo", #selector(SnipEditorController.redoShape(_:)), "z", [.command, .shift]),
@@ -98,6 +101,7 @@ enum SnipMenu {
             item("Cut", #selector(NSText.cut(_:)), "x"),
             item("Copy", #selector(NSText.copy(_:)), "c"),
             item("Paste", #selector(NSText.paste(_:)), "v"),
+            singleKey("Delete", #selector(SnipEditorController.deleteShape(_:)), SnipMenu.deleteKey),
             item("Select All", #selector(NSText.selectAll(_:)), "a"),
         ])
         let tools = SnipTool.allCases.enumerated().map { index, tool in
@@ -208,6 +212,7 @@ final class SnipEditorController: NSObject, NSWindowDelegate, NSMenuItemValidati
     @objc func chooseTool(_ sender: NSMenuItem) { model.tool = SnipTool.allCases[sender.tag] }
     @objc func chooseColor(_ sender: NSMenuItem) { model.color = Annotation.Color.allCases[sender.tag] }
     @objc func toggleThickness(_ sender: Any?) { model.thickness = model.thickness == .thin ? .thick : .thin }
+    @objc func deleteShape(_ sender: Any?) { model.deleteSelected() }
 
     /// Everything here needs this editor to have the keyboard, so nothing acts on a window behind a dialog
     func validateMenuItem(_ item: NSMenuItem) -> Bool {
@@ -218,10 +223,11 @@ final class SnipEditorController: NSObject, NSWindowDelegate, NSMenuItemValidati
         case #selector(chooseTool(_:)): item.state = SnipTool.allCases[item.tag] == model.tool ? .on : .off
         case #selector(chooseColor(_:)):
             item.state = Annotation.Color.allCases[item.tag] == model.color ? .on : .off
-            return model.tool.hasColor
+            return model.options.hasColor
         case #selector(toggleThickness(_:)):
             item.state = model.thickness == .thick ? .on : .off
-            return model.tool.hasThickness
+            return model.options.hasThickness
+        case #selector(deleteShape(_:)): return model.selected != nil && !model.isEditingText
         default: break
         }
         return true
@@ -278,7 +284,7 @@ final class SnipEditorController: NSObject, NSWindowDelegate, NSMenuItemValidati
 
 // MARK: Model
 
-/// Where the editor keeps the last tool, color, thickness, outline and text size: UserDefaults, or memory in tests
+/// Where the editor keeps the last tool, color, thickness and text size: UserDefaults, or memory in tests
 protocol EditorSettings: AnyObject {
     func string(forKey key: String) -> String?
     func set(_ value: Any?, forKey key: String)
@@ -286,9 +292,13 @@ protocol EditorSettings: AnyObject {
 
 extension UserDefaults: EditorSettings {}
 
-/// What a drag or click on the snip does: draw a kind of shape, or erase one
+/// What a drag or click on the snip does: draw a kind of shape, or erase one. With any tool but the eraser, a press on
+/// a shape picks it up instead.
 enum SnipTool: String, CaseIterable, Sendable {
     case box, line, arrow, highlight, blur, text, eraser
+
+    /// The one that draws that kind of shape
+    init(_ kind: Annotation.Kind) { self = SnipTool(rawValue: kind.rawValue) ?? .box }
 
     /// What it draws. The eraser takes shapes away instead.
     var kind: Annotation.Kind? { Annotation.Kind(rawValue: rawValue) }
@@ -311,15 +321,20 @@ enum SnipTool: String, CaseIterable, Sendable {
     var hasColor: Bool { kind != nil && self != .blur }
     /// Highlights and blurs are filled, and text has a size
     var hasThickness: Bool { self == .box || self == .line || self == .arrow }
-    var hasOutline: Bool { hasThickness || self == .text }
 }
 
-/// One snip in the editor: its shapes, with undo and redo, and the tool, color, thickness, outline and text size for
-/// the next one
+/// One snip in the editor: its shapes, with undo and redo, the one selected, and the tool, color, thickness and text
+/// size for the next one
 @Observable @MainActor
 final class SnipEditorModel {
     /// Shorter drags than this, in points, make no shape, so a click doesn't leave a dot
     static let shortestDrag: CGFloat = 4
+
+    /// How near a shape, or one of the selected shape's handles, a press takes it, in the snip's pixels
+    struct Reach {
+        var shape: CGFloat
+        var handle: CGFloat
+    }
 
     let snip: Snip
     private(set) var shapes: [Annotation] = []
@@ -327,15 +342,33 @@ final class SnipEditorModel {
     private(set) var drawing: Annotation?
     /// The text being typed, until Return, Esc or a click elsewhere
     private(set) var draft: Annotation?
-    /// Shapes added or taken away since the last Copy or Save
+    /// Shapes added, changed or taken away since the last Copy or Save
     private(set) var isChanged = false
-    /// The shape the eraser points at, which a click takes away
-    private(set) var erasable: Int?
+    /// The shape picked up, with its handles showing, which the options and Delete change
+    private(set) var selected: Int?
+    /// The shape under the pointer that the eraser would take, or a press pick up, and the selected shape's handle
+    /// under it
+    private(set) var hovered: Int?
+    private(set) var hoveredHandle: Int?
+    /// While the selected shape, or one of its handles, is dragged
+    private(set) var isGrabbing = false
+    /// Where the press on the snip that's held began, in its pixels
+    @ObservationIgnored private(set) var pressStart: CGPoint?
     private var undos: [[Annotation]] = []
     private var redos: [[Annotation]] = []
-    /// Where the pointer is on the snip, and how near a shape counts as on it, in pixels
-    @ObservationIgnored private var pointer: (pixel: CGPoint, slop: CGFloat)?
+    /// Where the pointer is on the snip, in its pixels, and how near counts
+    @ObservationIgnored private var pointer: (pixel: CGPoint, reach: Reach)?
+    @ObservationIgnored private var press: Press?
     @ObservationIgnored private var blurCache: CGImage??
+
+    /// What the press on the snip that's held does when it moves and when it's let go
+    private enum Press {
+        case drawing
+        case placingText(at: CGPoint)
+        case erasing(at: CGPoint, slop: CGFloat)
+        /// The selected shape, or one of its handles, from where the press began, and the shapes as they were
+        case grabbing(handle: Int?, from: CGPoint, before: [Annotation])
+    }
 
     // The last ones used, for the next snip too
     var tool: SnipTool {
@@ -343,34 +376,45 @@ final class SnipEditorModel {
             // Not the eraser, since the next snip has no shapes to erase
             if tool != .eraser { defaults.set(tool.rawValue, forKey: Keys.tool) }
             commitText()
+            selected = nil
             aim()
         }
     }
+    /// The selected shape's line width, or else the next one's
     var thickness: Annotation.Thickness {
-        didSet { defaults.set(thickness.rawValue, forKey: Keys.thickness) }
-    }
-    /// Boxes, lines, arrows and text share an outline. Highlights and blurs have none.
-    var outline: Annotation.Outline {
-        didSet {
-            defaults.set(outline.rawValue, forKey: Keys.outline)
-            draft?.outline = outline
-        }
-    }
-    /// In points, one of Annotation.textSizes
-    var textSize: CGFloat {
-        didSet {
-            defaults.set(String(Int(textSize)), forKey: Keys.textSize)
-            draft?.textSize = textSize
-        }
-    }
-    /// Boxes, lines, arrows and text share a color. The highlighter has its own, so highlights start yellow. Blurs
-    /// have none.
-    var color: Annotation.Color {
-        get { tool == .highlight ? highlightColor : penColor }
+        get { selectedShape.flatMap { SnipTool($0.kind).hasThickness ? $0.thickness : nil } ?? nextThickness }
         set {
-            if tool == .highlight { highlightColor = newValue } else { penColor = newValue }
-            draft?.color = newValue
+            nextThickness = newValue
+            restyleSelected { if SnipTool($0.kind).hasThickness { $0.thickness = newValue } }
         }
+    }
+    /// In points, one of Annotation.textSizes: the selected text's, or else the next one's
+    var textSize: CGFloat {
+        get { selectedShape.flatMap { $0.kind == .text ? $0.textSize : nil } ?? nextTextSize }
+        set {
+            nextTextSize = newValue
+            draft?.textSize = newValue
+            restyleSelected { if $0.kind == .text { $0.textSize = newValue } }
+        }
+    }
+    /// The selected shape's color, or else the next one's. Boxes, lines, arrows and text share a color. The
+    /// highlighter has its own, so highlights start yellow. Blurs have none.
+    var color: Annotation.Color {
+        get {
+            if let shape = selectedShape, SnipTool(shape.kind).hasColor { return shape.color }
+            return options == .highlight ? highlightColor : penColor
+        }
+        set {
+            if options == .highlight { highlightColor = newValue } else { penColor = newValue }
+            draft?.color = newValue
+            restyleSelected { if SnipTool($0.kind).hasColor { $0.color = newValue } }
+        }
+    }
+    private var nextThickness: Annotation.Thickness {
+        didSet { defaults.set(nextThickness.rawValue, forKey: Keys.thickness) }
+    }
+    private var nextTextSize: CGFloat {
+        didSet { defaults.set(String(Int(nextTextSize)), forKey: Keys.textSize) }
     }
     private var penColor: Annotation.Color {
         didSet { defaults.set(penColor.rawValue, forKey: Keys.color) }
@@ -386,21 +430,18 @@ final class SnipEditorModel {
         static let color = "snipColor"
         static let highlightColor = "snipHighlightColor"
         static let thickness = "snipThickness"
-        static let outline = "snipOutline"
         static let textSize = "snipTextSize"
     }
 
     init(snip: Snip, defaults: EditorSettings = UserDefaults.standard) {
         self.snip = snip
         self.defaults = defaults
-        tool = defaults.string(forKey: Keys.tool).flatMap(SnipTool.init) ?? .box
+        tool = defaults.string(forKey: Keys.tool).flatMap(SnipTool.init(rawValue:)) ?? .box
         penColor = defaults.string(forKey: Keys.color).flatMap(Annotation.Color.init) ?? .red
         highlightColor = defaults.string(forKey: Keys.highlightColor).flatMap(Annotation.Color.init) ?? .yellow
-        thickness = defaults.string(forKey: Keys.thickness).flatMap(Annotation.Thickness.init) ?? .thin
-        // White and 16 points, as text was before there was a choice
-        outline = defaults.string(forKey: Keys.outline).flatMap(Annotation.Outline.init) ?? .white
+        nextThickness = defaults.string(forKey: Keys.thickness).flatMap(Annotation.Thickness.init) ?? .thin
         let size = defaults.string(forKey: Keys.textSize).flatMap(Double.init).map { CGFloat($0) }
-        textSize = size.flatMap { Annotation.textSizes.contains($0) ? $0 : nil } ?? 16
+        nextTextSize = size.flatMap { Annotation.textSizes.contains($0) ? $0 : nil } ?? 16
     }
 
     var canUndo: Bool { !undos.isEmpty }
@@ -408,19 +449,138 @@ final class SnipEditorModel {
     /// Shapes that closing would lose
     var hasUnsavedShapes: Bool { isChanged && !shapes.isEmpty }
     var isEditingText: Bool { draft != nil }
+    /// What the options are for: the selected shape, or else what the tool draws next
+    var options: SnipTool { selectedShape.map { SnipTool($0.kind) } ?? tool }
+    /// The shape the eraser points at, which a click takes away
+    var erasable: Int? { tool == .eraser ? hovered : nil }
+    private var selectedShape: Annotation? { selected.map { shapes[$0] } }
+
+    // MARK: Pressing on the snip
+
+    /// A press on the snip, in its pixels. On the selected shape's handle, or on a shape, it picks that up to drag.
+    /// Elsewhere on the snip, it starts what the tool does, inside a highlight or a blur too. Off it, it only places
+    /// the text being typed.
+    func pressDown(at pixel: CGPoint, onSnip: Bool, reach: Reach) {
+        // One that never ended
+        if pressStart != nil { pressUp() }
+        commitText()
+        pressStart = pixel
+        if tool == .eraser {
+            if onSnip { press = .erasing(at: pixel, slop: reach.shape) }
+        } else if let selected, let handle = shapes[selected].handle(near: pixel, reach: reach.handle) {
+            grab(handle: handle, at: pixel)
+        } else if !onSnip {
+            selected = nil
+        } else if let index = pickUp(at: pixel, slop: reach.shape) {
+            selected = index
+            grab(handle: nil, at: pixel)
+        } else if tool == .text {
+            selected = nil
+            press = .placingText(at: pixel)
+        } else {
+            begin(at: pixel)
+            press = .drawing
+        }
+    }
+
+    /// Shift keeps a drawing square or at 45° steps, as it does a resize, and a move straight across or up and down
+    func pressMoved(to pixel: CGPoint, constrained: Bool) {
+        switch press {
+        case .drawing:
+            move(to: pixel, constrained: constrained)
+        case .grabbing(let handle, let from, let before):
+            guard let selected else { return }
+            var next = before
+            if let handle {
+                // As far as the pointer went, so a press a little off the handle doesn't make it jump
+                let at = before[selected].handles[handle]
+                let to = CGPoint(x: at.x + pixel.x - from.x, y: at.y + pixel.y - from.y)
+                next[selected] = before[selected].resized(handle: handle, to: to, constrained: constrained)
+            } else {
+                var offset = CGSize(width: pixel.x - from.x, height: pixel.y - from.y)
+                if constrained {
+                    if abs(offset.width) < abs(offset.height) { offset.width = 0 } else { offset.height = 0 }
+                }
+                next[selected] = before[selected].moved(by: offset)
+            }
+            if next != shapes { shapes = next }
+        default:
+            break
+        }
+    }
+
+    /// The press let go: a drawing ends, a click places a text or erases, and a drag of a shape is a step to undo
+    func pressUp() {
+        let ended = press
+        press = nil
+        pressStart = nil
+        switch ended {
+        case .drawing:
+            end()
+        case .placingText(let pixel):
+            beginText(at: pixel)
+        case .erasing(let pixel, let slop):
+            erase(at: pixel, slop: slop)
+        case .grabbing(_, _, let before):
+            isGrabbing = false
+            if shapes != before { record(before) }
+        case nil:
+            break
+        }
+        aim()
+    }
+
+    private func grab(handle: Int?, at pixel: CGPoint) {
+        press = .grabbing(handle: handle, from: pixel, before: shapes)
+        isGrabbing = true
+    }
+
+    /// The shape a press there picks up: the one on top, though a highlight or a blur only by its edges, unless it's
+    /// the selected one, so a drag inside one draws on it
+    private func pickUp(at pixel: CGPoint, slop: CGFloat) -> Int? {
+        SnipRenderer.drawingOrder(shapes).last {
+            shapes[$0].isHit(by: pixel, scale: snip.scale, slop: slop, edgesOnly: $0 != selected)
+        }
+    }
+
+    /// The pointer moved on the snip, in its pixels, or off it
+    func point(at pixel: CGPoint?, reach: Reach) {
+        pointer = pixel.map { ($0, reach) }
+        aim()
+    }
+
+    /// What's under the pointer: the shape the eraser would take, or else the one a press would pick up, and the
+    /// selected shape's handle. Not while a press is held.
+    private func aim() {
+        var shape: Int?
+        var handle: Int?
+        if let pointer, press == nil {
+            if tool == .eraser {
+                shape = Annotation.topmost(at: pointer.pixel, in: shapes, scale: snip.scale, slop: pointer.reach.shape)
+            } else {
+                shape = pickUp(at: pointer.pixel, slop: pointer.reach.shape)
+                handle = selected.flatMap { shapes[$0].handle(near: pointer.pixel, reach: pointer.reach.handle) }
+            }
+        }
+        if shape != hovered { hovered = shape }
+        if handle != hoveredHandle { hoveredHandle = handle }
+    }
+
+    // MARK: Drawing and changing shapes
 
     /// In the snip's pixels. Text is placed with beginText instead, and the eraser erases.
     func begin(at pixel: CGPoint) {
         guard let kind = tool.kind, kind != .text else { return }
-        drawing = Annotation(kind: kind, color: color, thickness: thickness, start: pixel, end: pixel,
-                             outline: tool.hasOutline ? outline : .none)
+        selected = nil
+        drawing = Annotation(kind: kind, color: color, thickness: thickness, start: pixel, end: pixel)
     }
 
-    /// A new text, its top left at that pixel
+    /// A new text, its label's top left at that pixel
     func beginText(at pixel: CGPoint) {
         commitText()
+        selected = nil
         draft = Annotation(kind: .text, color: color, thickness: thickness, start: pixel, end: pixel,
-                           textSize: textSize, outline: outline)
+                           textSize: textSize)
     }
 
     func updateText(_ text: String) {
@@ -458,49 +618,61 @@ final class SnipEditorModel {
         change(to: shapes + [shape])
     }
 
-    /// The pointer moved on the snip, in its pixels, or off it
-    func point(at pixel: CGPoint?, slop: CGFloat) {
-        pointer = pixel.map { ($0, slop) }
-        aim()
-    }
-
     /// Takes away the shape on top at that pixel, as a step to undo
     func erase(at pixel: CGPoint, slop: CGFloat) {
         guard tool == .eraser, let index = Annotation.topmost(at: pixel, in: shapes, scale: snip.scale, slop: slop)
         else { return }
         var next = shapes
         next.remove(at: index)
+        selected = nil
         change(to: next)
     }
 
-    /// The eraser points at the shape on top under the pointer
-    private func aim() {
-        var target: Int?
-        if tool == .eraser, let pointer {
-            target = Annotation.topmost(at: pointer.pixel, in: shapes, scale: snip.scale, slop: pointer.slop)
-        }
-        if target != erasable { erasable = target }
+    /// Takes away the selected shape, as a step to undo
+    func deleteSelected() {
+        guard let selected, !isEditingText else { return }
+        var next = shapes
+        next.remove(at: selected)
+        self.selected = nil
+        change(to: next)
+    }
+
+    /// The selected shape with an option changed, as a step to undo
+    private func restyleSelected(_ restyle: (inout Annotation) -> Void) {
+        guard let selected else { return }
+        var next = shapes
+        restyle(&next[selected])
+        if next != shapes { change(to: next) }
     }
 
     private func change(to next: [Annotation]) {
-        undos.append(shapes)
-        redos.removeAll()
+        record(shapes)
         shapes = next
-        isChanged = true
         aim()
+    }
+
+    /// The shapes as they were, to undo to
+    private func record(_ before: [Annotation]) {
+        undos.append(before)
+        redos.removeAll()
+        isChanged = true
     }
 
     func undo() {
         guard let previous = undos.popLast() else { return }
         redos.append(shapes)
-        shapes = previous
-        isChanged = true
-        aim()
+        restore(previous)
     }
 
     func redo() {
         guard let next = redos.popLast() else { return }
         undos.append(shapes)
+        restore(next)
+    }
+
+    /// From undo or redo. The selection stays if the same shapes are there, as after a move.
+    private func restore(_ next: [Annotation]) {
+        if next.count != shapes.count { selected = nil }
         shapes = next
         isChanged = true
         aim()
@@ -566,15 +738,15 @@ struct SnipEditorView: View {
     }
 }
 
-/// The tools, colors and options down the left side, with undo and redo, Copy and Save at the bottom. Options that
-/// don't go with the tool fade.
+/// The tools, colors and options down the left side, with undo and redo, Copy and Save at the bottom. The options are
+/// the selected shape's, or else the next one's, and those that don't go with it fade.
 struct SnipSidebar: View {
     let model: SnipEditorModel
     let copy: () -> Void
     let save: () -> Void
 
     var body: some View {
-        let tool = model.tool
+        let options = model.options
         VStack(alignment: .leading, spacing: 12) {
             SidebarSection("Tools") {
                 VStack(spacing: 7) {
@@ -587,7 +759,7 @@ struct SnipSidebar: View {
             SidebarSection("Color") {
                 ChoiceGrid(Annotation.Color.allCases, columns: 3) { Swatch(color: $0, model: model) }
             }
-            .disabled(!tool.hasColor)
+            .disabled(!options.hasColor)
             SidebarSection("Thickness") {
                 ChoiceGrid(Annotation.Thickness.allCases, columns: 2) { thickness in
                     ChoicePill(title: thickness.rawValue.capitalized, isChosen: model.thickness == thickness) {
@@ -596,23 +768,14 @@ struct SnipSidebar: View {
                     .help("Thin or thick lines (W)")
                 }
             }
-            .disabled(!tool.hasThickness)
-            SidebarSection("Outline") {
-                ChoiceGrid(Annotation.Outline.allCases, columns: 2) { outline in
-                    ChoicePill(title: outline.rawValue.capitalized, isChosen: model.outline == outline) {
-                        model.outline = outline
-                    }
-                    .help("An outline around boxes, lines, arrows and text, so they stand out")
-                }
-            }
-            .disabled(!tool.hasOutline)
+            .disabled(!options.hasThickness)
             SidebarSection("Text Size") {
                 ChoiceGrid(Annotation.textSizes, columns: 3) { size in
                     ChoicePill(title: "\(Int(size))", isChosen: model.textSize == size) { model.textSize = size }
                         .help("\(Int(size)) points")
                 }
             }
-            .disabled(tool != .text)
+            .disabled(options != .text)
 
             Spacer(minLength: 0)
             VStack(spacing: 9) {
@@ -790,10 +953,12 @@ private struct ActionLabel: View {
 }
 
 /// The snip, outlined in ink on a hard shadow, with its shapes over it. Dragging on the snip draws, a click with the
-/// Text tool places a text, and a click with the eraser takes away the shape under it.
+/// Text tool places a text, and a click with the eraser takes away the shape under it. With the other tools, a press
+/// on a shape picks it up, to drag it or the handles it then shows.
 private struct SnipCanvas: View {
-    /// How near a shape a click with the eraser takes it, in points
+    /// How near a shape a press takes it, and how near one of the selected shape's handles, in points
     static let slop: CGFloat = 4
+    static let handleReach: CGFloat = 7
 
     let model: SnipEditorModel
 
@@ -802,12 +967,14 @@ private struct SnipCanvas: View {
         // Read here, so a change redraws
         let shapes = model.shapes + (model.drawing.map { [$0] } ?? [])
         let draft = model.draft
-        let tool = model.tool
         let erasable = model.erasable
+        let selection = model.selected.map { model.shapes[$0] }
+        let pointer = self.pointer
         let blurred = shapes.contains { $0.kind == .blur } ? model.blurredSnip : nil
         GeometryReader { geometry in
             let fit = SnipFit(snip.pixelSize, scale: snip.scale, in: geometry.size)
-            let slop = Self.slop * fit.pixelsPerPoint
+            let reach = SnipEditorModel.Reach(shape: Self.slop * fit.pixelsPerPoint,
+                                              handle: Self.handleReach * fit.pixelsPerPoint)
             let edge = fit.frame.insetBy(dx: -Bubble.outline, dy: -Bubble.outline)
             ZStack {
                 // A hard shadow, then an outline just outside the snip
@@ -824,7 +991,7 @@ private struct SnipCanvas: View {
                     .interpolation(.high)
                     .frame(width: fit.frame.width, height: fit.frame.height)
                     .position(x: fit.frame.midX, y: fit.frame.midY)
-                PointerArea(pointer: Pointer(for: tool))
+                PointerArea(pointer: pointer)
                     .frame(width: fit.frame.width, height: fit.frame.height)
                     .position(x: fit.frame.midX, y: fit.frame.midY)
                 Canvas { context, _ in
@@ -834,16 +1001,22 @@ private struct SnipCanvas: View {
                         // Cut off at the snip's edges, as when it's saved
                         cg.clip(to: CGRect(origin: .zero, size: snip.pixelSize))
                         SnipRenderer.draw(shapes, in: cg, scale: snip.scale, blurred: blurred, faded: erasable)
+                        // The text being typed on its label, under the field's letters
+                        if let draft { SnipRenderer.drawLabel(draft, in: cg, scale: snip.scale) }
                     }
+                    if let selection { SelectionMarks(shape: selection, fit: fit, scale: snip.scale).draw(in: context) }
                 }
                 .allowsHitTesting(false)
                 if let draft {
-                    let origin = fit.point(for: draft.start)
-                    TextEntry(model: model, color: Color(cgColor: draft.color.cgColor),
+                    // Past the room around the letters on the label
+                    let padding = Annotation.labelPadding(draft.textSize)
+                    let origin = fit.point(for: CGPoint(x: draft.start.x + padding.width * snip.scale,
+                                                        y: draft.start.y + padding.height * snip.scale))
+                    TextEntry(model: model, color: Color(cgColor: draft.color.labelInk),
                               size: draft.textSize * snip.scale / fit.pixelsPerPoint)
                         .frame(width: max(40, fit.frame.maxX - origin.x), alignment: .leading)
-                        .padding(.leading, origin.x + TextEntry.offset.x)
-                        .padding(.top, origin.y + TextEntry.offset.y)
+                        .padding(.leading, origin.x)
+                        .padding(.top, origin.y)
                         .frame(width: geometry.size.width, height: geometry.size.height, alignment: .topLeading)
                         .id("\(draft.start.x),\(draft.start.y)")  // a new field for each text, so it takes the keyboard
                 }
@@ -851,44 +1024,70 @@ private struct SnipCanvas: View {
             .contentShape(Rectangle())
             .gesture(DragGesture(minimumDistance: 0)
                 .onChanged { drag in
-                    guard tool.kind != nil, tool != .text else { return }
-                    if model.drawing == nil {
-                        guard fit.frame.contains(drag.startLocation) else { return }
-                        model.begin(at: fit.pixel(for: drag.startLocation))
+                    let start = fit.pixel(for: drag.startLocation)
+                    if model.pressStart != start {
+                        model.pressDown(at: start, onSnip: fit.frame.contains(drag.startLocation), reach: reach)
+                        if model.isGrabbing { NSCursor.closedHand.set() }
                     }
-                    model.move(to: fit.pixel(for: drag.location), constrained: NSEvent.modifierFlags.contains(.shift))
+                    model.pressMoved(to: fit.pixel(for: drag.location),
+                                     constrained: NSEvent.modifierFlags.contains(.shift))
                 }
-                .onEnded { drag in
-                    let isOnSnip = fit.frame.contains(drag.startLocation)
-                    switch tool {
-                    case .text:
-                        guard isOnSnip else { return model.commitText() }
-                        model.beginText(at: fit.pixel(for: drag.startLocation))
-                    case .eraser:
-                        if isOnSnip { model.erase(at: fit.pixel(for: drag.startLocation), slop: slop) }
-                    default:
-                        model.end()
-                    }
-                })
-            // So the eraser can show which shape a click would take
+                .onEnded { _ in model.pressUp() })
+            // So the eraser can show which shape a click would take, and the pointer what a press would pick up
             .onContinuousHover { phase in
                 if case .active(let location) = phase, fit.frame.contains(location) {
-                    model.point(at: fit.pixel(for: location), slop: slop)
+                    model.point(at: fit.pixel(for: location), reach: reach)
                 } else {
-                    model.point(at: nil, slop: slop)
+                    model.point(at: nil, reach: reach)
                 }
             }
         }
     }
+
+    /// A hand over a shape a press would pick up, closed while it's dragged, and a pointing hand on a handle
+    private var pointer: Pointer {
+        if model.isGrabbing { return .closedHand }
+        if model.hoveredHandle != nil { return .pointingHand }
+        if model.hovered != nil && model.tool != .eraser { return .openHand }
+        return Pointer(for: model.tool)
+    }
 }
 
-/// Where a text is typed, over the spot where it's drawn. Return places it, Esc drops it, and so does a click
-/// elsewhere, which places it.
-private struct TextEntry: View {
-    /// From the text's top left to the field's, so the letters don't move when the text is placed
-    static let offset = CGPoint(x: 0, y: 0)
+/// The selected shape's handles, white dots outlined in ink, and a dashed line around a highlight, a blur or a text
+private struct SelectionMarks {
+    let shape: Annotation
+    let fit: SnipFit
+    let scale: CGFloat
 
+    func draw(in context: GraphicsContext) {
+        let frame: CGRect? = switch shape.kind {
+        case .highlight, .blur: shape.rect
+        case .text: SnipRenderer.labelBounds(shape, scale: scale)
+        case .box, .line, .arrow: nil
+        }
+        if let frame {
+            let topLeft = fit.point(for: frame.origin)
+            let bottomRight = fit.point(for: CGPoint(x: frame.maxX, y: frame.maxY))
+            let around = CGRect(x: topLeft.x, y: topLeft.y, width: bottomRight.x - topLeft.x,
+                                height: bottomRight.y - topLeft.y).insetBy(dx: -3, dy: -3)
+            let line = Path(roundedRect: around, cornerRadius: 4)
+            context.stroke(line, with: .color(.white), lineWidth: 1.5)
+            context.stroke(line, with: .color(Bubble.ink), style: StrokeStyle(lineWidth: 1.5, dash: [4, 3]))
+        }
+        for handle in shape.handles {
+            let center = fit.point(for: handle)
+            let dot = Path(ellipseIn: CGRect(x: center.x - 5, y: center.y - 5, width: 10, height: 10))
+            context.fill(dot, with: .color(.white))
+            context.stroke(dot, with: .color(Bubble.ink), lineWidth: 2)
+        }
+    }
+}
+
+/// Where a text is typed, on its label, over the spot where its letters are drawn. Return places it, Esc drops it, and
+/// so does a click elsewhere, which places it.
+private struct TextEntry: View {
     let model: SnipEditorModel
+    /// The letters', white or dark on the label
     let color: Color
     /// In the canvas's points
     let size: CGFloat
@@ -897,7 +1096,7 @@ private struct TextEntry: View {
     var body: some View {
         TextField("", text: Binding(get: { model.draft?.text ?? "" }, set: { model.updateText($0) }))
             .textFieldStyle(.plain)
-            .font(.system(size: size, weight: .bold))
+            .font(.system(size: size, weight: .bold, design: .rounded))
             .foregroundStyle(color)
             .focused($isFocused)
             .onAppear { isFocused = true }
@@ -909,9 +1108,9 @@ private struct TextEntry: View {
     }
 }
 
-/// The pointer over the snip: a crosshair to draw, an I-beam for text and an arrow to erase
+/// The pointer over the snip: a crosshair to draw, an I-beam for text and an arrow to erase, or a hand for a shape
 private enum Pointer {
-    case crosshair, iBeam, arrow
+    case crosshair, iBeam, arrow, openHand, closedHand, pointingHand
 
     init(for tool: SnipTool) {
         switch tool {
@@ -943,6 +1142,9 @@ private final class PointerView: NSView {
         case .crosshair: .crosshair
         case .iBeam: .iBeam
         case .arrow: .arrow
+        case .openHand: .openHand
+        case .closedHand: .closedHand
+        case .pointingHand: .pointingHand
         }
         addCursorRect(bounds, cursor: cursor)
     }
