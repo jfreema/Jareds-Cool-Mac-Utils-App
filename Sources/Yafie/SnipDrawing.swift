@@ -95,6 +95,13 @@ struct Annotation: Equatable, Sendable {
     static let highlightOpacity: CGFloat = 0.4
     /// How far a blur spreads each pixel, in points: far enough that no word under it can be read
     static let blurRadius: CGFloat = 10
+    /// How much of a shape can show, from faint to solid, in steps of 5%
+    static let opacities: ClosedRange<CGFloat> = 0.1...1
+
+    /// The nearest step of 5% in range
+    static func snappedOpacity(_ value: CGFloat) -> CGFloat {
+        min(max((value * 20).rounded() / 20, opacities.lowerBound), opacities.upperBound)
+    }
 
     var kind: Kind
     var color: Color
@@ -106,6 +113,9 @@ struct Annotation: Equatable, Sendable {
     var text = ""
     /// In points
     var textSize: CGFloat = 16
+    /// How much of it shows, its shadow too, from Annotation.opacities. A highlight at 1 is as see-through as ever,
+    /// and a blur always shows fully.
+    var opacity: CGFloat = 1
 
     /// A box's, highlight's or blur's rectangle
     var rect: CGRect {
@@ -275,16 +285,46 @@ enum SnipRenderer {
     static func draw(_ annotations: [Annotation], in context: CGContext, scale: CGFloat, blurred: CGImage? = nil,
                      faded: Int? = nil) {
         for index in drawingOrder(annotations) {
-            if index == faded {
-                context.saveGState()
-                context.setAlpha(fadedOpacity)
-                context.beginTransparencyLayer(auxiliaryInfo: nil)
+            let annotation = annotations[index]
+            fade(annotation, by: annotation.opacity * (index == faded ? fadedOpacity : 1), in: context, scale: scale) {
+                draw(annotation, in: context, scale: scale, blurred: blurred)
             }
-            draw(annotations[index], in: context, scale: scale, blurred: blurred)
-            if index == faded {
-                context.endTransparencyLayer()
-                context.restoreGState()
-            }
+        }
+    }
+
+    /// The label of a text being typed, at its opacity, for the editor's text field to draw the letters over
+    static func drawLabelBeingTyped(_ draft: Annotation, in context: CGContext, scale: CGFloat) {
+        fade(draft, by: draft.opacity, in: context, scale: scale) { drawLabel(draft, in: context, scale: scale) }
+    }
+
+    /// Draws a shape with less of it showing. It goes on a layer of its own first, so it fades as one, with its
+    /// shadow, instead of showing its shadow through it.
+    private static func fade(_ annotation: Annotation, by alpha: CGFloat, in context: CGContext, scale: CGFloat,
+                             draw: () -> Void) {
+        guard alpha < 1 else { return draw() }
+        context.saveGState()
+        context.setAlpha(alpha)
+        // Only as big as the shape and its shadow, since a layer the size of the snip is slow to draw
+        context.beginTransparencyLayer(in: extent(of: annotation, scale: scale), auxiliaryInfo: nil)
+        draw()
+        context.endTransparencyLayer()
+        context.restoreGState()
+    }
+
+    /// Where a shape can draw, with its shadow, in the snip's pixels
+    private static func extent(of annotation: Annotation, scale: CGFloat) -> CGRect {
+        let shadow = (Annotation.shadowOffset + 3 * Annotation.shadowBlur) * scale
+        let (start, end) = (annotation.start, annotation.end)
+        switch annotation.kind {
+        case .text:
+            return labelBounds(annotation, scale: scale).insetBy(dx: -shadow, dy: -shadow)
+        case .box, .highlight, .blur:
+            let edge = annotation.thickness.width * scale + shadow
+            return annotation.rect.insetBy(dx: -edge, dy: -edge)
+        case .line, .arrow:
+            let edge = max(annotation.thickness.width, annotation.thickness.headLength) * scale + shadow
+            return CGRect(x: min(start.x, end.x), y: min(start.y, end.y), width: abs(end.x - start.x),
+                          height: abs(end.y - start.y)).insetBy(dx: -edge, dy: -edge)
         }
     }
 
@@ -361,7 +401,8 @@ enum SnipRenderer {
     }
 
     /// A text's label, rounded, in its color on a soft shadow, with the letters on it in white or dark ink. Without
-    /// them, it's the label for a text being typed, which the editor's text field draws over.
+    /// them, it's the label for a text being typed, which the editor's text field draws over. At full opacity:
+    /// draw(_:in:scale:blurred:faded:) and drawLabelBeingTyped fade it.
     static func drawLabel(_ annotation: Annotation, in context: CGContext, scale: CGFloat, letters: Bool = false) {
         let bounds = labelBounds(annotation, scale: scale)
         context.saveGState()
@@ -514,7 +555,7 @@ enum SnipEditorLayout {
     static let topMargin: CGFloat = 4
     static let sidebarWidth: CGFloat = 148
     /// Room for all of the sidebar
-    static let minimumHeight: CGFloat = 480
+    static let minimumHeight: CGFloat = 540
     static let minimumCanvasWidth: CGFloat = 200
 
     /// Beside and above and below the snip at actual size

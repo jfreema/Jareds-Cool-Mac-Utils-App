@@ -124,6 +124,51 @@ struct SnipEditorModelTests {
         #expect(second.textSize == 12)
     }
 
+    @Test func opacityStartsSolidAndGoesInStepsOf5Percent() {
+        let model = model()
+        #expect(model.opacity == 1)
+        model.opacity = 0.62
+        #expect(model.opacity == 0.6)
+        model.opacity = 0.01
+        #expect(model.opacity == 0.1)
+        model.opacity = 3
+        #expect(model.opacity == 1)
+    }
+
+    @Test func newShapesTakeTheOpacityAndTheHighlighterHasItsOwn() {
+        let model = model()
+        model.tool = .arrow
+        model.opacity = 0.5
+        draw(model, from: CGPoint(x: 10, y: 10), to: CGPoint(x: 60, y: 30))
+        model.tool = .highlight
+        #expect(model.opacity == 1)
+        model.opacity = 0.7
+        draw(model, from: CGPoint(x: 10, y: 50), to: CGPoint(x: 60, y: 70))
+        model.tool = .blur
+        draw(model, from: CGPoint(x: 10, y: 90), to: CGPoint(x: 60, y: 110))
+        model.tool = .text
+        #expect(model.opacity == 0.5)
+        model.beginText(at: CGPoint(x: 100, y: 100))
+        #expect(model.draft?.opacity == 0.5)
+        model.opacity = 0.8
+        #expect(model.draft?.opacity == 0.8)
+        // Blurs always hide what's under them
+        #expect(model.shapes.map(\.opacity) == [0.5, 0.7, 1])
+    }
+
+    @Test func remembersTheOpacities() {
+        let first = model()
+        first.opacity = 0.4
+        first.tool = .highlight
+        first.opacity = 0.9
+        let second = model()
+        #expect(second.opacity == 0.9)
+        second.tool = .box
+        #expect(second.opacity == 0.4)
+        settings.set("nonsense", forKey: "snipOpacity")
+        #expect(model().opacity == 1)
+    }
+
     @Test func aTextSizeThatsNoLongerOfferedGoesBackTo16() {
         settings.set("18", forKey: "snipTextSize")
         #expect(model().textSize == 16)
@@ -561,6 +606,38 @@ struct SnipSelectionTests {
         model.pressDown(at: CGPoint(x: 400, y: 150), onSnip: false, reach: reach)
         model.pressUp()
         #expect(model.shapes.map(\.text) == ["One", "Two"] && !model.isEditingText)
+    }
+
+    @Test func theOpacitySliderChangesTheSelectedShapeInOneStep() {
+        let model = boxed()
+        click(model, at: CGPoint(x: 102, y: 150))
+        for value in [0.9, 0.7, 0.52] { model.slideOpacity(to: value, ended: false) }
+        #expect(model.shapes.first?.opacity == 0.5 && model.opacity == 0.5)
+        model.slideOpacity(to: 0.33, ended: true)
+        #expect(model.shapes.first?.opacity == 0.35)
+        model.undo()
+        #expect(model.shapes.first?.opacity == 1 && model.selected == 0)
+        model.redo()
+        #expect(model.shapes.first?.opacity == 0.35)
+        // A slide that ends where it began changes nothing
+        model.slideOpacity(to: 0.2, ended: false)
+        model.slideOpacity(to: 0.35, ended: true)
+        model.undo()
+        #expect(model.shapes.first?.opacity == 1)
+        // A slide with nothing selected only sets the next shape's, with no step to undo, so redo still can
+        click(model, at: CGPoint(x: 200, y: 150))
+        model.slideOpacity(to: 0.6, ended: true)
+        #expect(model.shapes.first?.opacity == 1 && model.opacity == 0.6 && model.canRedo)
+    }
+
+    @Test func aSelectedBlurHasNoOpacity() {
+        let model = model(.blur)
+        drag(model, from: CGPoint(x: 20, y: 20), to: CGPoint(x: 200, y: 60))
+        model.tool = .box
+        click(model, at: CGPoint(x: 100, y: 21))
+        #expect(model.selected == 0 && !model.options.hasColor)
+        model.opacity = 0.3
+        #expect(model.shapes.first?.opacity == 1)
     }
 
     @Test func deleteTakesAwayTheSelectedShape() {

@@ -277,6 +277,37 @@ struct SnipRendererTests {
         }
     }
 
+    @Test func aSeeThroughShapeFadesWithItsShadow() {
+        let snip = SnipImages.plain()
+        var line = Annotation(kind: .line, color: .red, thickness: .thick, start: CGPoint(x: 50, y: 150),
+                              end: CGPoint(x: 350, y: 150))
+        let solid = SnipRenderer.render(snip, [line], scale: 2)!
+        line.opacity = 0.5
+        let half = SnipRenderer.render(snip, [line], scale: 2)!
+        // Half way between the red and the snip, with no shadow showing through it
+        let gray = SnipImages.pixel(snip, 200, 150), red = SnipImages.pixel(solid, 200, 150)
+        let mixed = SnipImages.pixel(half, 200, 150)
+        for channel in 0..<3 { #expect(abs(mixed[channel] - (red[channel] + gray[channel]) / 2) < 0.04) }
+        // And its shadow half as dark
+        let shade = gray[0] - SnipImages.pixel(solid, 200, 159)[0]
+        let halfShade = gray[0] - SnipImages.pixel(half, 200, 159)[0]
+        #expect(shade > 0.04 && abs(halfShade - shade / 2) < 0.03)
+    }
+
+    @Test func aSeeThroughHighlightIsFainterStill() {
+        let snip = SnipImages.plain()
+        var highlight = Annotation(kind: .highlight, color: .yellow, thickness: .thin, start: CGPoint(x: 100, y: 50),
+                                   end: CGPoint(x: 300, y: 250))
+        let usual = SnipRenderer.render(snip, [highlight], scale: 2)!
+        highlight.opacity = 0.5
+        let faint = SnipRenderer.render(snip, [highlight], scale: 2)!
+        let gray = SnipImages.pixel(snip, 200, 150)[2]
+        // Yellow takes away blue: half as much of it
+        let usualTint = gray - SnipImages.pixel(usual, 200, 150)[2]
+        let faintTint = gray - SnipImages.pixel(faint, 200, 150)[2]
+        #expect(usualTint > 0.1 && abs(faintTint - usualTint / 2) < 0.03)
+    }
+
     @Test func arrowsAreThinAtTheTail() {
         let arrow = Annotation(kind: .arrow, color: .red, thickness: .thick, start: CGPoint(x: 50, y: 150),
                                end: CGPoint(x: 350, y: 150))
@@ -519,6 +550,37 @@ struct SnipTextTests {
         let letter = try #require(box(image, in: CGRect(x: 90, y: 50, width: 160, height: 110), where: isWhite))
         // A capital's height, at 2 pixels a point
         #expect(abs(letter.height - CTFontGetCapHeight(SnipRenderer.textFont(size: size, scale: 2))) <= 2)
+    }
+
+    @Test func aSeeThroughTextFadesAsOne() throws {
+        let snip = SnipImages.plain()
+        var letter = text("H")
+        let solid = SnipRenderer.render(snip, [letter], scale: 2)!
+        letter.opacity = 0.5
+        let half = SnipRenderer.render(snip, [letter], scale: 2)!
+        // The white letters show half the snip's gray, not the label's red under them
+        let region = CGRect(x: 90, y: 50, width: 160, height: 110)
+        let isHalfWhite: ([Double]) -> Bool = { pixel in
+            pixel.allSatisfy { $0 > 0.68 && $0 < 0.82 } && pixel.max()! - pixel.min()! < 0.04
+        }
+        let white = try #require(box(solid, in: region, where: isWhite))
+        let faded = try #require(box(half, in: region, where: isHalfWhite))
+        #expect(abs(faded.minX - white.minX) <= 2 && abs(faded.maxY - white.maxY) <= 2)
+    }
+
+    @Test func theTextBeingTypedFadesToo() {
+        let snip = SnipImages.plain()
+        let context = CGContext(data: nil, width: snip.width, height: snip.height, bitsPerComponent: 8, bytesPerRow: 0,
+                                space: snip.colorSpace!, bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
+        context.draw(snip, in: CGRect(x: 0, y: 0, width: snip.width, height: snip.height))
+        context.translateBy(x: 0, y: CGFloat(snip.height))
+        context.scaleBy(x: 1, y: -1)
+        var draft = text("")
+        draft.opacity = 0.5
+        SnipRenderer.drawLabelBeingTyped(draft, in: context, scale: 2)
+        let image = context.makeImage()!
+        let label = SnipImages.pixel(image, 106, 66)
+        #expect(!SnipImages.isRed(label) && label[0] > 0.65 && label[1] < 0.45)
     }
 
     @Test func blankTextDrawsNothing() {

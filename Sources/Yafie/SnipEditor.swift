@@ -284,7 +284,7 @@ final class SnipEditorController: NSObject, NSWindowDelegate, NSMenuItemValidati
 
 // MARK: Model
 
-/// Where the editor keeps the last tool, color, thickness and text size: UserDefaults, or memory in tests
+/// Where the editor keeps the last tool, color, opacity, thickness and text size: UserDefaults, or memory in tests
 protocol EditorSettings: AnyObject {
     func string(forKey key: String) -> String?
     func set(_ value: Any?, forKey key: String)
@@ -323,8 +323,8 @@ enum SnipTool: String, CaseIterable, Sendable {
     var hasThickness: Bool { self == .box || self == .line || self == .arrow }
 }
 
-/// One snip in the editor: its shapes, with undo and redo, the one selected, and the tool, color, thickness and text
-/// size for the next one
+/// One snip in the editor: its shapes, with undo and redo, the one selected, and the tool, color, opacity, thickness
+/// and text size for the next one
 @Observable @MainActor
 final class SnipEditorModel {
     /// Shorter drags than this, in points, make no shape, so a click doesn't leave a dot
@@ -359,6 +359,8 @@ final class SnipEditorModel {
     /// Where the pointer is on the snip, in its pixels, and how near counts
     @ObservationIgnored private var pointer: (pixel: CGPoint, reach: Reach)?
     @ObservationIgnored private var press: Press?
+    /// While the opacity slider is held: the shapes as they were, so the whole drag is one step to undo
+    @ObservationIgnored private var slideStart: [Annotation]?
     @ObservationIgnored private var blurCache: CGImage??
 
     /// What the press on the snip that's held does when it moves and when it's let go
@@ -410,6 +412,20 @@ final class SnipEditorModel {
             restyleSelected { if SnipTool($0.kind).hasColor { $0.color = newValue } }
         }
     }
+    /// From Annotation.opacities, in steps of 5%: the selected shape's, or else the next one's. It goes with the
+    /// color: boxes, lines, arrows and text share one, the highlighter has its own, and blurs have none.
+    var opacity: CGFloat {
+        get {
+            if let shape = selectedShape, SnipTool(shape.kind).hasColor { return shape.opacity }
+            return options == .highlight ? highlighterOpacity : penOpacity
+        }
+        set {
+            let value = Annotation.snappedOpacity(newValue)
+            if options == .highlight { highlighterOpacity = value } else { penOpacity = value }
+            draft?.opacity = value
+            restyleSelected { if SnipTool($0.kind).hasColor { $0.opacity = value } }
+        }
+    }
     private var nextThickness: Annotation.Thickness {
         didSet { defaults.set(nextThickness.rawValue, forKey: Keys.thickness) }
     }
@@ -422,6 +438,12 @@ final class SnipEditorModel {
     private var highlightColor: Annotation.Color {
         didSet { defaults.set(highlightColor.rawValue, forKey: Keys.highlightColor) }
     }
+    private var penOpacity: CGFloat {
+        didSet { defaults.set(Self.percent(penOpacity), forKey: Keys.opacity) }
+    }
+    private var highlighterOpacity: CGFloat {
+        didSet { defaults.set(Self.percent(highlighterOpacity), forKey: Keys.highlighterOpacity) }
+    }
 
     @ObservationIgnored private let defaults: EditorSettings
 
@@ -431,6 +453,8 @@ final class SnipEditorModel {
         static let highlightColor = "snipHighlightColor"
         static let thickness = "snipThickness"
         static let textSize = "snipTextSize"
+        static let opacity = "snipOpacity"
+        static let highlighterOpacity = "snipHighlightOpacity"
     }
 
     init(snip: Snip, defaults: EditorSettings = UserDefaults.standard) {
@@ -442,6 +466,15 @@ final class SnipEditorModel {
         nextThickness = defaults.string(forKey: Keys.thickness).flatMap(Annotation.Thickness.init) ?? .thin
         let size = defaults.string(forKey: Keys.textSize).flatMap(Double.init).map { CGFloat($0) }
         nextTextSize = size.flatMap { Annotation.textSizes.contains($0) ? $0 : nil } ?? 16
+        penOpacity = Self.savedOpacity(defaults.string(forKey: Keys.opacity))
+        highlighterOpacity = Self.savedOpacity(defaults.string(forKey: Keys.highlighterOpacity))
+    }
+
+    /// Opacities are kept in percent
+    private static func percent(_ opacity: CGFloat) -> String { String(Int((opacity * 100).rounded())) }
+
+    private static func savedOpacity(_ saved: String?) -> CGFloat {
+        saved.flatMap(Double.init).map { Annotation.snappedOpacity(CGFloat($0) / 100) } ?? 1
     }
 
     var canUndo: Bool { !undos.isEmpty }
@@ -572,7 +605,8 @@ final class SnipEditorModel {
     func begin(at pixel: CGPoint) {
         guard let kind = tool.kind, kind != .text else { return }
         selected = nil
-        drawing = Annotation(kind: kind, color: color, thickness: thickness, start: pixel, end: pixel)
+        drawing = Annotation(kind: kind, color: color, thickness: thickness, start: pixel, end: pixel,
+                             opacity: tool.hasColor ? opacity : 1)
     }
 
     /// A new text, its label's top left at that pixel
@@ -580,7 +614,7 @@ final class SnipEditorModel {
         commitText()
         selected = nil
         draft = Annotation(kind: .text, color: color, thickness: thickness, start: pixel, end: pixel,
-                           textSize: textSize)
+                           textSize: textSize, opacity: opacity)
     }
 
     func updateText(_ text: String) {
@@ -637,12 +671,22 @@ final class SnipEditorModel {
         change(to: next)
     }
 
-    /// The selected shape with an option changed, as a step to undo
+    /// The opacity slider, as it's dragged and when it's let go
+    func slideOpacity(to value: CGFloat, ended: Bool) {
+        if slideStart == nil { slideStart = shapes }
+        opacity = value
+        guard ended, let before = slideStart else { return }
+        slideStart = nil
+        if shapes != before { record(before) }
+    }
+
+    /// The selected shape with an option changed, as a step to undo, or one step for the whole of a slide
     private func restyleSelected(_ restyle: (inout Annotation) -> Void) {
         guard let selected else { return }
         var next = shapes
         restyle(&next[selected])
-        if next != shapes { change(to: next) }
+        guard next != shapes else { return }
+        if slideStart == nil { change(to: next) } else { shapes = next }
     }
 
     private func change(to next: [Annotation]) {
@@ -659,12 +703,14 @@ final class SnipEditorModel {
     }
 
     func undo() {
+        slideStart = nil
         guard let previous = undos.popLast() else { return }
         redos.append(shapes)
         restore(previous)
     }
 
     func redo() {
+        slideStart = nil
         guard let next = redos.popLast() else { return }
         undos.append(shapes)
         restore(next)
@@ -760,6 +806,10 @@ struct SnipSidebar: View {
                 ChoiceGrid(Annotation.Color.allCases, columns: 3) { Swatch(color: $0, model: model) }
             }
             .disabled(!options.hasColor)
+            SidebarSection("Opacity", detail: "\(Int((model.opacity * 100).rounded()))%") {
+                OpacitySlider(model: model)
+            }
+            .disabled(!options.hasColor)
             SidebarSection("Thickness") {
                 ChoiceGrid(Annotation.Thickness.allCases, columns: 2) { thickness in
                     ChoicePill(title: thickness.rawValue.capitalized, isChosen: model.thickness == thickness) {
@@ -809,23 +859,99 @@ struct SnipSidebar: View {
 /// with its controls.
 private struct SidebarSection<Content: View>: View {
     let title: String
+    /// At the other end of the name's line, like a slider's value
+    let detail: String?
     let content: Content
     @Environment(\.isEnabled) private var isEnabled
 
-    init(_ title: String, @ViewBuilder content: () -> Content) {
+    init(_ title: String, detail: String? = nil, @ViewBuilder content: () -> Content) {
         self.title = title
+        self.detail = detail
         self.content = content()
     }
 
     var body: some View {
+        let font = Font.system(size: 10.5, weight: .black, design: .rounded)
+        let ink = Color.white.opacity(isEnabled ? 1 : 0.45)
         VStack(alignment: .leading, spacing: 6) {
-            Text(title.uppercased())
-                .font(.system(size: 10.5, weight: .black, design: .rounded))
-                .kerning(1.3)
-                .foregroundStyle(Color.white.opacity(isEnabled ? 1 : 0.45))
-                .accessibilityAddTraits(.isHeader)
+            HStack(spacing: 4) {
+                Text(title.uppercased())
+                    .font(font)
+                    .kerning(1.3)
+                    .foregroundStyle(ink)
+                    .accessibilityAddTraits(.isHeader)
+                Spacer(minLength: 0)
+                if let detail {
+                    Text(detail)
+                        .font(font)
+                        .monospacedDigit()
+                        .foregroundStyle(ink)
+                        .accessibilityHidden(true)  // the control says it
+                }
+            }
             content
         }
+    }
+}
+
+/// How much of a shape shows, from faint to solid: a white track that fills with yellow up to an outlined knob. A
+/// drag along it, or a click, is one step to undo.
+private struct OpacitySlider: View {
+    static let knob: CGFloat = 18
+
+    let model: SnipEditorModel
+    @Environment(\.isEnabled) private var isEnabled
+
+    var body: some View {
+        let range = Annotation.opacities
+        let fraction = (model.opacity - range.lowerBound) / (range.upperBound - range.lowerBound)
+        let percent = Int((model.opacity * 100).rounded())
+        GeometryReader { geometry in
+            // Room on the right for the shadows
+            let travel = max(geometry.size.width - Self.knob - 2, 1)
+            let track = Capsule(style: .continuous)
+            ZStack(alignment: .leading) {
+                track.fill(Color.white)
+                    .overlay(alignment: .leading) {
+                        Rectangle().fill(Bubble.yellow).frame(width: Self.knob / 2 + travel * fraction)
+                    }
+                    .clipShape(track)
+                    .overlay(track.strokeBorder(Bubble.ink, lineWidth: Bubble.outline))
+                    .background(track.fill(Bubble.ink).offset(x: 1.5, y: 2.5))
+                    .frame(width: travel + Self.knob, height: 12)
+                Circle()
+                    .fill(Color.white)
+                    .overlay(Circle().strokeBorder(Bubble.ink, lineWidth: Bubble.outline))
+                    .background(Circle().fill(Bubble.ink).offset(x: 1.5, y: 2.5))
+                    .frame(width: Self.knob, height: Self.knob)
+                    .offset(x: travel * fraction)
+            }
+            .frame(width: geometry.size.width, height: geometry.size.height, alignment: .leading)
+            .contentShape(Rectangle())
+            .gesture(DragGesture(minimumDistance: 0)
+                .onChanged { slide(to: $0.location.x, travel: travel, ended: false) }
+                .onEnded { slide(to: $0.location.x, travel: travel, ended: true) })
+        }
+        .frame(height: 22)
+        .opacity(isEnabled ? 1 : 0.45)
+        .help("How much of a shape shows, from faint to solid")
+        .accessibilityElement()
+        .accessibilityLabel("Opacity")
+        .accessibilityValue("\(percent) percent")
+        .accessibilityAdjustableAction { direction in
+            switch direction {
+            case .increment: model.opacity += 0.1
+            case .decrement: model.opacity -= 0.1
+            @unknown default: break
+            }
+        }
+    }
+
+    private func slide(to x: CGFloat, travel: CGFloat, ended: Bool) {
+        guard isEnabled else { return }
+        let range = Annotation.opacities
+        let fraction = min(max((x - Self.knob / 2) / travel, 0), 1)
+        model.slideOpacity(to: range.lowerBound + fraction * (range.upperBound - range.lowerBound), ended: ended)
     }
 }
 
@@ -1002,7 +1128,7 @@ private struct SnipCanvas: View {
                         cg.clip(to: CGRect(origin: .zero, size: snip.pixelSize))
                         SnipRenderer.draw(shapes, in: cg, scale: snip.scale, blurred: blurred, faded: erasable)
                         // The text being typed on its label, under the field's letters
-                        if let draft { SnipRenderer.drawLabel(draft, in: cg, scale: snip.scale) }
+                        if let draft { SnipRenderer.drawLabelBeingTyped(draft, in: cg, scale: snip.scale) }
                     }
                     if let selection { SelectionMarks(shape: selection, fit: fit, scale: snip.scale).draw(in: context) }
                 }
@@ -1014,6 +1140,7 @@ private struct SnipCanvas: View {
                                                         y: draft.start.y + padding.height * snip.scale))
                     TextEntry(model: model, color: Color(cgColor: draft.color.labelInk),
                               size: draft.textSize * snip.scale / fit.pixelsPerPoint)
+                        .opacity(draft.opacity)
                         .frame(width: max(40, fit.frame.maxX - origin.x), alignment: .leading)
                         .padding(.leading, origin.x)
                         .padding(.top, origin.y)
