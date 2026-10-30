@@ -5,7 +5,7 @@ import SwiftUI
 
 /// A switch in the menu
 enum MenuToggle: Hashable {
-    case appPreviews, snapWindows, snapThirds, snipScreen, hiddenIcons
+    case appPreviews, snapWindows, snapThirds, snipScreen, recordGIFs, hiddenIcons
     case stayAwake, requirePower, requireInternet, lowPower
     case openAtLogin
 }
@@ -220,6 +220,10 @@ struct MenuView: View {
             section("Screenshots") {
                 card {
                     ToggleRow(model: model, toggle: .snipScreen, title: "Snipping Tool with control+option+P")
+                    OptionStrip {
+                        OptionChip(model: model, toggle: .recordGIFs, title: "Record GIFs with control+option+R",
+                                   help: "Records part of the screen as a GIF, like scrolling through a page")
+                    }
                     if let action = model.snipAction { ActionRow(model: model, action: action) }
                 }
             }

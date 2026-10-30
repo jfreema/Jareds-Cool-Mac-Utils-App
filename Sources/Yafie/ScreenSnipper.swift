@@ -1,24 +1,35 @@
 import AppKit
 import Carbon.HIToolbox
 import os
+import UniformTypeIdentifiers
 
 let snipLogger = Logger(subsystem: Bundle.main.bundleIdentifier ?? "yafie", category: "snip")
 
-/// ⌃⌥P snips part of the screen with macOS's own selection, then offers to copy, edit or save it
+/// ⌃⌥P snips part of the screen with macOS's own selection, then offers to copy, edit or save it. With its option on,
+/// ⌃⌥R records part of the screen as a GIF.
 @MainActor
 final class ScreenSnipper: NSObject {
-    enum Status { case off, needsPermission, shortcutTaken, on }
+    enum Status: Equatable {
+        case off, needsPermission, on
+        /// Which shortcut, like "control+option+P"
+        case shortcutTaken(String)
+    }
 
     var onChange: (() -> Void)?
     let editors = SnipEditors()
+    let recorder = ScreenRecorder()
 
     private(set) var isEnabled = UserDefaults.standard.bool(forKey: Keys.enabled) {
         didSet { UserDefaults.standard.set(isEnabled, forKey: Keys.enabled) }
+    }
+    private(set) var recordsGIFs = UserDefaults.standard.bool(forKey: Keys.recordGIFs) {
+        didSet { UserDefaults.standard.set(recordsGIFs, forKey: Keys.recordGIFs) }
     }
     private(set) var status = Status.off
 
     private enum Keys {
         static let enabled = "snipScreen"
+        static let recordGIFs = "recordGIFs"
     }
     private enum Choice: Int { case copy, copyText, edit, save }
 
@@ -26,6 +37,7 @@ final class ScreenSnipper: NSObject {
         URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture")!
 
     private var hotKey: HotKey?
+    private var recordHotKey: HotKey?
     private var capture: SnipCapture?
     /// The snip in the open menu
     private var offered: Snip?
@@ -41,6 +53,11 @@ final class ScreenSnipper: NSObject {
         refresh()
     }
 
+    func setRecordsGIFs(_ on: Bool) {
+        recordsGIFs = on
+        refresh()
+    }
+
     func openScreenRecordingSettings() {
         NSWorkspace.shared.open(Self.screenRecordingSettings)
     }
@@ -53,13 +70,16 @@ final class ScreenSnipper: NSObject {
         if !isEnabled {
             next = .off
         } else if hotKey == nil, !register() {
-            next = .shortcutTaken
+            next = .shortcutTaken("control+option+P")
+        } else if recordsGIFs, recordHotKey == nil, !registerRecording() {
+            next = .shortcutTaken("control+option+R")
         } else if !CGPreflightScreenCaptureAccess() {
             next = .needsPermission
         } else {
             next = .on
         }
         if next == .off { unregister() }
+        if !isEnabled || !recordsGIFs { unregisterRecording() }
         guard next != status else { return }
         status = next
         snipLogger.notice("Screen snipping: \(String(describing: next), privacy: .public)")
@@ -77,9 +97,25 @@ final class ScreenSnipper: NSObject {
         hotKey = nil
     }
 
+    private func registerRecording() -> Bool {
+        recordHotKey = HotKeys.register(kVK_ANSI_R, controlKey | optionKey) { [weak self] in self?.pressedRecord() }
+        if recordHotKey == nil { snipLogger.error("Another app is using ⌃⌥R") }
+        return recordHotKey != nil
+    }
+
+    private func unregisterRecording() {
+        if let recordHotKey { HotKeys.unregister(recordHotKey) }
+        recordHotKey = nil
+    }
+
+    private func pressedRecord() {
+        guard CGPreflightScreenCaptureAccess() else { return askForPermission(after: "⌃⌥R") }
+        recorder.pressed()
+    }
+
     private func pressed() {
         guard capture == nil, offered == nil else { return }  // one at a time
-        guard CGPreflightScreenCaptureAccess() else { return askForPermission() }
+        guard CGPreflightScreenCaptureAccess() else { return askForPermission(after: "⌃⌥P") }
         let frontmost = NSWorkspace.shared.frontmostApplication
         previousApp = frontmost?.processIdentifier == ProcessInfo.processInfo.processIdentifier ? nil : frontmost
         let clipboard = NSPasteboard.general.changeCount
@@ -87,9 +123,9 @@ final class ScreenSnipper: NSObject {
     }
 
     /// Never allowed, taken away, or reset by a new signature, as 1.1.6's Developer ID was
-    private func askForPermission() {
+    private func askForPermission(after shortcut: String) {
         refresh()
-        snipLogger.notice("⌃⌥P without Screen Recording")
+        snipLogger.notice("\(shortcut, privacy: .public) without Screen Recording")
         let previous = NSWorkspace.shared.frontmostApplication
         if Alert.confirm("Allow Screen Snipping",
                          "Turn on \(Yafie.name) in Privacy & Security → Screen & System Audio Recording, then quit and "
@@ -256,7 +292,7 @@ final class SnipCapture {
     }
 }
 
-/// Copying and saving snips, for the menu and the editor
+/// Copying and saving snips, for the menu and the editor, and saving recordings
 @MainActor
 enum SnipOutput {
     private static let folderKey = "snipFolder"
@@ -275,9 +311,25 @@ enum SnipOutput {
     /// A Save dialog: a sheet on the editor's window, or on its own from the menu. Calls back with whether it saved.
     static func save(_ image: CGImage, scale: CGFloat, name: String, from window: NSWindow?,
                      then done: @escaping @MainActor (Bool) -> Void) {
+        save(name: name, type: .png, what: "snip", from: window, writing: { url in
+            guard let png = SnipRenderer.data(image, scale: scale) else { throw SaveFailure.notPNG }
+            try png.write(to: url, options: .atomic)
+        }, then: done)
+    }
+
+    private enum SaveFailure: LocalizedError {
+        case notPNG
+        var errorDescription: String? { "It couldn't be made into a PNG." }
+    }
+
+    /// A Save dialog for any kind of file, which `write` writes where you chose. Snips and recordings share the folder.
+    /// - Parameter what: what it's called in an alert if saving fails, like "snip"
+    static func save(name: String, type: UTType, what: String, from window: NSWindow?,
+                     writing write: @escaping @MainActor (URL) throws -> Void,
+                     then done: @escaping @MainActor (Bool) -> Void) {
         let panel = NSSavePanel()
-        panel.allowedContentTypes = [.png]
-        panel.nameFieldStringValue = name + ".png"
+        panel.allowedContentTypes = [type]
+        panel.nameFieldStringValue = name + "." + (type.preferredFilenameExtension ?? "")
         panel.directoryURL = folder
         panel.canCreateDirectories = true
         // ⌘C, ⌘V and the like in the name field come from the Edit menu, which Yafie only has while an editor is open
@@ -287,18 +339,15 @@ enum SnipOutput {
             if let borrowed, NSApp.mainMenu === borrowed { NSApp.mainMenu = nil }
             guard response == .OK, let url = panel.url else { return done(false) }
             UserDefaults.standard.set(url.deletingLastPathComponent().path, forKey: folderKey)
-            guard let png = SnipRenderer.data(image, scale: scale) else {
-                Alert.show("Couldn't save the snip", "It couldn't be made into a PNG.")
-                return done(false)
-            }
             do {
-                try png.write(to: url, options: .atomic)
+                try write(url)
             } catch {
-                snipLogger.error("Couldn't save a snip: \(error.localizedDescription, privacy: .public)")
-                Alert.show("Couldn't save the snip", error.localizedDescription)
+                snipLogger.error(
+                    "Couldn't save a \(what, privacy: .public): \(error.localizedDescription, privacy: .public)")
+                Alert.show("Couldn't save the \(what)", error.localizedDescription)
                 return done(false)
             }
-            snipLogger.notice("Saved a snip")
+            snipLogger.notice("Saved a \(what, privacy: .public)")
             done(true)
         }
         if let window {

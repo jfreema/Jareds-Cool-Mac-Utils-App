@@ -35,11 +35,12 @@ struct Snip {
     /// "Snip 2026-10-04 at 14.32.05", like macOS's own screenshot names, in 24-hour time
     var name: String { Self.name(for: taken) }
 
-    static func name(for date: Date, in timeZone: TimeZone = .current) -> String {
+    /// - Parameter kind: the first word, like "Recording" for a GIF
+    static func name(_ kind: String = "Snip", for date: Date, in timeZone: TimeZone = .current) -> String {
         let formatter = DateFormatter()
         formatter.locale = Locale(identifier: "en_US_POSIX")
         formatter.timeZone = timeZone
-        formatter.dateFormat = "'Snip' yyyy-MM-dd 'at' HH.mm.ss"
+        formatter.dateFormat = "'\(kind)' yyyy-MM-dd 'at' HH.mm.ss"
         return formatter.string(from: date)
     }
 }

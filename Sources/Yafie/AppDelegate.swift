@@ -154,6 +154,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             .snapWindows: snapper.isEnabled,
             .snapThirds: snapper.usesThirds,
             .snipScreen: snipper.isEnabled,
+            .recordGIFs: snipper.recordsGIFs,
             .hiddenIcons: hiddenIcons.isEnabled,
             .stayAwake: controller.isEnabled,
             .requirePower: controller.requiresPower,
@@ -165,6 +166,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // Only mean something while the main switch is on
         if !controller.isEnabled { disabled.formUnion([.requirePower, .requireInternet, .lowPower]) }
         if !snapper.isEnabled { disabled.insert(.snapThirds) }
+        if !snipper.isEnabled { disabled.insert(.recordGIFs) }
         model.isDisabled = disabled
 
         // Finish Setup… or Turn Sleep Back On…, when the status calls for one
@@ -179,7 +181,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // Allow Screen Snipping…, or why the shortcut didn't take, when the status calls for one
         model.snipAction = switch snipper.status {
         case .needsPermission: MenuAction(title: "Allow Screen Snipping…", command: .allowScreenSnipping)
-        case .shortcutTaken: MenuAction(title: "Another app is using control+option+P")
+        case .shortcutTaken(let keys): MenuAction(title: "Another app is using \(keys)")
         case .off, .on: nil
         }
         model.isCheckingForUpdates = updater.isBusy
@@ -200,6 +202,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         case .snapWindows: setSnapWindows(on)
         case .snapThirds: snapper.setUsesThirds(on)
         case .snipScreen: setSnipScreen(on)
+        case .recordGIFs: snipper.setRecordsGIFs(on)
         case .hiddenIcons: hiddenIcons.setEnabled(on)
         case .stayAwake: setStayAwake(on)
         case .requirePower: controller.setRequiresPower(on)

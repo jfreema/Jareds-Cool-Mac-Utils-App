@@ -18,7 +18,7 @@
     <td width="50%"><b><a href="#window-snapping">Window snapping</a></b><br>⌃⌥ and an arrow key put the front window into halves, thirds, quarters or sixths.</td>
   </tr>
   <tr>
-    <td width="50%"><b><a href="#screenshot-tool">Screenshot tool</a></b><br>⌃⌥P snips part of the screen to copy, save or mark up, or copies the text in it.</td>
+    <td width="50%"><b><a href="#screenshot-tool">Screenshot tool</a></b><br>⌃⌥P snips part of the screen to copy, save or mark up, or copies the text in it. ⌃⌥R records it as a GIF.</td>
     <td width="50%"><b><a href="#hidden-menu-bar-icons">Hidden menu bar icons</a></b><br>An arrow, or control+option+H, brings back the menu bar icons that don't fit, as beside the notch.</td>
   </tr>
   <tr>
@@ -87,11 +87,11 @@ Each display has two columns, or three on external displays with **Thirds on Ext
 
 ## Screenshot tool
 
-Press ⌃⌥P to snip part of the screen, then copy it, save it, mark it up with boxes, lines, arrows, highlights, blurs and text, or copy the text in it.
+Press ⌃⌥P to snip part of the screen, then copy it, save it, mark it up with boxes, lines, arrows, highlights, blurs and text, or copy the text in it. Press ⌃⌥R to record part of the screen as a GIF, like scrolling through a page, to paste into a message or a document.
 
 **Turn it on:**
 
-1. Click the app's icon in the menu bar and turn on **Snipping Tool with control+option+P**. Nothing appears yet: macOS just adds the app to its list, switched off.
+1. Click the app's icon in the menu bar and turn on **Snipping Tool with control+option+P**. Nothing appears yet: macOS just adds the app to its list, switched off. To record GIFs too, click **Record GIFs with control+option+R** under it.
 2. Choose **Allow Screen Snipping…** in the app's menu, then turn on **Jared's Cool Mac Utilities App** and enter your password or use Touch ID.
 
    <img src="docs/snipping-screen-recording.png" width="400" alt="Screen & System Audio Recording settings, with Jared's Cool Mac Utilities App in the list and its switch turned on">
@@ -120,6 +120,10 @@ To change a shape, click it. The one you just drew is picked up already, so you 
 | ⌘C | Copy it with its shapes. The editor stays open. |
 | ⌘S | Save it with its shapes. The editor closes. |
 | ⌘Q | Close the editor. The app stays in the menu bar. |
+
+**Record a GIF:** press ⌃⌥R, then drag across part of the screen, or click a window to record all of it. Click off any window for the whole screen, or press Esc to cancel. A red line goes around what's recording: scroll, click and type as you like, then click **Stop** under it or press ⌃⌥R again. It stops by itself after a minute. A menu opens where the pointer is, saying how long and how big the GIF is, with **Copy to Clipboard**, to paste it into a message, an email or a document, and **Save…**.
+
+GIFs show the pointer, but not the red line or **Stop**. They're 15 frames a second, a pixel per point, and 1280 pixels across at most. Parts that don't move cost next to nothing, so a smaller area or a shorter recording makes a smaller file.
 
 ---
 

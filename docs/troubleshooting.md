@@ -92,3 +92,9 @@ From 1.1.6, the app is signed with an Apple Developer ID and notarized, so macOS
 - **"Another app is using control+option+P."** Another app has the same shortcut. Quit it or change its shortcut, then turn snipping off and on.
 - **An app's own ⌃⌥P stopped working.** While snipping is on, ⌃⌥P belongs to the snipping tool in every app. Turn snipping off to give it back.
 - **Copy Text says No text found, or gets words wrong.** It reads clear text best. Zoom in on small or blurry text, then snip it again.
+- **Record GIFs with control+option+R is grayed out.** It's part of the snipping tool. Turn on **Snipping Tool with control+option+P** first.
+- **"Another app is using control+option+R."** Another app has the same shortcut. Quit it or change its shortcut, then turn **Record GIFs with control+option+R** off and on.
+- **An app's own ⌃⌥R stopped working.** While **Record GIFs** is on, ⌃⌥R belongs to the recorder in every app. Turn it off to give it back.
+- **The GIF is too big to send.** Record a smaller area, or for less time. Most of the size is what moves: scrolling through small text costs the most.
+- **The recording stopped by itself.** It stops after a minute, or if you stop it with macOS's screen recording icon in the menu bar, or its screen goes away. You still get what it recorded.
+- **A video is black in the GIF.** Apps that play protected video, like most streaming services, keep it out of every recording.
