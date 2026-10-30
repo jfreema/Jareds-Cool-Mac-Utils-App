@@ -54,6 +54,7 @@ From 1.1.6, the app is signed with an Apple Developer ID and notarized, so macOS
 
 - **macOS asks for Accessibility instead.** The app doesn't have it yet. Click **Open System Settings**, turn on **Jared's Cool Mac Utilities App**, then choose **Clean Keyboard and Trackpad…** again.
 - **Says Couldn't turn off the keyboard and trackpad.** macOS wouldn't let the app hold them back, which can happen when its Accessibility switch is on but out of date. Turn **Jared's Cool Mac Utilities App** off and back on in **System Settings → Privacy & Security → Accessibility**, then try again.
+- **The Caps Lock light flashes while you wipe.** macOS switches Caps Lock as soon as its key goes down, before any app can hold the key back. The app switches it straight back, so it's as it was when the keyboard comes back on.
 - **Stuck with the keyboard and trackpad off.** They come back on by themselves after 5 minutes. For sooner, hold down both ⌘ keys, left and right, together for 1.5 seconds. If the app quits or crashes, they come back on right away.
 
 ## Window snapping

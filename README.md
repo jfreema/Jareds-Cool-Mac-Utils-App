@@ -173,7 +173,7 @@ Turns off the keyboard and trackpad for 5 minutes, so you can wipe them without 
 
 **Use it:** choose **Clean Keyboard and Trackpad…** in the app's menu, then click **Turn Off**. A window in the middle of the screen counts down until they come back on. To turn them back on sooner, hold down both ⌘ keys, left and right, for 1.5 seconds.
 
-Every keyboard, trackpad and mouse is off, external ones too, but not the power button.
+Every keyboard, trackpad and mouse is off, external ones too, but not the power button. Caps Lock stays as it was: its light can flash as you wipe the key, because macOS switches it before any app can hold the key back, but the app switches it straight back.
 
 ---
 

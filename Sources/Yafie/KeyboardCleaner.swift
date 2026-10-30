@@ -1,5 +1,6 @@
 import AppKit
 import Carbon.HIToolbox
+@preconcurrency import Darwin  // mach_task_self_, which Swift 6 won't read otherwise
 import IOKit.hidsystem
 import SwiftUI
 import os
@@ -134,6 +135,8 @@ enum InputBlocker {
     private static var source: CFRunLoopSource?
     private static var onCommandKeys: ((Bool) -> Void)?
     private static var commandKeysDown = false
+    /// Caps Lock as it was at the start
+    private static var capsLock = false
 
     /// Calls onCommandKeys with whether both ⌘ keys are down, each time that changes. False without Accessibility.
     static func start(onCommandKeys: @escaping (Bool) -> Void) -> Bool {
@@ -154,6 +157,7 @@ enum InputBlocker {
         self.tap = tap
         self.source = source
         self.onCommandKeys = onCommandKeys
+        capsLock = CapsLock.isOn
         return true
     }
 
@@ -166,6 +170,8 @@ enum InputBlocker {
         source = nil
         onCommandKeys = nil
         commandKeysDown = false
+        // In case it changed while macOS had the tap off
+        if CapsLock.isOn != capsLock { CapsLock.set(capsLock) }
     }
 
     /// Whether the event goes on to macOS and the apps
@@ -176,6 +182,11 @@ enum InputBlocker {
             if let tap { CGEvent.tapEnable(tap: tap, enable: true) }
             return true
         case .flagsChanged:
+            // Caps Lock turns on or off as its key goes down, before the tap, so it's turned straight back
+            if flags.contains(.maskAlphaShift) != capsLock {
+                cleanLogger.notice("Caps Lock changed, putting it back")
+                CapsLock.set(capsLock)
+            }
             let down = CleaningSession.bothCommandKeys(flags)
             if down != commandKeysDown {
                 commandKeysDown = down
@@ -187,6 +198,36 @@ enum InputBlocker {
         default:
             return false
         }
+    }
+}
+
+/// Caps Lock, which the HID system turns on and off as its key goes down, before any event tap sees the key
+enum CapsLock {
+    /// As the HID system has it. The window server's copy is wrong after an app posts a key press without it.
+    static var isOn: Bool {
+        var on = false
+        guard withHIDSystem({ IOHIDGetModifierLockState($0, Int32(kIOHIDCapsLockState), &on) }) == KERN_SUCCESS else {
+            return CGEventSource.flagsState(.hidSystemState).contains(.maskAlphaShift)
+        }
+        return on
+    }
+
+    /// On every keyboard, from another thread, since it asks the HID system
+    static func set(_ on: Bool) {
+        DispatchQueue.global(qos: .userInitiated).async {
+            let result = withHIDSystem { IOHIDSetModifierLockState($0, Int32(kIOHIDCapsLockState), on) }
+            if result != KERN_SUCCESS { cleanLogger.error("Couldn't put Caps Lock back: \(result)") }
+        }
+    }
+
+    private static func withHIDSystem(_ body: (io_connect_t) -> kern_return_t) -> kern_return_t {
+        let hidSystem = IOServiceGetMatchingService(kIOMainPortDefault, IOServiceMatching(kIOHIDSystemClass))
+        defer { IOObjectRelease(hidSystem) }
+        var connection: io_connect_t = 0
+        let opened = IOServiceOpen(hidSystem, mach_task_self_, UInt32(kIOHIDParamConnectType), &connection)
+        guard opened == KERN_SUCCESS else { return opened }
+        defer { IOServiceClose(connection) }
+        return body(connection)
     }
 }
 
