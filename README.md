@@ -121,9 +121,9 @@ To change a shape, click it. The one you just drew is picked up already, so you 
 | ⌘S | Save it with its shapes. The editor closes. |
 | ⌘Q | Close the editor. The app stays in the menu bar. |
 
-**Record a GIF:** press ⌃⌥R, then drag across part of the screen, or click a window to record all of it. Click off any window for the whole screen, or press Esc to cancel. A red line goes around what's recording: scroll, click and type as you like, then click **Stop** under it or press ⌃⌥R again. It stops by itself after a minute. A menu opens where the pointer is, saying how long and how big the GIF is, with **Copy to Clipboard**, to paste it into a message, an email or a document, and **Save…**.
+**Record a GIF:** press ⌃⌥R, then drag across part of the screen, or click a window to record all of it. Click off any window for the whole screen, or press Esc to cancel. A red line goes around what's recording: scroll, click and type as you like, then click **Stop** under it or press ⌃⌥R again. It stops by itself after a minute. A menu opens where the pointer is, saying how long and how big the GIF is, with **Copy to Clipboard**, to paste it into Slack, a message, an email or a document, and **Save…**.
 
-GIFs show the pointer, but not the red line or **Stop**. They're 15 frames a second, a pixel per point, and 1280 pixels across at most. Parts that don't move cost next to nothing, so a smaller area or a shorter recording makes a smaller file.
+GIFs show the pointer, but not the red line or **Stop**. They're 15 frames a second, a pixel per point, and 1280 pixels across at most. Parts that don't move cost next to nothing, so a smaller area or a shorter recording makes a smaller file. The wait before you start scrolling is cut to a second, and any pause along the way to two, so the GIF doesn't sit still each time it plays.
 
 ---
 

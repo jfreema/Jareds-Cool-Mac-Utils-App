@@ -164,7 +164,8 @@ final class ScreenSnipper: NSObject {
     private func offer(_ snip: Snip) {
         let menu = NSMenu()
         menu.autoenablesItems = false
-        let preview = NSMenuItem()
+        // Titled outright: NSMenuItem() is called "NSMenuItem", which showed beside the picture
+        let preview = NSMenuItem(title: "", action: nil, keyEquivalent: "")
         preview.image = Self.thumbnail(of: snip)
         preview.isEnabled = false
         menu.addItem(preview)

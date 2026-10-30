@@ -14,8 +14,13 @@ final class GIFWriter {
         var height: Int
     }
 
-    /// The most the last frame stays up, in hundredths of a second: long enough to see where it ends, without the time
-    /// it took to click Stop
+    /// The most a frame in the GIF's first second stays up, in hundredths of a second: long enough to see where it
+    /// starts, without the wait before you began scrolling, which would play every time the GIF goes round. Not just
+    /// the first frame's: the app you're recording redraws as it gets the focus back, which can end that one early.
+    static let longestStart = 100
+    /// The most a frame in the middle stays up: a longer pause is cut to this
+    static let longestPause = 200
+    /// The most the last frame stays up: long enough to see where it ends, without the time it took to click Stop
     static let longestEnd = 200
 
     let width: Int
@@ -41,8 +46,13 @@ final class GIFWriter {
         self.height = max(1, min(height, 0xFFFF))
         self.output = output
         // No global palette, then the loop forever extension
-        var header = Array("GIF89a".utf8) + Self.le16(self.width) + Self.le16(self.height) + [0x70, 0, 0]
-        header += [0x21, 0xFF, 0x0B] + Array("NETSCAPE2.0".utf8) + [0x03, 0x01, 0x00, 0x00, 0x00]
+        var header: [UInt8] = Array("GIF89a".utf8)
+        header += Self.le16(self.width)
+        header += Self.le16(self.height)
+        header += [0x70, 0, 0]
+        header += [0x21, 0xFF, 0x0B]
+        header += Array("NETSCAPE2.0".utf8)
+        header += [0x03, 0x01, 0x00, 0x00, 0x00]
         output(Data(header))
     }
 
@@ -59,7 +69,12 @@ final class GIFWriter {
         if Self.same(frame, pending) { return }  // the one up stays up longer
         let due = Int(((time - start) * 100).rounded()) - length
         // Browsers stretch a delay under 2 hundredths to 10, so a frame that soon takes the place of the one before
-        if due >= 2 { write(pending, delay: due) }
+        if due >= 2 {
+            let delay = min(due, length < Self.longestStart ? Self.longestStart : Self.longestPause)
+            // The time cut from a wait doesn't count towards the frames after it
+            self.start = start + Double(due - delay) / 100
+            write(pending, delay: delay)
+        }
         self.pending = frame
     }
 
@@ -91,9 +106,11 @@ final class GIFWriter {
         while 1 << tableBits < entries { tableBits += 1 }
 
         // Drawn over what's there, with see-through pixels after the first frame
-        var bytes: [UInt8] = [0x21, 0xF9, 0x04, previous == nil ? 0x04 : 0x05] + Self.le16(delay)
-        bytes += [UInt8(palette.count), 0x00]
-        bytes += [0x2C] + Self.le16(area.x) + Self.le16(area.y) + Self.le16(area.width) + Self.le16(area.height)
+        let flags: UInt8 = previous == nil ? 0x04 : 0x05
+        var bytes: [UInt8] = [0x21, 0xF9, 0x04, flags]
+        bytes += Self.le16(delay)
+        bytes += [UInt8(palette.count), 0x00, 0x2C]
+        for value in [area.x, area.y, area.width, area.height] { bytes += Self.le16(value) }
         bytes.append(0x80 | UInt8(tableBits - 1))
         for color in palette {
             bytes += [UInt8(color >> 16 & 0xFF), UInt8(color >> 8 & 0xFF), UInt8(color & 0xFF)]
@@ -258,8 +275,8 @@ final class GIFColors {
                 lookup[bin] = UInt8(index)
             }
             let half = count / 2
-            let (r, g, b) = ((red + half) / count, (green + half) / count, (blue + half) / count)
-            return UInt32(r) << 16 | UInt32(g) << 8 | UInt32(b)
+            let r = UInt32((red + half) / count), g = UInt32((green + half) / count), b = UInt32((blue + half) / count)
+            return r << 16 | g << 8 | b
         }
     }
 
@@ -283,7 +300,11 @@ final class GIFColors {
 
     /// The top 5 bits of red, green and blue
     private static func bin(_ pixel: UInt32) -> Int {
-        Int(pixel >> 9 & 0x7C00 | pixel >> 6 & 0x03E0 | pixel >> 3 & 0x001F)
+        // Typed one channel at a time: as one expression, the compiler gives up working out the literals' types
+        let red: UInt32 = pixel >> 9 & 0x7C00
+        let green: UInt32 = pixel >> 6 & 0x03E0
+        let blue: UInt32 = pixel >> 3 & 0x001F
+        return Int(red | green | blue)
     }
 }
 

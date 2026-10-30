@@ -74,9 +74,14 @@ struct GIFWriterTests {
 
     /// The biggest difference in any channel
     private static func farthest(_ a: [UInt32], _ b: [UInt32]) -> Int {
-        zip(a, b).map { a, b in
-            [16, 8, 0].map { abs(Int(a >> $0 & 0xFF) - Int(b >> $0 & 0xFF)) }.max()!
-        }.max() ?? 0
+        var farthest = 0
+        for (a, b) in zip(a, b) {
+            for shift: UInt32 in [16, 8, 0] {
+                let one = Int(a >> shift & 0xFF), other = Int(b >> shift & 0xFF)
+                farthest = max(farthest, abs(one - other))
+            }
+        }
+        return farthest
     }
 
     @Test func aFewColorsComeBackExactly() {
@@ -157,6 +162,30 @@ struct GIFWriterTests {
         #expect(gif.delays == [0.1, 0.2, 0.1])
     }
 
+    /// The wait before you start scrolling
+    @Test func theFirstFrameHoldsASecondAtMost() {
+        let gif = Self.write([(Self.quarters(), 0), (Self.quarters(square: (x: 4, y: 4, color: 0xFF00_0000)), 5),
+                              (Self.quarters(square: (x: 8, y: 8, color: 0xFF00_0000)), 5.1)], until: 5.2)
+        #expect(gif.delays == [1, 0.1, 0.1])
+    }
+
+    /// As when the app you're recording redraws as it gets the focus back, before you start scrolling
+    @Test func anyFrameInTheFirstSecondHoldsASecondAtMost() {
+        let gif = Self.write([(Self.quarters(), 0), (Self.quarters(square: (x: 0, y: 0, color: 0xFF00_0000)), 0.3),
+                              (Self.quarters(square: (x: 4, y: 4, color: 0xFF00_0000)), 5),
+                              (Self.quarters(square: (x: 8, y: 8, color: 0xFF00_0000)), 5.1)], until: 5.2)
+        #expect(gif.delays == [0.3, 1, 0.1, 0.1])
+    }
+
+    @Test func aLongPauseIsCutToTwoSeconds() {
+        let still = Self.quarters()
+        let gif = Self.write([(still, 0), (Self.quarters(square: (x: 0, y: 0, color: 0xFF00_0000)), 0.6),
+                              (Self.quarters(square: (x: 4, y: 4, color: 0xFF00_0000)), 1.2),
+                              (Self.quarters(square: (x: 8, y: 8, color: 0xFF00_0000)), 11.2), (still, 11.3)],
+                             until: 11.4)
+        #expect(gif.delays == [0.6, 0.6, 2, 0.1, 0.1])
+    }
+
     @Test func theLastFrameHoldsTwoSecondsAtMost() {
         #expect(Self.write([(Self.quarters(), 0)], until: 30).delays == [2])
         #expect(Self.write([(Self.quarters(), 0)], until: 0.5).delays == [0.5])
@@ -171,8 +200,9 @@ struct GIFWriterTests {
     /// Thousands of colors, which the palette's 255 stand in for
     @Test func manyColorsStayClose() {
         let width = 64, height = 64
-        let frame = (0..<(width * height)).map { n in
-            0xFF00_0000 | UInt32(n % width * 4) << 16 | UInt32(n / width * 4) << 8 | 0x80
+        let frame = (0..<(width * height)).map { (n: Int) -> UInt32 in
+            let red = UInt32(n % width * 4) << 16, green = UInt32(n / width * 4) << 8
+            return 0xFF00_0080 | red | green
         }
         let gif = Self.write([(frame, 0)], until: 1, width: width, height: height)
         #expect(Self.farthest(gif.pixels(0), frame) <= 16)
@@ -184,7 +214,8 @@ struct GIFWriterTests {
         var seed: UInt32 = 12345
         // 255 colors 8 apart, so each has a palette entry to itself
         let palette = (0..<255).map { (n: Int) -> UInt32 in
-            0xFF00_0040 | UInt32(n % 32 * 8) << 16 | UInt32(n / 32 * 8) << 8
+            let red = UInt32(n % 32 * 8) << 16, green = UInt32(n / 32 * 8) << 8
+            return 0xFF00_0040 | red | green
         }
         let frame = (0..<(width * height)).map { _ in
             seed = seed &* 1_664_525 &+ 1_013_904_223

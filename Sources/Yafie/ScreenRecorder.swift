@@ -2,6 +2,7 @@ import AppKit
 import CoreMedia
 @preconcurrency import ScreenCaptureKit
 import SwiftUI
+import UniformTypeIdentifiers
 
 /// ⌃⌥R records part of the screen as a GIF, to show scrolling through a page or the like: drag across it or click a
 /// window, do what you want to show, then stop. The GIF is written as it records, then offered to copy or save.
@@ -20,7 +21,7 @@ final class ScreenRecorder: NSObject {
     private enum Choice: Int { case copy, save }
 
     private var stage = Stage.idle
-    /// The app you were in, which gets the focus back once you've picked
+    /// The app you were in, which gets the focus back once you've picked, and again after the GIF's menu
     private var previousApp: NSRunningApplication?
     /// The recording in the open menu
     private var offered: GIFRecording.Result?
@@ -51,9 +52,9 @@ final class ScreenRecorder: NSObject {
     private func picked(_ pick: RecordingPicker.Pick?) {
         // So scrolling and typing go to the app you were in
         NSApp.handFocus(back: previousApp)
-        previousApp = nil
         guard let pick, let display = pick.screen.displayID else {
             stage = .idle
+            previousApp = nil
             return snipLogger.notice("Recording cancelled")
         }
         stage = .busy
@@ -74,6 +75,7 @@ final class ScreenRecorder: NSObject {
             } catch {
                 controls.close()
                 stage = .idle
+                previousApp = nil
                 snipLogger.error("Couldn't record: \(error.localizedDescription, privacy: .public)")
                 Alert.show("Couldn't record the screen", error.localizedDescription)
             }
@@ -84,13 +86,20 @@ final class ScreenRecorder: NSObject {
         guard case .recording(let recording, let controls) = stage else { return }
         stage = .busy
         controls.close()
+        // Clicking Stop brings Yafie to the front, so the focus goes back to the app in front now, or else to the one
+        // you were in when you picked
+        let frontmost = NSWorkspace.shared.frontmostApplication
+        if let frontmost, frontmost.processIdentifier != ProcessInfo.processInfo.processIdentifier {
+            previousApp = frontmost
+        }
         Task {
             let result = await recording.stop()
             guard result.frameCount > 0 else {
                 stage = .idle
                 try? FileManager.default.removeItem(at: result.file)
                 snipLogger.notice("Recorded nothing")
-                return Toast.show("Nothing recorded", near: NSEvent.mouseLocation)
+                Toast.show("Nothing recorded", near: NSEvent.mouseLocation)
+                return handBackFocus()
             }
             snipLogger.notice("Recorded \(result.frameCount) frames, \(result.seconds) seconds, \(result.bytes) bytes")
             offer(result)
@@ -108,7 +117,8 @@ final class ScreenRecorder: NSObject {
         let menu = NSMenu()
         menu.autoenablesItems = false
         if let frame = result.firstFrame {
-            let preview = NSMenuItem()
+            // Titled outright: NSMenuItem() is called "NSMenuItem", which showed beside the picture
+            let preview = NSMenuItem(title: "", action: nil, keyEquivalent: "")
             preview.image = RecordingLayout.thumbnail(of: frame)
             preview.isEnabled = false
             menu.addItem(preview)
@@ -131,6 +141,7 @@ final class ScreenRecorder: NSObject {
             stage = .idle
             try? FileManager.default.removeItem(at: result.file)
             snipLogger.notice("Recording thrown away")
+            handBackFocus()
         }
     }
 
@@ -148,22 +159,27 @@ final class ScreenRecorder: NSObject {
             Self.copy(result.file)
             snipLogger.notice("Copied a recording")
             Toast.show("GIF copied", near: NSEvent.mouseLocation)
+            handBackFocus()
         case .save:
-            let frontmost = NSWorkspace.shared.frontmostApplication
-            let previous = frontmost?.processIdentifier == ProcessInfo.processInfo.processIdentifier ? nil : frontmost
             let name = result.file.deletingPathExtension().lastPathComponent
             SnipOutput.save(name: name, type: .gif, what: "GIF", from: nil, writing: { url in
                 if FileManager.default.fileExists(atPath: url.path) { try FileManager.default.removeItem(at: url) }
                 try FileManager.default.moveItem(at: result.file, to: url)
-            }, then: { _ in
+            }, then: { [weak self] _ in
                 try? FileManager.default.removeItem(at: result.file)
-                if NSApp.isActive { NSApp.handFocus(back: previous) }
+                self?.handBackFocus()
             })
         }
     }
 
+    /// So ⌘V pastes where you were
+    private func handBackFocus() {
+        if NSApp.isActive { NSApp.handFocus(back: previousApp) }
+        previousApp = nil
+    }
+
     /// The file, which apps like Messages, Mail and Slack attach as it is, and the GIF itself, for apps that only
-    /// take pictures
+    /// take pictures. The file stays until the next copy takes the clipboard's place.
     private static func copy(_ file: URL) {
         let item = NSPasteboardItem()
         item.setString(file.absoluteString, forType: .fileURL)
@@ -173,6 +189,10 @@ final class ScreenRecorder: NSObject {
         let pasteboard = NSPasteboard.general
         pasteboard.clearContents()
         pasteboard.writeObjects([item])
+        let copied = (try? FileManager.default.contentsOfDirectory(at: folder, includingPropertiesForKeys: nil)) ?? []
+        for old in copied where old.lastPathComponent != file.lastPathComponent {
+            try? FileManager.default.removeItem(at: old)
+        }
     }
 }
 
@@ -207,6 +227,9 @@ final class RecordingPicker {
             window.isOpaque = false
             window.backgroundColor = .clear
             window.hasShadow = false
+            // Said outright: left alone, a see-through window lets clicks through where it's clear, which is the
+            // lit-up window or area, so a drag there went to the app underneath
+            window.ignoresMouseEvents = false
             window.isReleasedWhenClosed = false
             window.animationBehavior = .none
             window.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .ignoresCycle]
@@ -349,10 +372,10 @@ private final class PickerView: NSView {
             line.lineWidth = 2
             line.stroke()
             let size = RecordingLayout.gifSize(for: highlight.size)
-            let label = label("\(size.width) × \(size.height)", size: 12)
-            let below = CGPoint(x: highlight.maxX - label.width, y: highlight.minY - label.height - 6)
-            drawLabel(label, at: below.y >= bounds.minY + 4 ? below
-                      : CGPoint(x: highlight.maxX - label.width - 6, y: highlight.minY + 6))
+            let pixels = label("\(size.width) × \(size.height)", size: 12)
+            let below = CGPoint(x: highlight.maxX - pixels.width, y: highlight.minY - pixels.height - 6)
+            drawLabel(pixels, at: below.y >= bounds.minY + 4 ? below
+                      : CGPoint(x: highlight.maxX - pixels.width - 6, y: highlight.minY + 6))
         }
         let hint = label("Drag across what to record, or click a window. Esc cancels.", size: 13)
         let top = (window.screen?.visibleFrame.maxY ?? window.frame.maxY) - origin.y
@@ -400,9 +423,9 @@ final class RecordingControls {
         border.setFrame(area.insetBy(dx: -3, dy: -3).intersection(screen.frame), display: true)
         border.orderFrontRegardless()
 
-        let content = FirstClickHostingView(rootView: RecordingBar(clock: clock, stop: stop))
-        let size = content.fittingSize
-        bar.contentView = content
+        // Measured in the window, where it's laid out as it shows
+        bar.contentView = FirstClickHostingView(rootView: RecordingBar(clock: clock, stop: stop))
+        let size = bar.contentView?.fittingSize ?? .zero
         bar.setFrame(RecordingLayout.barFrame(size: size, around: area, in: screen.visibleFrame), display: true)
         bar.orderFrontRegardless()
     }
@@ -475,6 +498,8 @@ private struct RecordingBar: View {
                 .buttonStyle(BubbleButtonStyle(fill: Bubble.yellow, height: 24, fontSize: 12))
                 .help("Stop recording (control+option+R)")
         }
+        // Never squeezed: measured without it, the window came out too narrow and Stop read "S…"
+        .fixedSize()
         .padding(.leading, 12)
         .padding(.trailing, 8)
         .padding(.vertical, 6)
@@ -674,8 +699,10 @@ enum RecordingLayout {
         return visible.isNull ? .zero : visible.integral.intersection(screen)
     }
 
-    /// Where Stop goes: centered under the area, else over it, else inside it along the bottom, on the screen
+    /// Where Stop goes: centered under the area, else over it, else inside it along the bottom, on the screen. In
+    /// whole points, none of them short of the size it needs.
     static func barFrame(size: CGSize, around area: CGRect, in visible: CGRect) -> CGRect {
+        let size = CGSize(width: size.width.rounded(.up), height: size.height.rounded(.up))
         let gap: CGFloat = 10, margin: CGFloat = 8
         let x = min(max(area.midX - size.width / 2, visible.minX + margin), visible.maxX - margin - size.width)
         let below = area.minY - gap - size.height, above = area.maxY + gap

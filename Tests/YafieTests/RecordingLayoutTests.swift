@@ -78,6 +78,12 @@ struct RecordingLayoutTests {
         #expect(frame.maxX == 1504)
     }
 
+    @Test func stopIsNeverCutShort() {
+        let frame = RecordingLayout.barFrame(size: CGSize(width: 126.2, height: 39.5),
+                                             around: CGRect(x: 400, y: 400, width: 600, height: 300), in: main)
+        #expect(frame == CGRect(x: 637, y: 350, width: 127, height: 40))
+    }
+
     @Test func clockShowsMinutesAndSeconds() {
         #expect(RecordingLayout.clock(0) == "0:00")
         #expect(RecordingLayout.clock(7) == "0:07")
