@@ -16,7 +16,7 @@ The app was called Yafie before version 1.1.4. **Check for Updates…** in Yafie
 From 1.1.6, the app is signed with an Apple Developer ID and notarized, so macOS sees it as a new app once, and asks for its permissions again.
 
 - **A feature asks for a permission it had.** Allow it again, the way you did the first time. Later updates keep it.
-- **Its switch is on in System Settings, but the feature still asks.** That switch is for the copy from before 1.1.6. In **System Settings → Privacy & Security**, open **Accessibility** (or **Screen & System Audio Recording**), select **Jared's Cool Mac Utilities App**, click **−** to remove it, then choose the feature's **Allow…** item in the app's menu and turn it on again.
+- **Its switch is on in System Settings, but the feature still asks.** That switch is for the copy from before 1.1.6. In **System Settings → Privacy & Security**, open **Accessibility** (or **Screen & System Audio Recording**), select **Jared's Cool Mac Utilities App**, click **−** to remove it, then turn the feature off and on in the app's menu, or choose **Allow Screen Snipping…**, and allow it again.
 
 ## Stay awake with the lid closed
 
@@ -59,7 +59,7 @@ From 1.1.6, the app is signed with an Apple Developer ID and notarized, so macOS
 
 ## Window snapping
 
-- **The keys do nothing.** The app doesn't have the Accessibility permission. Turn on **Jared's Cool Mac Utilities App** in **System Settings → Privacy & Security → Accessibility**.
+- **The keys do nothing.** The app doesn't have the Accessibility permission. Turn on **Jared's Cool Mac Utilities App** in **System Settings → Privacy & Security → Accessibility**. If it's on already, reset it as for [app preview](#app-preview).
 - **"Another app is using a control+option+arrow key."** Another app, such as a window manager, has the same shortcut. Quit it or change its shortcut, then turn snapping off and on.
 - **A window doesn't fill its column exactly.** Some apps keep a minimum size, and Terminal rounds to whole characters. The app centers those on the column and keeps them on the display.
 - **A full-screen window doesn't move.** The app leaves full-screen windows alone. Leave full screen first.
@@ -68,6 +68,7 @@ From 1.1.6, the app is signed with an Apple Developer ID and notarized, so macOS
 
 - **Titles but no pictures.** The app can't record the screen yet. Turn on **Jared's Cool Mac Utilities App** in **System Settings → Privacy & Security → Screen & System Audio Recording**, then click **Quit & Reopen**.
 - **Nothing appears over the Dock.** Check that the app is on in **Accessibility**, then turn **Show App Previews in the Dock** off and on.
+- **Still nothing, though the app is on in Accessibility.** That switch can be left over from an older copy of the app. Quit the app, run `tccutil reset Accessibility io.github.jfreema.yafie` in Terminal, and open the app again. Then turn **Show App Previews in the Dock** off and on, and turn the app on when macOS asks. Window snapping and keyboard cleaning use the same permission, so this brings them back too.
 - **A window is missing.** Only windows on the current desktop show, plus minimized ones. Full-screen windows, which have desktops of their own, and small panels like palettes don't.
 - **The app's icon, or an old picture, instead of the window.** macOS can't picture minimized windows or a hidden app's windows, so they show the last picture taken of them, or the app's icon.
 - **macOS asks whether the app can bypass the system private window picker.** As with snips, click **Allow**. macOS asks again about once a month.
