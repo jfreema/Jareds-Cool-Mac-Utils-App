@@ -9,15 +9,15 @@ You need macOS 14 or later and the Command Line Tools (`xcode-select --install`)
 swift test             # run the unit tests
 ```
 
-The installer copies the app into `/Applications`, removes `Yafie.app` from before the rename, hands the app to the person installing (so **Check for Updates…** can replace it later), then opens it. Its scripts and closing page are in `Resources/pkg`.
+The installer copies the app into `/Applications`, hands the app to the person installing (so **Check for Updates…** can replace it later), then opens it. Its scripts and closing page are in `Resources/pkg`.
 
-The app was called Yafie before 1.1.4, and it still is inside: the Swift package, the bundle ID `io.github.jfreema.yafie` and `/etc/sudoers.d/yafie`. Keep them. Users' permissions, settings and password-free setup depend on them. Its names, Jared's Cool Mac Utilities App and Jared's Mac App for short, are in `Resources/Info.plist`, `Resources/en.lproj/InfoPlist.strings` and `Yafie.name` in the code.
+Its names, Jared's Cool Mac Utilities App and Jared's Mac App for short, are in `Resources/Info.plist`, `Resources/en.lproj/InfoPlist.strings` and `JaredsMacApp.name` in the code. Its bundle ID is still `io.github.jfreema.yafie`, from the app's first name, until the next release moves it to `io.github.jfreema.jaredsmacutils`. macOS keeps users' permissions, settings and Open at Login by bundle ID, so it moves only once.
 
 ## Signing
 
 From 1.1.6, releases are signed with Jared's **Developer ID** certificates (team `885XHF7XLL`) and notarized by Apple, so the installer opens on any Mac without a Gatekeeper warning. This doesn't involve the App Store. macOS ties the app's permissions (Accessibility for window snapping and app previews, Screen Recording for snips and window pictures, Microphone for the tuner) to the team, so they last across updates and certificate renewals. Releases before 1.1.6 used a self-signed certificate, so updating to 1.1.6 asks everyone for the permissions once more.
 
-Two certificates do it: **Developer ID Application** signs the app, with the hardened runtime and `Resources/jaredsmacutils.entitlements` (the microphone), and **Developer ID Installer** signs the installer. `build.sh` uses the first of each in the keychain, or `YAFIE_SIGNING_IDENTITY` and `YAFIE_INSTALLER_IDENTITY`. Without them, `./build.sh` and `./build.sh --install` sign ad hoc, and `./build.sh --pkg` stops. With `NOTARY_APPLE_ID` and `NOTARY_PASSWORD` set, `--pkg` also notarizes the installer, with the app in it, and staples the ticket.
+Two certificates do it: **Developer ID Application** signs the app, with the hardened runtime and `Resources/jaredsmacutils.entitlements` (the microphone), and **Developer ID Installer** signs the installer. `build.sh` uses the first of each in the keychain, or `SIGNING_IDENTITY` and `INSTALLER_IDENTITY`. Without them, `./build.sh` and `./build.sh --install` sign ad hoc, and `./build.sh --pkg` stops. With `NOTARY_APPLE_ID` and `NOTARY_PASSWORD` set, `--pkg` also notarizes the installer, with the app in it, and staples the ticket.
 
 - **First time:** on your Mac, run `zsh scripts/setup-signing.sh`. It makes the private keys and two signing requests, opens Apple's site for you to turn each into a certificate (pick **G2 Sub-CA**), packages them as .p12 files with a random password, asks for an app-specific password from [account.apple.com](https://account.apple.com) and checks it with Apple, then adds the secrets below to the repo. With the GitHub CLI (`brew install gh`, then `gh auth login`) it adds them itself; without it, it opens GitHub's page and puts each one on your clipboard. Your login keychain keeps the certificates as the backup.
 - **For GitHub:** the Release workflow signs and notarizes with five repository secrets:
@@ -42,11 +42,11 @@ Push to `main`. Every push that changes the app, meaning `Sources`, `Resources`,
 - runs the tests
 - builds the installer with `./build.sh --pkg`, signs it and has Apple notarize it
 - checks it the way **Check for Updates…** will
-- commits the installer, `downloads/jaredsmacutils.pkg`, its update feed, `downloads/update.json`, the version and the README's version line to `main`
+- commits the installer, `downloads/jaredsmacutils.pkg`, its update feed, `downloads/release.json`, the version and the README's version line to `main`
 
 Follow it under the repo's **Actions** tab. After it finishes, GitHub can take up to 5 minutes to serve the new files. Pushes close together can go out as one release, and docs alone don't make one.
 
-**Check for Updates…** reads `downloads/update.json` and finds the app in the installer by its bundle ID, so a new version can have a new name. It goes in beside the old copy, which is then removed. Copies before 1.1.3 read `downloads/latest.json` instead, and only take an app named `Yafie.app`. So `latest.json` and `Yafie.pkg` stay at 1.1.3, the last release named Yafie, for good: old copies update to it first, then on to the new name. `build.sh` leaves them alone, and the workflow checks that they don't change.
+**Check for Updates…** reads `downloads/release.json` and finds the app in the installer by its bundle ID, so a new version can have a new name. It goes in beside the old copy, which is then removed. Earlier copies read `downloads/update.json`, and only take an app with their own bundle ID. This version takes the bundle ID the app is moving to as well, so `build.sh` writes it to both feeds, and once the bundle ID moves, `update.json` stays at this version for good: earlier copies update to it first, then on to the new bundle ID.
 
 To try a build without publishing, choose **Actions → Release → Run workflow**, leaving **Publish** off. The installer is attached to the run.
 

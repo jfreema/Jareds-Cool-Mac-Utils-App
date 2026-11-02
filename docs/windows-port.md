@@ -140,7 +140,7 @@ If it's built, `RegisterHotKey` takes the shortcuts (it fails if another app hol
 |---|---|
 | **Open at Login** (`SMAppService`) | A startup task in the package. If someone turns it off in Settings, the app can't turn it back on itself, so it sends them to **Settings → Apps → Startup**, as the Mac version sends them to Login Items. |
 | **Check for Updates…** (`Updater`, `downloads/update.json`) | The Store updates the app, so the menu item goes, or opens the app's Store page. |
-| One copy at a time (`Yafie.main`) | A named mutex. A second copy hands its arguments to the first, which is also how Snipping Tool's answers arrive. |
+| One copy at a time (`JaredsMacApp.main`) | A named mutex. A second copy hands its arguments to the first, which is also how Snipping Tool's answers arrive. |
 | Settings in `UserDefaults` | The package's settings (`ApplicationData`), which last across updates. |
 | Shortcuts through Carbon (`HotKeys`) | `RegisterHotKey`. On many keyboards outside the US, control+alt is AltGr, which types letters like ł, so a worldwide release should let people change the shortcuts. |
 | Developer ID signing and notarization | The Store signs the package. |

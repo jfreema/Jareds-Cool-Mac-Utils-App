@@ -3,8 +3,7 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 
-# The app's file name, jaredsmacutils, names the executable and the installer too. The Swift package keeps the app's
-# old name, Yafie.
+# The app's file name, jaredsmacutils, names the executable and the installer too
 NAME="$(/usr/libexec/PlistBuddy -c 'Print CFBundleExecutable' Resources/Info.plist)"
 ID="$(/usr/libexec/PlistBuddy -c 'Print CFBundleIdentifier' Resources/Info.plist)"
 APP="build/$NAME.app"
@@ -15,7 +14,7 @@ ARCHS=()
 [[ "$MODE" == "--pkg" ]] && ARCHS=(--arch arm64 --arch x86_64)
 
 swift build -c release "${ARCHS[@]}"
-BIN="$(swift build -c release "${ARCHS[@]}" --show-bin-path)/Yafie"
+BIN="$(swift build -c release "${ARCHS[@]}" --show-bin-path)/JaredsMacUtils"
 
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
@@ -26,9 +25,9 @@ cp Resources/AppIcon.icns Resources/MenuIcon.tiff Resources/MenuIconOutline.tiff
 cp -R Resources/en.lproj "$APP/Contents/Resources/"
 
 # A Developer ID Application certificate signs it, with the hardened runtime notarization needs. macOS ties the app's
-# permissions to the team, so they last across updates. YAFIE_SIGNING_IDENTITY picks one by name or SHA-1. See
+# permissions to the team, so they last across updates. SIGNING_IDENTITY picks one by name or SHA-1. See
 # docs/buildfromsource.md.
-IDENTITY="${YAFIE_SIGNING_IDENTITY:-}"
+IDENTITY="${SIGNING_IDENTITY:-}"
 if [[ -z "$IDENTITY" ]]; then
     IDENTITY="$(security find-identity -v -p codesigning | awk '/"Developer ID Application/ { print $2; exit }')"
 fi
@@ -47,20 +46,14 @@ fi
 echo "Built $APP (signed by $SIGNED_BY)"
 
 if [[ "$MODE" == "--install" ]]; then
-    # SIGTERM lets it restore sleep. Before 1.1.4, it ran as Yafie.
-    for running in "$NAME" Yafie; do
-        if pkill -x "$running"; then
-            for _ in {1..25}; do
-                pgrep -x "$running" >/dev/null || break
-                sleep 0.2
-            done
-        fi
-    done
+    # SIGTERM lets it restore sleep
+    if pkill -x "$NAME"; then
+        for _ in {1..25}; do
+            pgrep -x "$NAME" >/dev/null || break
+            sleep 0.2
+        done
+    fi
     rm -rf "/Applications/$NAME.app"
-    # The copy from before the rename, but never another app with that name
-    old_id="$(/usr/libexec/PlistBuddy -c 'Print CFBundleIdentifier' /Applications/Yafie.app/Contents/Info.plist \
-        2>/dev/null || true)"
-    if [[ "$old_id" == "$ID" ]]; then rm -rf /Applications/Yafie.app; fi
     ditto "$APP" "/Applications/$NAME.app"
     open "/Applications/$NAME.app"
     echo "Installed /Applications/$NAME.app"
@@ -106,7 +99,7 @@ if [[ "$MODE" == "--pkg" ]]; then
 </installer-gui-script>
 EOF
     # The installer has its own certificate, Developer ID Installer, from the same team
-    INSTALLER="${YAFIE_INSTALLER_IDENTITY:-}"
+    INSTALLER="${INSTALLER_IDENTITY:-}"
     if [[ -z "$INSTALLER" ]]; then
         INSTALLER="$(security find-identity -v | awk '/"Developer ID Installer/ { print $2; exit }')"
     fi
@@ -154,16 +147,17 @@ EOF
     fi
 
     # What Check for Updates reads, hashed after stapling. The hash lets it reject a stale or broken download.
-    cat > downloads/update.json <<EOF
+    cat > downloads/release.json <<EOF
 {
   "version": "$VERSION",
   "url": "https://github.com/jfreema/Jareds-Cool-Mac-Utils-App/raw/main/downloads/$NAME.pkg",
   "sha256": "$(shasum -a 256 "$PKG" | cut -d' ' -f1)"
 }
 EOF
-    # Not downloads/latest.json and Yafie.pkg: they stay at 1.1.3, the last Yafie, for copies before it, which only
-    # take Yafie.app. 1.1.3's Check for Updates then takes them on to the new name.
+    # Earlier copies read update.json, and only take their own bundle ID. This version also takes the one the app
+    # moves to, so they come through it.
+    cp downloads/release.json downloads/update.json
     # README shows the version next to the download link
     sed -i '' -E "s/Version [0-9.]+ ·/Version $VERSION ·/" README.md
-    echo "Built $PKG ($VERSION) and downloads/update.json"
+    echo "Built $PKG ($VERSION) and downloads/release.json"
 fi

@@ -1,8 +1,6 @@
 #!/bin/sh
 # $2 is the folder Installer put the app in
 app="$2/jaredsmacutils.app"
-# Its name before 1.1.4
-old="$2/Yafie.app"
 user=$(/usr/bin/stat -f%Su /dev/console)
 
 # Installer then offers to move a downloaded package to the Trash, which macOS
@@ -10,9 +8,14 @@ user=$(/usr/bin/stat -f%Su /dev/console)
 home=$(/usr/bin/dscl . -read "/Users/$user" NFSHomeDirectory 2>/dev/null | /usr/bin/awk '{print $2}')
 case "$1" in "$home/Downloads/"*) /bin/chmod a-w "$1" ;; esac
 
-# The copy from before the rename goes, but never another app with that name
-old_id=$(/usr/libexec/PlistBuddy -c 'Print CFBundleIdentifier' "$old/Contents/Info.plist" 2>/dev/null)
-[ "$old_id" = "io.github.jfreema.yafie" ] && /bin/rm -rf "$old"
+if [ "$(/usr/bin/id -u)" -eq 0 ]; then
+    # The password-free sleep rule moves from its first name to the app's
+    rules=/etc/sudoers.d
+    if [ -f "$rules/yafie" ]; then
+        if [ -e "$rules/jaredsmacutils" ]; then /bin/rm -f "$rules/yafie"
+        else /bin/mv "$rules/yafie" "$rules/jaredsmacutils"; fi
+    fi
+fi
 
 if [ "$(/usr/bin/id -u)" -eq 0 ] && [ -n "$user" ] && [ "$user" != "root" ]; then
     # Owned like a dragged-in app, so Check for Updates can replace it

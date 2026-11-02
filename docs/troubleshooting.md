@@ -4,13 +4,6 @@
 - **Nothing in the menu bar after Open Anyway.** macOS can get stuck approving the app, and then holds it before it starts, every time. Restart your Mac, or run `sudo killall syspolicyd`, then open the app again.
 - **See what the app did:** `/usr/bin/log show --last 1h --predicate 'subsystem == "io.github.jfreema.yafie"'`
 
-## Updating from Yafie
-
-The app was called Yafie before version 1.1.4. **Check for Updates…** in Yafie takes it to the new name, keeping your settings and permissions.
-
-- **The update didn't work, or Yafie is still there.** Quit Yafie, delete `/Applications/Yafie.app`, then [download the installer](../README.md) and install the app fresh. It keeps your settings and permissions. If that doesn't help, [uninstall](../README.md#uninstall) it completely, then install it again.
-- **Doesn't open at login after the update.** Turn **Open at Login** off and on in the app's menu.
-
 ## Updating to 1.1.6
 
 From 1.1.6, the app is signed with an Apple Developer ID and notarized, so macOS sees it as a new app once, and asks for its permissions again.

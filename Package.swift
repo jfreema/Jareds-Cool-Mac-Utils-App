@@ -2,10 +2,10 @@
 import PackageDescription
 
 let package = Package(
-    name: "Yafie",
+    name: "JaredsMacUtils",
     platforms: [.macOS(.v14)],
     targets: [
-        .executableTarget(name: "Yafie", path: "Sources/Yafie"),
-        .testTarget(name: "YafieTests", dependencies: ["Yafie"], path: "Tests/YafieTests"),
+        .executableTarget(name: "JaredsMacUtils", path: "Sources/JaredsMacUtils"),
+        .testTarget(name: "JaredsMacUtilsTests", dependencies: ["JaredsMacUtils"], path: "Tests/JaredsMacUtilsTests"),
     ]
 )

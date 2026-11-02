@@ -5,20 +5,20 @@
             "request": "launch",
             "args": [],
             "cwd": "${workspaceFolder:Jareds-Cool-Mac-Utils-App}",
-            "name": "Debug Yafie",
-            "target": "Yafie",
+            "name": "Debug JaredsMacUtils",
+            "target": "JaredsMacUtils",
             "configuration": "debug",
-            "preLaunchTask": "swift: Build Debug Yafie"
+            "preLaunchTask": "swift: Build Debug JaredsMacUtils"
         },
         {
             "type": "swift",
             "request": "launch",
             "args": [],
             "cwd": "${workspaceFolder:Jareds-Cool-Mac-Utils-App}",
-            "name": "Release Yafie",
-            "target": "Yafie",
+            "name": "Release JaredsMacUtils",
+            "target": "JaredsMacUtils",
             "configuration": "release",
-            "preLaunchTask": "swift: Build Release Yafie"
+            "preLaunchTask": "swift: Build Release JaredsMacUtils"
         }
     ]
 }

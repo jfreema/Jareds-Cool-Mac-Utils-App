@@ -8,8 +8,6 @@
 
 <p align="center">Version 1.1.19 · macOS 14 or later · Apple silicon or Intel</p>
 
-<p align="center"><b>It used to be called Yafie.</b> If updating from Yafie gives you any trouble, <a href="#uninstall">uninstall Yafie</a>, then do a fresh install of Jared's Cool Mac Utilities App.</p>
-
 <p align="center"><img src="docs/menu.png" width="400" alt="The app's menu: a switch for each feature, and buttons for the guitar tuner, drum machine and keyboard cleaning"></p>
 
 <table>
@@ -204,7 +202,7 @@ Its menu bar icon shows what it's doing:
 <details>
 <summary>How it works</summary>
 
-The app turns sleep off with `pmset disablesleep 1` and back on with `pmset disablesleep 0`. If the lid is closed at that point, it also puts the Mac to sleep, unless an external display is in use. The one-time password adds `/etc/sudoers.d/yafie`, which lets your account run only those two commands, and the ones for Low Power Mode, without a password.
+The app turns sleep off with `pmset disablesleep 1` and back on with `pmset disablesleep 0`. If the lid is closed at that point, it also puts the Mac to sleep, unless an external display is in use. The one-time password adds `/etc/sudoers.d/jaredsmacutils`, which lets your account run only those two commands, and the ones for Low Power Mode, without a password.
 
 Low Power Mode is `pmset lowpowermode`, or `pmset powermode` on Macs that have High Power Mode too. macOS keeps one setting for battery and one for the power adapter. The app only turns on the ones that are off, and puts just those back.
 
@@ -218,14 +216,12 @@ If the app quits or crashes, sleep comes back on, and Low Power Mode goes back t
 
 ## Uninstall
 
-Quit the app, delete `/Applications/jaredsmacutils.app`, or `/Applications/Yafie.app` from before the app was renamed, then run:
+Quit the app, delete `/Applications/jaredsmacutils.app`, then run:
 
 ```sh
 sudo pkgutil --forget io.github.jfreema.yafie
-sudo rm -f /etc/sudoers.d/yafie
-tccutil reset Microphone io.github.jfreema.yafie
-tccutil reset Accessibility io.github.jfreema.yafie
-tccutil reset ScreenCapture io.github.jfreema.yafie
+sudo rm -f /etc/sudoers.d/jaredsmacutils /etc/sudoers.d/yafie
+tccutil reset All io.github.jfreema.yafie
 ```
 
 Having problems? See [Troubleshooting](docs/troubleshooting.md).

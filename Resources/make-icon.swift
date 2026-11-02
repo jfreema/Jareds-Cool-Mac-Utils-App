@@ -174,7 +174,7 @@ func run(_ tool: String, _ arguments: [String]) throws {
 }
 
 let files = FileManager.default
-let scratch = files.temporaryDirectory.appendingPathComponent("yafie-art-\(UUID().uuidString)")
+let scratch = files.temporaryDirectory.appendingPathComponent("jaredsmacutils-art-\(UUID().uuidString)")
 let iconset = scratch.appendingPathComponent("AppIcon.iconset")
 try files.createDirectory(at: iconset, withIntermediateDirectories: true)
 defer { try? files.removeItem(at: scratch) }
