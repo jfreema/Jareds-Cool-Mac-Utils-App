@@ -23,8 +23,8 @@ final class Updater {
         init(_ message: String) { errorDescription = message }
     }
 
-    /// Earlier copies read downloads/update.json, and only take an app with their own bundle ID. Once the bundle ID
-    /// moves, that feed stays at this version, which takes the new one too (ids), so they come through it.
+    /// Copies with the old bundle ID read downloads/update.json, and only take an app with their own bundle ID. That
+    /// feed stays at 1.1.20, the last of them, for good. It takes this bundle ID too (ids), so they come through it.
     private static var feed: URL {
         // Overridable for testing
         if let custom = UserDefaults.standard.string(forKey: "updateFeed"), let url = URL(string: custom) { return url }

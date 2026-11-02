@@ -45,13 +45,10 @@ jobs:
         run: |
           plist=Resources/Info.plist
           version="$(/usr/libexec/PlistBuddy -c 'Print CFBundleShortVersionString' "$plist")"
-          # The update feed. Releases before the bundle ID moved only had update.json.
-          feed=downloads/release.json
-          [[ -f "$feed" ]] || feed=downloads/update.json
-          published="$(plutil -extract version raw -o - "$feed")"
+          published="$(plutil -extract version raw -o - downloads/release.json)"
           echo "source=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
-          # The commit the published installer was built from. Releases before 1.1.12 don't say, so their own.
-          release="$(git log -1 --format=%H -- "$feed")"
+          # The commit the published installer was built from
+          release="$(git log -1 --format=%H -- downloads/release.json)"
           built="$(git log -1 --format=%B "$release" | sed -n 's/^Built from //p')"
           git cat-file -e "$built^{commit}" 2>/dev/null || built="$release"  # or rewritten away
           # Whether the app changed since: its files, and Info.plist apart from the version
@@ -154,11 +151,14 @@ jobs:
           fi
           test "$(plutil -extract version raw -o - downloads/release.json)" = "$version"
           test "$(plutil -extract sha256 raw -o - downloads/release.json)" = "$(shasum -a 256 "$pkg" | cut -d' ' -f1)"
-          # Earlier copies read update.json, and only take their own bundle ID. This version takes the one the app moves
-          # to as well, so update.json offers it too, and they come through it.
-          cmp downloads/update.json downloads/release.json \
-            || { echo "::error::downloads/update.json must offer this version too"; exit 1; }
-          echo "downloads/release.json and update.json point to $pkg"
+          # Copies with the old bundle ID read update.json, and only take their own bundle ID. It stays at 1.1.20, the last
+          # of them, for good, with an installer of its own: 1.1.20 takes them on to this bundle ID.
+          frozen="downloads/$(basename "$(plutil -extract url raw -o - downloads/update.json)")"
+          test "$(plutil -extract version raw -o - downloads/update.json)" = 1.1.20
+          test "$(plutil -extract sha256 raw -o - downloads/update.json)" = "$(shasum -a 256 "$frozen" | cut -d' ' -f1)"
+          git diff --quiet HEAD -- downloads/update.json "$frozen" \
+            || { echo "::error::downloads/update.json and $frozen must stay at 1.1.20"; exit 1; }
+          echo "downloads/release.json points to $pkg, and update.json stays at 1.1.20"
           executable="$(/usr/libexec/PlistBuddy -c 'Print CFBundleExecutable' "$plist")"
           echo "$(basename "$app") $version for $(lipo -archs "$app/Contents/MacOS/$executable") checks out"
 

@@ -8,9 +8,10 @@ enum JaredsMacApp {
     nonisolated static let name = "Jared's Mac App"
     /// Where there's room, like the About panel. Finder shows it, from en.lproj/InfoPlist.strings.
     nonisolated static let fullName = "Jared's Cool Mac Utilities App"
-    /// The bundle ID the app is moving to. A copy with the old one takes an update with this one (Updater.ids).
+    /// macOS keeps permissions, settings and Open at Login by bundle ID, so moving it costs everyone their permissions
     nonisolated static let bundleID = "io.github.jfreema.jaredsmacutils"
-    /// The bundle ID from the app's first name. macOS keeps permissions, settings and Open at Login by bundle ID.
+    /// The bundle ID from the app's first name, until 1.1.20. Copies with it update to this one (Updater.ids), which takes
+    /// their settings over (BundleIDMove).
     nonisolated static let oldBundleID = "io.github.jfreema.yafie"
 
     static let showMenuNotification = Notification.Name("io.github.jfreema.jaredsmacutils.showMenu")
@@ -43,8 +44,15 @@ enum JaredsMacApp {
             logger.notice("Took over from the copy that was running")
         }
 
+        // Before anything reads a setting
+        let justMoved = Bundle.main.bundleIdentifier == bundleID && BundleIDMove.carryOverSettings()
+        if justMoved {
+            logger.notice("Took the settings over from the old bundle ID")
+            BundleIDMove.forgetOldBundleID()
+        }
+
         let app = NSApplication.shared
-        let delegate = AppDelegate()
+        let delegate = AppDelegate(justMoved: justMoved)
         app.delegate = delegate
         app.setActivationPolicy(.accessory)
         app.run()

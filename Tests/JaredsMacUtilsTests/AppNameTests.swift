@@ -27,6 +27,7 @@ struct AppNameTests {
     }
 
     @Test func keepsTheBundleIDThatPermissionsAndSettingsDependOn() {
-        #expect(resource("Info.plist")["CFBundleIdentifier"] as? String == JaredsMacApp.oldBundleID)
+        #expect(resource("Info.plist")["CFBundleIdentifier"] as? String == JaredsMacApp.bundleID)
+        #expect(JaredsMacApp.bundleID != JaredsMacApp.oldBundleID)
     }
 }

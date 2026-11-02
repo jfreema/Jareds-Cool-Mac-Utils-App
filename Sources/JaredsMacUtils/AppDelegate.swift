@@ -25,6 +25,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var afterMenuCloses: (@MainActor () -> Void)?
     /// A termination signal quits without asking about unsaved snips
     private var isQuittingForSignal = false
+    /// The first launch since the move to the new bundle ID, which macOS has no permissions for yet
+    private let justMoved: Bool
+
+    init(justMoved: Bool) {
+        self.justMoved = justMoved
+        super.init()
+    }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
@@ -56,8 +63,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         screenLock.refresh()
         updateIcon()
         quitOnTerminationSignals()
-        // After an update that moved the app to a new name
+        // After an update that moved the app to a new name or bundle ID
         Updater.keepOpenAtLogin()
+        if justMoved { askForPermissionsAgain() }
         // A second copy asks this one to speak up
         DistributedNotificationCenter.default().addObserver(forName: JaredsMacApp.showMenuNotification, object: nil,
                                                             queue: .main) { [weak self] _ in
@@ -111,6 +119,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         alert.addButton(withTitle: "Quit")
         alert.addButton(withTitle: "Cancel")
         return alert.runModal() == .alertFirstButtonReturn ? .terminateNow : .terminateCancel
+    }
+
+    /// macOS keeps permissions by bundle ID, so after the move, it asks again for the ones the switches that are on
+    /// need, in its own dialogs, once each. The tuner asks for the microphone when it opens, as it always does.
+    private func askForPermissionsAgain() {
+        if snapper.isEnabled || previews.isEnabled, !AXIsProcessTrusted() {
+            // kAXTrustedCheckOptionPrompt's value: Swift 6 won't read that C global
+            AXIsProcessTrustedWithOptions(["AXTrustedCheckOptionPrompt": true] as CFDictionary)
+        }
+        if snipper.isEnabled || previews.isEnabled, !CGPreflightScreenCaptureAccess() {
+            _ = CGRequestScreenCaptureAccess()
+        }
     }
 
     private func showMenu() {

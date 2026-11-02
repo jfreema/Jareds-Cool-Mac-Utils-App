@@ -15,6 +15,8 @@ if [ "$(/usr/bin/id -u)" -eq 0 ]; then
         if [ -e "$rules/jaredsmacutils" ]; then /bin/rm -f "$rules/yafie"
         else /bin/mv "$rules/yafie" "$rules/jaredsmacutils"; fi
     fi
+    # The receipt from installers with the app's first bundle ID
+    /usr/sbin/pkgutil --forget io.github.jfreema.yafie >/dev/null 2>&1 || true
 fi
 
 if [ "$(/usr/bin/id -u)" -eq 0 ] && [ -n "$user" ] && [ "$user" != "root" ]; then

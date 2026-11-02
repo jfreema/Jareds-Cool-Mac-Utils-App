@@ -2,7 +2,16 @@
 
 - **“jaredsmacutils.pkg” was blocked to protect your Mac.** Expected the first time, since the installer isn't signed. See [Install](../README.md#install).
 - **Nothing in the menu bar after Open Anyway.** macOS can get stuck approving the app, and then holds it before it starts, every time. Restart your Mac, or run `sudo killall syspolicyd`, then open the app again.
-- **See what the app did:** `/usr/bin/log show --last 1h --predicate 'subsystem == "io.github.jfreema.yafie"'`
+- **See what the app did:** `/usr/bin/log show --last 1h --predicate 'subsystem == "io.github.jfreema.jaredsmacutils"'`
+
+## Updating to 1.1.21
+
+In 1.1.21, the app got a bundle ID that matches its name, `io.github.jfreema.jaredsmacutils`. macOS keeps permissions by bundle ID, so it asks for them again, once. Your settings and **Open at Login** come across.
+
+- **Check for Updates… offers 1.1.20 first.** Copies before 1.1.20 update in two steps. Choose **Check for Updates…** again once 1.1.20 opens.
+- **macOS asks for Accessibility or Screen & System Audio Recording.** Allow it again, the way you did the first time. After **Screen & System Audio Recording**, click **Quit & Reopen**. The tuner asks for the microphone again the next time you open it.
+- **The app is in a Privacy & Security list twice.** One is from before the update. Select each and click **−**, then turn the feature off and on in the app's menu, and allow it again.
+- **Doesn't open at login after the update.** Turn **Open at Login** off and on in the app's menu.
 
 ## Updating to 1.1.6
 
@@ -61,7 +70,7 @@ From 1.1.6, the app is signed with an Apple Developer ID and notarized, so macOS
 
 - **Titles but no pictures.** The app can't record the screen yet. Turn on **Jared's Cool Mac Utilities App** in **System Settings → Privacy & Security → Screen & System Audio Recording**, then click **Quit & Reopen**.
 - **Nothing appears over the Dock.** Check that the app is on in **Accessibility**, then turn **Show App Previews in the Dock** off and on.
-- **Still nothing, though the app is on in Accessibility.** That switch can be left over from an older copy of the app. Quit the app, run `tccutil reset Accessibility io.github.jfreema.yafie` in Terminal, and open the app again. Then turn **Show App Previews in the Dock** off and on, and turn the app on when macOS asks. Window snapping and keyboard cleaning use the same permission, so this brings them back too.
+- **Still nothing, though the app is on in Accessibility.** That switch can be left over from an older copy of the app. Quit the app, run `tccutil reset Accessibility io.github.jfreema.jaredsmacutils` in Terminal, and open the app again. Then turn **Show App Previews in the Dock** off and on, and turn the app on when macOS asks. Window snapping and keyboard cleaning use the same permission, so this brings them back too.
 - **A window is missing.** Only windows on the current desktop show, plus minimized ones. Full-screen windows, which have desktops of their own, and small panels like palettes don't.
 - **The app's icon, or an old picture, instead of the window.** macOS can't picture minimized windows or a hidden app's windows, so they show the last picture taken of them, or the app's icon.
 - **macOS asks whether the app can bypass the system private window picker.** As with snips, click **Allow**. macOS asks again about once a month.

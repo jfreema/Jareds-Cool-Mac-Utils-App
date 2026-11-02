@@ -11,7 +11,7 @@ swift test             # run the unit tests
 
 The installer copies the app into `/Applications`, hands the app to the person installing (so **Check for Updates…** can replace it later), then opens it. Its scripts and closing page are in `Resources/pkg`.
 
-Its names, Jared's Cool Mac Utilities App and Jared's Mac App for short, are in `Resources/Info.plist`, `Resources/en.lproj/InfoPlist.strings` and `JaredsMacApp.name` in the code. Its bundle ID is still `io.github.jfreema.yafie`, from the app's first name, until the next release moves it to `io.github.jfreema.jaredsmacutils`. macOS keeps users' permissions, settings and Open at Login by bundle ID, so it moves only once.
+Its names, Jared's Cool Mac Utilities App and Jared's Mac App for short, are in `Resources/Info.plist`, `Resources/en.lproj/InfoPlist.strings` and `JaredsMacApp.name` in the code. Its bundle ID is `io.github.jfreema.jaredsmacutils` since 1.1.21. macOS keeps users' permissions, settings and Open at Login by bundle ID, so it doesn't change again.
 
 ## Signing
 
@@ -46,7 +46,7 @@ Push to `main`. Every push that changes the app, meaning `Sources`, `Resources`,
 
 Follow it under the repo's **Actions** tab. After it finishes, GitHub can take up to 5 minutes to serve the new files. Pushes close together can go out as one release, and docs alone don't make one.
 
-**Check for Updates…** reads `downloads/release.json` and finds the app in the installer by its bundle ID, so a new version can have a new name. It goes in beside the old copy, which is then removed. Earlier copies read `downloads/update.json`, and only take an app with their own bundle ID. This version takes the bundle ID the app is moving to as well, so `build.sh` writes it to both feeds, and once the bundle ID moves, `update.json` stays at this version for good: earlier copies update to it first, then on to the new bundle ID.
+**Check for Updates…** reads `downloads/release.json` and finds the app in the installer by its bundle ID, so a new version can have a new name. It goes in beside the old copy, which is then removed. Copies before 1.1.21 read `downloads/update.json`, and only take an app with their own bundle ID, the one from the app's first name. That feed stays at 1.1.20, with its installer, `downloads/jaredsmacutils-1.1.20.pkg`, for good: they update to 1.1.20 first, which takes the new bundle ID too, then on to the newest version. `build.sh` leaves them alone, and the workflow checks that they don't change.
 
 To try a build without publishing, choose **Actions → Release → Run workflow**, leaving **Publish** off. The installer is attached to the run.
 

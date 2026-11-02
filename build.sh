@@ -154,9 +154,8 @@ EOF
   "sha256": "$(shasum -a 256 "$PKG" | cut -d' ' -f1)"
 }
 EOF
-    # Earlier copies read update.json, and only take their own bundle ID. This version also takes the one the app
-    # moves to, so they come through it.
-    cp downloads/release.json downloads/update.json
+    # Not downloads/update.json: copies with the old bundle ID read it, and only take their own bundle ID. It stays at
+    # 1.1.20, the last of them, which takes them on to this one.
     # README shows the version next to the download link
     sed -i '' -E "s/Version [0-9.]+ ·/Version $VERSION ·/" README.md
     echo "Built $PKG ($VERSION) and downloads/release.json"

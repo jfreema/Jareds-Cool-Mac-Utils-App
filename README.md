@@ -219,9 +219,11 @@ If the app quits or crashes, sleep comes back on, and Low Power Mode goes back t
 Quit the app, delete `/Applications/jaredsmacutils.app`, then run:
 
 ```sh
-sudo pkgutil --forget io.github.jfreema.yafie
+sudo pkgutil --forget io.github.jfreema.jaredsmacutils
 sudo rm -f /etc/sudoers.d/jaredsmacutils /etc/sudoers.d/yafie
-tccutil reset All io.github.jfreema.yafie
+tccutil reset All io.github.jfreema.jaredsmacutils
 ```
+
+If you installed it before 1.1.21, also run `sudo pkgutil --forget io.github.jfreema.yafie`.
 
 Having problems? See [Troubleshooting](docs/troubleshooting.md).
