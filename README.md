@@ -6,7 +6,7 @@
 
 <p align="center"><a href="https://github.com/jfreema/Jareds-Cool-Mac-Utils-App/raw/main/downloads/jaredsmacutils.pkg"><img src="docs/download.svg" width="204" alt="Download Jared's Cool Mac Utilities App"></a></p>
 
-<p align="center">Version 1.1.21 · macOS 14 or later · Apple silicon or Intel</p>
+<p align="center">Version 1.1.22 · macOS 14 or later · Apple silicon or Intel</p>
 
 <p align="center"><img src="docs/menu.png" width="400" alt="The app's menu: a switch for each feature, and buttons for the guitar tuner, drum machine and keyboard cleaning"></p>
 
