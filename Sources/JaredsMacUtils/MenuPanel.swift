@@ -221,7 +221,7 @@ struct MenuView: View {
                 card {
                     ToggleRow(model: model, toggle: .snipScreen, title: "Snipping Tool with control+option+P")
                     OptionStrip {
-                        OptionChip(model: model, toggle: .recordGIFs, title: "Record GIFs with control+option+R",
+                        OptionChip(model: model, toggle: .recordGIFs, title: "Record GIFs with control+option+G",
                                    help: "Records part of the screen as a GIF, like scrolling through a page")
                     }
                     if let action = model.snipAction { ActionRow(model: model, action: action) }

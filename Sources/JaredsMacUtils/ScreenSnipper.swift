@@ -6,7 +6,7 @@ import UniformTypeIdentifiers
 let snipLogger = Logger(subsystem: Bundle.main.bundleIdentifier ?? "jaredsmacutils", category: "snip")
 
 /// ⌃⌥P snips part of the screen with macOS's own selection, then offers to copy, edit or save it. With its option on,
-/// ⌃⌥R records part of the screen as a GIF.
+/// ⌃⌥G records part of the screen as a GIF.
 @MainActor
 final class ScreenSnipper: NSObject {
     enum Status: Equatable {
@@ -72,7 +72,7 @@ final class ScreenSnipper: NSObject {
         } else if hotKey == nil, !register() {
             next = .shortcutTaken("control+option+P")
         } else if recordsGIFs, recordHotKey == nil, !registerRecording() {
-            next = .shortcutTaken("control+option+R")
+            next = .shortcutTaken("control+option+G")
         } else if !CGPreflightScreenCaptureAccess() {
             next = .needsPermission
         } else {
@@ -98,8 +98,8 @@ final class ScreenSnipper: NSObject {
     }
 
     private func registerRecording() -> Bool {
-        recordHotKey = HotKeys.register(kVK_ANSI_R, controlKey | optionKey) { [weak self] in self?.pressedRecord() }
-        if recordHotKey == nil { snipLogger.error("Another app is using ⌃⌥R") }
+        recordHotKey = HotKeys.register(kVK_ANSI_G, controlKey | optionKey) { [weak self] in self?.pressedRecord() }
+        if recordHotKey == nil { snipLogger.error("Another app is using ⌃⌥G") }
         return recordHotKey != nil
     }
 
@@ -109,7 +109,7 @@ final class ScreenSnipper: NSObject {
     }
 
     private func pressedRecord() {
-        guard CGPreflightScreenCaptureAccess() else { return askForPermission(after: "⌃⌥R") }
+        guard CGPreflightScreenCaptureAccess() else { return askForPermission(after: "⌃⌥G") }
         recorder.pressed()
     }
 

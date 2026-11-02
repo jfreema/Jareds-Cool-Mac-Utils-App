@@ -4,7 +4,7 @@ import CoreMedia
 import SwiftUI
 import UniformTypeIdentifiers
 
-/// ⌃⌥R records part of the screen as a GIF, to show scrolling through a page or the like: drag across it or click a
+/// ⌃⌥G records part of the screen as a GIF, to show scrolling through a page or the like: drag across it or click a
 /// window, do what you want to show, then stop. The GIF is written as it records, then offered to copy or save.
 @MainActor
 final class ScreenRecorder: NSObject {
@@ -496,7 +496,7 @@ private struct RecordingBar: View {
                 .accessibilityLabel("Recording, \(clock.seconds) seconds")
             Button("Stop", action: stop)
                 .buttonStyle(BubbleButtonStyle(fill: Bubble.yellow, height: 24, fontSize: 12))
-                .help("Stop recording (control+option+R)")
+                .help("Stop recording (control+option+G)")
         }
         // Never squeezed: measured without it, the window came out too narrow and Stop read "S…"
         .fixedSize()
