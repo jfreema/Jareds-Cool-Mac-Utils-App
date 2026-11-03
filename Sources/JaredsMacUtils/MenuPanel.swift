@@ -31,7 +31,8 @@ final class MenuModel {
     var isDisabled: Set<MenuToggle> = []
     var snapAction: MenuAction?
     var snipAction: MenuAction?
-    var stayAwakeSummary = ""
+    /// Only when it says more than the switch does: why the Mac sleeps anyway, or what needs doing
+    var stayAwakeSummary: String?
     var stayAwakeSymbol = "moon.fill"
     var stayAwakeAction: MenuAction?
     var isCheckingForUpdates = false
@@ -249,7 +250,6 @@ struct MenuView: View {
             }
             section("Stay Awake") {
                 card {
-                    StatusRow(model: model)
                     ToggleRow(model: model, toggle: .stayAwake, title: "Stay Awake with Lid Closed")
                     OptionStrip {
                         OptionChip(model: model, toggle: .requirePower, title: "Plugged In Only",
@@ -259,6 +259,8 @@ struct MenuView: View {
                         OptionChip(model: model, toggle: .lowPower, title: "Low Power Mode",
                                    help: "Turns on Low Power Mode while the lid is closed")
                     }
+                    // Under the options, so a chip doesn't move away from the pointer when it brings one up
+                    if let summary = model.stayAwakeSummary { StatusRow(model: model, summary: summary) }
                 }
             }
 
@@ -453,9 +455,11 @@ private struct ActionRow: View {
     }
 }
 
-/// What Stay Awake is doing now, which the menu bar icon shows too, with Finish Setup… or the like beside it
+/// Why Stay Awake lets the Mac sleep after all, or what it needs, with Finish Setup… or the like beside it. Like the
+/// notes under the other switches, it's there only when it has something to say.
 private struct StatusRow: View {
     let model: MenuModel
+    let summary: String
 
     var body: some View {
         HStack(spacing: 10) {
@@ -463,7 +467,7 @@ private struct StatusRow: View {
                 Image(systemName: model.stayAwakeSymbol)
                     .font(.system(size: 12, weight: .bold))
                     .frame(width: 16)
-                Text(model.stayAwakeSummary)
+                Text(summary)
                     .font(Bubble.body(12))
                     .fixedSize(horizontal: false, vertical: true)
             }
@@ -481,7 +485,6 @@ private struct StatusRow: View {
         .padding(.trailing, 10)
         .padding(.top, 6)
         .padding(.bottom, 8)
-        .frame(minHeight: 36)
         .background(Bubble.tint)
         .rowDivider()
     }

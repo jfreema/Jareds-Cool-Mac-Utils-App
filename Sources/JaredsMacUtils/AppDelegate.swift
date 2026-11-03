@@ -167,7 +167,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         guard force || menu.isOpen else { return }
         let model = menu.model
         let status = controller.status
-        model.stayAwakeSummary = status.summary
+        model.stayAwakeSummary = status.repeatsSwitch ? nil : status.summary
         model.stayAwakeSymbol = status.symbol
         model.isOn = [
             .appPreviews: previews.isEnabled,
@@ -357,6 +357,15 @@ private extension LidAwakeController.Status {
         case .needsSetup: "Needs your password once to finish setup"
         case .lowPowerNeedsSetup: "Needs your password once more for Low Power Mode"
         case .restoreFailed: "Couldn't turn sleep back on"
+        }
+    }
+
+    /// Says no more than the Stay Awake switch: off, or keeping the Mac awake as asked. The menu leaves it out then,
+    /// and the icon's tooltip still says it.
+    var repeatsSwitch: Bool {
+        switch self {
+        case .off, .active: true
+        case .waitingForPower, .lowBattery, .waitingForInternet, .needsSetup, .lowPowerNeedsSetup, .restoreFailed: false
         }
     }
 
