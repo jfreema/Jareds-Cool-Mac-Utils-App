@@ -8,7 +8,7 @@
 
 <p align="center">Version 1.1.23 · macOS 14 or later · Apple silicon or Intel</p>
 
-<p align="center"><img src="docs/menu.png" width="400" alt="The app's menu: a switch for each feature, and buttons for the guitar tuner, drum machine and keyboard cleaning"></p>
+<p align="center"><img src="docs/menu.png" width="400" alt="The app's menu: a switch for each feature, buttons for the guitar tuner, drum machine and keyboard cleaning, and the temperature inside the Mac at the bottom"></p>
 
 <table>
   <tr>
@@ -26,6 +26,10 @@
   <tr>
     <td width="50%"><b><a href="#keyboard-cleaning">Keyboard cleaning</a></b><br>Turns off the keyboard and trackpad for a few minutes while you wipe them.</td>
     <td width="50%"><b><a href="#stay-awake-with-the-lid-closed">Stay awake with the lid closed</a></b><br>Keeps a MacBook running with its lid shut, plugged in or on battery.</td>
+  </tr>
+  <tr>
+    <td width="50%"><b><a href="#temperature">Temperature</a></b><br>Shows how hot the inside of your Mac is, in °F, so you can tell when it's running hot.</td>
+    <td width="50%"></td>
   </tr>
 </table>
 
@@ -209,6 +213,30 @@ Low Power Mode is `pmset lowpowermode`, or `pmset powermode` on Macs that have H
 Online means a Wi-Fi, Ethernet or cellular connection (a VPN alone doesn't count) where `captive.apple.com` loads. The app checks once a minute.
 
 If the app quits or crashes, sleep comes back on, and Low Power Mode goes back to your setting, within a second.
+
+</details>
+
+---
+
+## Temperature
+
+Shows how hot the inside of your Mac is, in °F, so you can tell when it's running hot or overheating.
+
+**Use it:** click the app's icon in the menu bar. **Inside Your Mac**, at the bottom of the menu, is the temperature of the processor, the hottest part inside your Mac. It updates every 2 seconds while the menu is open, and the pill beside it says how hot that is:
+
+| Pill | Temperature | What it means |
+|---|---|---|
+| **Normal**, green | Below 160°F | Everyday use. |
+| **Warm**, yellow | 160°F to 184°F | Working hard, like on a video call or an export. Nothing to worry about. |
+| **Hot**, orange | 185°F to 204°F | Near its limit. It may slow down to cool off. |
+| **Overheating**, red | 205°F or more | At its limit, so it slows down to cool off. Give it air, and quit what's working it hard. |
+
+macOS keeps its own watch on how hot your Mac is, counting the case and the battery too. When it says your Mac is hotter than the processor's temperature does, the pill goes with macOS. When macOS is slowing your Mac down to cool it off, resting the pointer on the temperature says so.
+
+<details>
+<summary>How it works</summary>
+
+The temperature is the average of the processor's cores, as apps like Stats show it. The app reads it from the Mac's System Management Controller, which needs no permission, or on Apple silicon from the chip's own sensors if that has nothing. Apple doesn't document these sensors, and their names change with each chip, so on a Mac where the app can't find them, it says **Can't read it**, and the pill shows how hot macOS says the Mac is.
 
 </details>
 

@@ -1,4 +1,5 @@
 import AppKit
+import ImageIO
 import SwiftUI
 
 // MARK: Model
@@ -35,6 +36,8 @@ final class MenuModel {
     var stayAwakeSummary: String?
     var stayAwakeSymbol = "moon.fill"
     var stayAwakeAction: MenuAction?
+    /// The inside of the Mac, read every 2 seconds while the menu is open. Nil before the first reading.
+    var temperature: TemperatureReading?
     var isCheckingForUpdates = false
     /// The row under the pointer, highlighted as a menu's would be
     var hovered: String?
@@ -261,6 +264,11 @@ struct MenuView: View {
                     }
                     // Under the options, so a chip doesn't move away from the pointer when it brings one up
                     if let summary = model.stayAwakeSummary { StatusRow(model: model, summary: summary) }
+                }
+            }
+            section("Temperature") {
+                card {
+                    TemperatureRow(reading: model.temperature)
                 }
             }
 
@@ -490,6 +498,91 @@ private struct StatusRow: View {
     }
 }
 
+/// The processor's temperature in °F, beside a pill that says how hot that is
+private struct TemperatureRow: View {
+    let reading: TemperatureReading?
+
+    var body: some View {
+        HStack(spacing: 10) {
+            Text("Inside Your Mac")
+                .font(Bubble.body(13))
+                .foregroundStyle(Bubble.ink)
+            Spacer(minLength: 0)
+            if let reading {
+                if let fahrenheit = reading.fahrenheit {
+                    Text(verbatim: "\(fahrenheit)°F")
+                        .font(Bubble.display(16))
+                        .monospacedDigit()
+                        .foregroundStyle(Bubble.ink)
+                } else {
+                    Text("Can't read it")
+                        .font(Bubble.body(12))
+                        .foregroundStyle(Bubble.ink.opacity(0.6))
+                }
+                HeatPill(level: reading.level)
+            }
+        }
+        .padding(.leading, 12)
+        .padding(.trailing, 10)
+        .frame(minHeight: 36)
+        .background(Color.white)
+        .rowDivider()
+        .help(reading?.explanation ?? "")
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Temperature inside your Mac")
+        .accessibilityValue(reading?.spoken ?? "")
+    }
+}
+
+/// How hot, as a pill: green, then yellow, orange and red
+private struct HeatPill: View {
+    let level: HeatLevel
+
+    var body: some View {
+        HStack(spacing: 4) {
+            Image(systemName: level.symbol)
+                .font(.system(size: 11, weight: .bold))
+            Text(level.title)
+                .lineLimit(1)
+        }
+        .font(Bubble.body(12))
+        .foregroundStyle(Bubble.ink)
+        .padding(.horizontal, 9)
+        .frame(height: 24)
+        .bubbleCard(fill: level.color, radius: 8, lift: 2.5)
+        .fixedSize()
+    }
+}
+
+private extension HeatLevel {
+    var title: String {
+        switch self {
+        case .normal: "Normal"
+        case .warm: "Warm"
+        case .hot: "Hot"
+        case .overheating: "Overheating"
+        }
+    }
+
+    var symbol: String {
+        switch self {
+        case .normal: "thermometer.low"
+        case .warm: "thermometer.medium"
+        case .hot: "thermometer.high"
+        case .overheating: "flame.fill"
+        }
+    }
+
+    var color: Color {
+        switch self {
+        case .normal: Bubble.green
+        case .warm: Bubble.yellow
+        case .hot: Bubble.orange
+        case .overheating: Bubble.red
+        }
+    }
+}
+
 /// A chunky tile that opens one of the tools
 private struct ToolTile: View {
     let title: String
@@ -530,3 +623,23 @@ private struct TileButtonStyle: ButtonStyle {
             .background(shape.fill(Bubble.ink).offset(x: 1.8, y: 3))
     }
 }
+
+#if DEBUG
+/// The README's picture of the menu, docs/menu.png: the menu at 2x, with most switches on (--render-menu <png file>)
+enum MenuPicture {
+    @MainActor static func render(to path: String) -> Bool {
+        let model = MenuModel()
+        model.isOn = [.appPreviews: true, .snapWindows: true, .snapThirds: true, .snipScreen: true, .recordGIFs: true,
+                      .hiddenIcons: true, .stayAwake: true, .lowPower: true, .openAtLogin: true]
+        model.temperature = TemperatureReading(celsius: 41, thermalState: .nominal)
+        let renderer = ImageRenderer(content: MenuView(model: model))
+        renderer.proposedSize = ProposedViewSize(width: MenuView.width, height: 2000)  // all of it, without scrolling
+        renderer.scale = 2
+        guard let image = renderer.cgImage,
+              let file = CGImageDestinationCreateWithURL(URL(fileURLWithPath: path) as CFURL, "public.png" as CFString,
+                                                         1, nil) else { return false }
+        CGImageDestinationAddImage(file, image, nil)
+        return CGImageDestinationFinalize(file)
+    }
+}
+#endif

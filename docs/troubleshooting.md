@@ -34,6 +34,12 @@ From 1.1.6, the app is signed with an Apple Developer ID and notarized, so macOS
 - **control+option+L doesn't lock the screen.** Another app is using that shortcut. Quit it, then click the app's icon in the menu bar to take the shortcut back. Or choose **Lock Screen** in the Apple menu.
 - **Two of the app's processes in Activity Monitor.** The one without an icon is the watchdog, which turns sleep back on, and puts Low Power Mode back, if the app crashes. It ends by itself when the app quits.
 
+## Temperature
+
+- **Says Can't read it.** The app couldn't find your Mac's temperature sensors, as in a virtual machine. The pill beside it still shows how hot macOS says your Mac is. To see what it found: `/usr/bin/log show --last 1h --predicate 'subsystem == "io.github.jfreema.jaredsmacutils" && category == "temp"'`
+- **The pill is hotter than the temperature beside it.** macOS counts more than the processor, like the case and the battery, and the pill goes with it. **Hot** or **Overheating** then means macOS is slowing your Mac down to cool it off. Give it air, and quit what's working it hard.
+- **Another app shows a different temperature.** Apps average different sensors. This one averages the processor's cores, so it's lower than the hottest core, and higher than sensors elsewhere in the Mac.
+
 ## Guitar tuner
 
 - **Says Jared's Mac App can't use the microphone.** Turn on **Jared's Cool Mac Utilities App** in **System Settings → Privacy & Security → Microphone**, then click the tuner window to try again.

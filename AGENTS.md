@@ -4,7 +4,7 @@ Notes for any coding agent working on Jared's Cool Mac Utilities App.
 
 ## What the app is
 
-A macOS menu bar app with eight features: stay awake with the lid closed, window snapping, app previews from the Dock, a screenshot tool, an arrow for hidden menu bar icons, a guitar tuner, a drum machine and keyboard cleaning. It's Swift 6 with SwiftPM, with no Xcode project and no third-party dependencies. It runs on macOS 14 or later, on Apple silicon or Intel. It's an accessory app (`LSUIElement`), with no Dock icon or menu bar except while a snip editor is open or the hidden menu bar icons are out. [README.md](README.md) is the user guide.
+A macOS menu bar app with nine features: stay awake with the lid closed, window snapping, app previews from the Dock, a screenshot tool, an arrow for hidden menu bar icons, a guitar tuner, a drum machine, keyboard cleaning and a temperature readout. It's Swift 6 with SwiftPM, with no Xcode project and no third-party dependencies. It runs on macOS 14 or later, on Apple silicon or Intel. It's an accessory app (`LSUIElement`), with no Dock icon or menu bar except while a snip editor is open or the hidden menu bar icons are out. [README.md](README.md) is the user guide.
 
 **Names:** users see Jared's Cool Mac Utilities App (`JaredsMacApp.fullName`), or Jared's Mac App (`JaredsMacApp.name`, `CFBundleName`) in menus, alerts and tooltips. The menu's header says Jared's Cool Mac App, as Jared asked. On disk it's `jaredsmacutils.app`, with the executable, installer, Swift package (`JaredsMacUtils`) and sudoers rule (`/etc/sudoers.d/jaredsmacutils`) named to match. Its bundle ID is `io.github.jfreema.jaredsmacutils` (`JaredsMacApp.bundleID`) since 1.1.21. It was called Yafie before 1.1.4, and kept that name's bundle ID, `io.github.jfreema.yafie`, through 1.1.20. macOS keeps permissions, settings and Open at Login by bundle ID, so that move cost everyone their permissions once: never move it again. The old names stay only in the code that carries people over: `JaredsMacApp.oldBundleID` (`BundleIDMove`, `Updater.ids`), `SleepSetting.oldRulePath` and the installer's postinstall.
 
@@ -21,8 +21,8 @@ swift test             # unit tests (Swift Testing)
 - **`swift test` sometimes fails with "plugin for module 'TestingMacros' not found".** It's a toolchain glitch, not the tests, so run it again. A real compile error can show up on a retry, so read the output each time.
 - **Linker warnings about missing search paths** come from the Command Line Tools. Ignore them.
 - **`./build.sh --install` quits and replaces the copy the user is running.** Ask first.
-- **A debug build won't start while the installed app is running.** The second copy hands over to the first and quits, so quit the app first. These hooks work in debug builds only: `--tuner`, `--drums`, `--snip-editor <image file>`, `--update-now` and `--show-hidden-icons` (with its switch on, after 3 seconds).
-- **Logs:** `/usr/bin/log show --last 1h --predicate 'subsystem == "io.github.jfreema.jaredsmacutils"'`. The categories are `lid`, `snap`, `preview`, `snip`, `icons`, `tuner`, `drums` and `clean`.
+- **A debug build won't start while the installed app is running.** The second copy hands over to the first and quits, so quit the app first. These hooks work in debug builds only: `--tuner`, `--drums`, `--snip-editor <image file>`, `--update-now`, `--show-hidden-icons` (with its switch on, after 3 seconds), `--show-menu` (after 3 seconds), `--temperature` (what the sensors say, on stdout) and `--render-menu <png file>` (the README's picture of the menu).
+- **Logs:** `/usr/bin/log show --last 1h --predicate 'subsystem == "io.github.jfreema.jaredsmacutils"'`. The categories are `lid`, `snap`, `preview`, `snip`, `icons`, `tuner`, `drums`, `clean` and `temp`.
 
 ## Code
 
@@ -39,6 +39,7 @@ The app is one flat folder, `Sources/JaredsMacUtils`, and the tests are in `Test
 | Guitar tuner | `TunerAudio`, `TunerWindow`, `PitchDetector` |
 | Drum machine | `DrumMachine` (window, pads and model), `DrumAudio` (the player process, from the app's side), `DrumPlayer` (the player process), `DrumSequencer` (pure timing and recording), `DrumKit` (pure sounds and mixing) |
 | Keyboard cleaning | `KeyboardCleaner` (window, event tap, `CapsLock` and `CleaningSession`, the pure timing) |
+| Temperature | `Thermometer` (the processor's temperature from the SMC, or Apple silicon's HID sensors, on a queue of its own; `ProcessorTemperature`, the pure choice of keys and their values; `TemperatureReading` and `HeatLevel`, the pure °F and how hot that is) |
 | Shared | `HotKeys` (every global shortcut), `Updater`, `Shell`, `Toast` (a brief message by the pointer) |
 
 Put logic that can be pure, like geometry, drawing and parsing, in pure types with unit tests. Tests use shell scripts as stand-ins for child processes, such as the tuner's listener and `screencapture`.
@@ -62,6 +63,7 @@ Put logic that can be pure, like geometry, drawing and parsing, in pure types wi
 - **A see-through window lets clicks through where it's clear,** unless it sets `ignoresMouseEvents = false` outright, as the GIF picker's windows do: without it, a drag across the lit-up area went to the app underneath. And **`NSMenuItem()` comes titled "NSMenuItem"**, which shows beside a menu item's picture, so a picture on its own needs `NSMenuItem(title: "", action: nil, keyEquivalent: "")`.
 - **The tuner must never open a Bluetooth microphone, or play any sound.** Opening a headset's microphone switches it to call mode, which can make everything it plays dangerously loud, and many headsets then feed the microphone back into the ears. So the listener records with AVCaptureSession, which never opens an output, and only from built-in and wired inputs (`TunerInput`). It also skips virtual inputs, which carry other apps' sound, and interface channels past 2, which can be loopback.
 - **GIFs are written by `GIFWriter`, not ImageIO.** ImageIO's GIF encoder keeps every frame until it finishes, almost 3 GB for 30 seconds at 1000 × 700. `GIFWriter` writes each frame as ScreenCaptureKit delivers it, on the recording's queue, with a median-cut palette of its own and only the area that changed since the last. A frame's delay is only known when the next comes, so one frame always waits. The stream's `SCContentFilter` leaves out the app's own windows, so the red line, Stop and menus never show in a GIF.
+- **The temperature comes from the SMC, whose keys Apple doesn't document.** They change with each chip, so `ProcessorTemperature` picks them by name, as Stats and macmon do: Apple silicon's cores are floats whose names start with Tp, Te, Tf0 or Tf4 (M3's performance cores; its Tf1 and Tf2 are the graphics), and Intel's are TC0C and on, in 7.8 fixed point. `Thermometer` reads every key's name once, on the first reading, to find them. A request is the kernel's 80-byte SMCKeyData_t, written byte by byte in `SMCMessage`, with a key's size as 32 bits: C's IOByteCount is 64 bits on Apple silicon, which broke the old smc.c there. If the SMC has none, Apple silicon's HID temperature sensors, through private IOKit calls found with `dlsym`, stand in. A virtual machine, like GitHub's Mac runners, has neither, so the menu says Can't read it. The pill beside it is the hotter of the temperature's level and `ProcessInfo.thermalState`, which counts the case and the battery too.
 - **Screen Recording:** on recent macOS, `CGRequestScreenCaptureAccess()` shows no dialog. It only adds the app to the list in System Settings. The "bypass the system private window picker" alert comes with the first snip, then about once a month.
 
 ## Signing
@@ -82,7 +84,7 @@ From 1.1.6, releases are signed with Jared's Developer ID certificates, team `88
 
 ## Docs
 
-- **[README.md](README.md)** is for users, and lean. Each feature has the same parts: what it does, **Turn it on**, then **Use it**. Update it, and [docs/troubleshooting.md](docs/troubleshooting.md), with every change users will see. The picture of the menu near its top, `docs/menu.png`, is a 2x screenshot with clear corners: replace it when the menu changes.
+- **[README.md](README.md)** is for users, and lean. Each feature has the same parts: what it does, **Turn it on**, then **Use it**. Update it, and [docs/troubleshooting.md](docs/troubleshooting.md), with every change users will see. The picture of the menu near its top, `docs/menu.png`, is the menu at 2x with clear corners, as a debug build's `--render-menu docs/menu.png` draws it: draw it again when the menu changes.
 - **`docs/ideas/`** holds specs for features before they're built. It's gitignored, so specs stay local.
 - **[docs/windows-port.md](docs/windows-port.md)** is the plan for a Windows version, which isn't started: what would carry over, what Windows already has, the stack and the Microsoft Store.
 - **Code style:** short, sparse comments, and lines of 120 columns at most. Match the code around you.

@@ -11,6 +11,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let screenLock = ScreenLock()
     private let cleaner = KeyboardCleaner()
     private let hiddenIcons = HiddenIcons()
+    private let thermometer = Thermometer()
+    /// The last temperature read, which the menu shows as it opens, until the next
+    private var temperature: TemperatureReading?
+    private var temperatureTimer: Timer?
     private lazy var drums = DrumMachineWindowController()
     private lazy var tuner: TunerWindowController = {
         let tuner = TunerWindowController()
@@ -61,6 +65,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         hiddenIcons.keepsRegular = { [weak self] in self?.snipper.editors.isOpen ?? false }
         hiddenIcons.start()
         screenLock.refresh()
+        // Finds the sensors before the menu first opens
+        readTemperature()
         updateIcon()
         quitOnTerminationSignals()
         // After an update that moved the app to a new name or bundle ID
@@ -73,9 +79,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         #if DEBUG
         // Test hooks: --update-now, --tuner, --drums, --snip-editor <image file>, --show-hidden-icons (with the arrow
-        // on, after 3 seconds)
+        // on, after 3 seconds), --show-menu (after 3 seconds), --temperature (what the sensors say, on stdout) and
+        // --render-menu <png file> (the README's picture of the menu)
         let arguments = CommandLine.arguments
         if arguments.contains("--update-now") { updater.checkForUpdates(askFirst: false) }
+        if arguments.contains("--temperature") {
+            thermometer.describe { try? FileHandle.standardOutput.write(contentsOf: Data(($0 + "\n").utf8)) }
+        }
+        if let index = arguments.firstIndex(of: "--render-menu"), arguments.indices.contains(index + 1) {
+            let saved = MenuPicture.render(to: arguments[index + 1])
+            logger.notice("Menu picture \(saved ? "saved" : "not saved", privacy: .public)")
+        }
+        if arguments.contains("--show-menu") {
+            Task { @MainActor [weak self] in
+                try? await Task.sleep(for: .seconds(3))
+                self?.showMenu()
+            }
+        }
         if arguments.contains("--tuner") { tuner.show() }
         if arguments.contains("--drums") { drums.show() }
         if arguments.contains("--show-hidden-icons") {
@@ -153,9 +173,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // The app holding control+option+L may have quit
         screenLock.refresh()
         refreshMenu(force: true)
+        startReadingTemperature()
     }
 
     private func menuDidClose() {
+        stopReadingTemperature()
         guard let work = afterMenuCloses else { return }
         afterMenuCloses = nil
         // Once the panel is gone
@@ -205,6 +227,33 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         case .off, .on: nil
         }
         model.isCheckingForUpdates = updater.isBusy
+        model.temperature = temperature
+    }
+
+    // MARK: Temperature
+
+    /// Every 2 seconds while the menu is open
+    private func startReadingTemperature() {
+        readTemperature()
+        guard temperatureTimer == nil else { return }
+        let timer = Timer(timeInterval: 2, repeats: true) { [weak self] _ in
+            MainActor.assumeIsolated { self?.readTemperature() }
+        }
+        RunLoop.main.add(timer, forMode: .common)  // fires while the menu is open
+        temperatureTimer = timer
+    }
+
+    private func stopReadingTemperature() {
+        temperatureTimer?.invalidate()
+        temperatureTimer = nil
+    }
+
+    private func readTemperature() {
+        thermometer.read { [weak self] celsius in
+            guard let self else { return }
+            temperature = TemperatureReading(celsius: celsius, thermalState: ProcessInfo.processInfo.thermalState)
+            menu.model.temperature = temperature
+        }
     }
 
     private func closeMenu(then work: @escaping @MainActor () -> Void) {
