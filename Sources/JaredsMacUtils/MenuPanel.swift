@@ -534,7 +534,7 @@ private struct TemperatureRow: View {
     }
 }
 
-/// How hot, as a pill: green, then yellow, orange and red
+/// How hot, as a pill: blue, green, yellow, orange, then red twice
 private struct HeatPill: View {
     let level: HeatLevel
 
@@ -557,28 +557,33 @@ private struct HeatPill: View {
 private extension HeatLevel {
     var title: String {
         switch self {
+        case .cool: "Cool"
         case .normal: "Normal"
         case .warm: "Warm"
         case .hot: "Hot"
         case .overheating: "Overheating"
+        case .critical: "Critical"
         }
     }
 
     var symbol: String {
         switch self {
+        case .cool: "snowflake"
         case .normal: "thermometer.low"
         case .warm: "thermometer.medium"
         case .hot: "thermometer.high"
         case .overheating: "flame.fill"
+        case .critical: "exclamationmark.triangle.fill"
         }
     }
 
     var color: Color {
         switch self {
+        case .cool: Bubble.sky
         case .normal: Bubble.green
         case .warm: Bubble.yellow
         case .hot: Bubble.orange
-        case .overheating: Bubble.red
+        case .overheating, .critical: Bubble.red
         }
     }
 }

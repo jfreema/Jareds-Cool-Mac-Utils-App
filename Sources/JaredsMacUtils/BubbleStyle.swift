@@ -8,6 +8,8 @@ enum Bubble {
     static let ink = Color(red: 0.09, green: 0.12, blue: 0.24)
     static let tint = Color(red: 0.92, green: 0.95, blue: 1.0)
     static let hover = Color(red: 0.85, green: 0.90, blue: 1.0)
+    /// A lighter blue than the panel's, for a pill on a white card
+    static let sky = Color(red: 0.47, green: 0.72, blue: 0.98)
     static let yellow = Color(red: 0.98, green: 0.85, blue: 0.27)
     static let green = Color(red: 0.32, green: 0.79, blue: 0.43)
     /// For green text on white, which the pill green is too light for

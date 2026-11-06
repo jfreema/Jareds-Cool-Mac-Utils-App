@@ -226,10 +226,12 @@ Shows how hot the inside of your Mac is, in °F, so you can tell when it's runni
 
 | Pill | Temperature | What it means |
 |---|---|---|
-| **Normal**, green | Below 160°F | Everyday use. |
-| **Warm**, yellow | 160°F to 184°F | Working hard, like on a video call or an export. Nothing to worry about. |
-| **Hot**, orange | 185°F to 204°F | Near its limit. It may slow down to cool off. |
-| **Overheating**, red | 205°F or more | At its limit, so it slows down to cool off. Give it air, and quit what's working it hard. |
+| **Cool**, blue | Below 98°F | Idle, or close to it. |
+| **Normal**, green | 98°F to 154°F | Everyday use. |
+| **Warm**, yellow | 155°F to 181°F | Working hard, like on a video call or an export. Nothing to worry about. |
+| **Hot**, orange | 182°F to 204°F | Near its limit. It may slow down to cool off. |
+| **Overheating**, red | 205°F to 225°F | At its limit, so it slows down to cool off. Give it air, and quit what's working it hard. |
+| **Critical**, red, with a warning sign | Above 225°F | Past the limit. Quit what's running and let it cool. |
 
 macOS keeps its own watch on how hot your Mac is, counting the case and the battery too. When it says your Mac is hotter than the processor's temperature does, the pill goes with macOS. When macOS is slowing your Mac down to cool it off, resting the pointer on the temperature says so.
 

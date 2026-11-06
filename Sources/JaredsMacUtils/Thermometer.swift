@@ -9,29 +9,32 @@ let temperatureLogger = Logger(subsystem: Bundle.main.bundleIdentifier ?? "jared
 
 /// How hot the inside of the Mac is
 enum HeatLevel: Int, Comparable {
-    case normal, warm, hot, overheating
+    case cool, normal, warm, hot, overheating, critical
 
     static func < (lhs: HeatLevel, rhs: HeatLevel) -> Bool { lhs.rawValue < rhs.rawValue }
 
-    /// From the processor's temperature, in °F as the menu shows it
+    /// From the processor's temperature, in °F as the menu shows it: cool below 98, normal from 98, warm from 155, hot
+    /// from 182, overheating from 205 and critical above 225
     static func level(fahrenheit: Int) -> HeatLevel {
         switch fahrenheit {
-        case ..<160: .normal
-        case ..<185: .warm
+        case ..<98: .cool
+        case ..<155: .normal
+        case ..<182: .warm
         case ..<205: .hot
-        default: .overheating
+        case ..<226: .overheating
+        default: .critical
         }
     }
 
-    /// From macOS's own word on it, which counts the case and the battery too. From serious on, macOS slows the Mac
-    /// down to cool it off.
-    static func level(_ state: ProcessInfo.ThermalState) -> HeatLevel {
+    /// From macOS's own word on it, which counts the case and the battery too, or nil when it says nothing's wrong.
+    /// From serious on, macOS slows the Mac down to cool it off.
+    static func level(_ state: ProcessInfo.ThermalState) -> HeatLevel? {
         switch state {
-        case .nominal: .normal
+        case .nominal: nil
         case .fair: .warm
         case .serious: .hot
         case .critical: .overheating
-        @unknown default: .normal
+        @unknown default: nil
         }
     }
 }
@@ -44,19 +47,22 @@ struct TemperatureReading: Equatable {
 
     var fahrenheit: Int? { celsius.map { Int(($0 * 9 / 5 + 32).rounded()) } }
 
-    /// The hotter of the two
+    /// The hotter of the two. macOS saying nothing's wrong doesn't make a cool Mac normal.
     var level: HeatLevel {
-        max(fahrenheit.map { HeatLevel.level(fahrenheit: $0) } ?? .normal, HeatLevel.level(thermalState))
+        let macOS = HeatLevel.level(thermalState)
+        guard let fahrenheit else { return macOS ?? .normal }
+        let measured = HeatLevel.level(fahrenheit: fahrenheit)
+        return max(measured, macOS ?? measured)
     }
 
     /// For the tooltip: where it comes from, and what the levels mean
     var explanation: String {
         var text = "This Mac's temperature sensors can't be read, so this is how hot macOS says it is."
         if fahrenheit != nil {
-            text = "The processor, the hottest part inside your Mac: normal below 160°F, warm from 160°F, hot from "
-                + "185°F, overheating from 205°F."
+            text = "The processor, the hottest part inside your Mac: cool below 98°F, normal from 98°F, warm from "
+                + "155°F, hot from 182°F, overheating from 205°F, critical above 225°F."
         }
-        if HeatLevel.level(thermalState) >= .hot {
+        if let macOS = HeatLevel.level(thermalState), macOS >= .hot {
             text += " macOS is slowing your Mac down to cool it off."
         }
         return text
@@ -65,10 +71,12 @@ struct TemperatureReading: Equatable {
     /// For VoiceOver
     var spoken: String {
         let word = switch level {
+        case .cool: "cool"
         case .normal: "normal"
         case .warm: "warm"
         case .hot: "hot"
         case .overheating: "overheating"
+        case .critical: "critical"
         }
         return fahrenheit.map { "\($0) degrees Fahrenheit, \(word)" } ?? "can't be read, \(word)"
     }

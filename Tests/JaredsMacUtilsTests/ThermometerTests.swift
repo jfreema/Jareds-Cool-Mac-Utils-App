@@ -17,18 +17,23 @@ private func intel(_ key: String, _ celsius: Double) -> SMCReading {
 
 struct HeatLevelTests {
     @Test func startsAtRoundNumbersOfDegreesFahrenheit() {
-        #expect(HeatLevel.level(fahrenheit: 95) == .normal)
-        #expect(HeatLevel.level(fahrenheit: 159) == .normal)
-        #expect(HeatLevel.level(fahrenheit: 160) == .warm)
-        #expect(HeatLevel.level(fahrenheit: 184) == .warm)
-        #expect(HeatLevel.level(fahrenheit: 185) == .hot)
+        #expect(HeatLevel.level(fahrenheit: 60) == .cool)
+        #expect(HeatLevel.level(fahrenheit: 97) == .cool)
+        #expect(HeatLevel.level(fahrenheit: 98) == .normal)
+        #expect(HeatLevel.level(fahrenheit: 154) == .normal)
+        #expect(HeatLevel.level(fahrenheit: 155) == .warm)
+        #expect(HeatLevel.level(fahrenheit: 181) == .warm)
+        #expect(HeatLevel.level(fahrenheit: 182) == .hot)
         #expect(HeatLevel.level(fahrenheit: 204) == .hot)
         #expect(HeatLevel.level(fahrenheit: 205) == .overheating)
-        #expect(HeatLevel.level(fahrenheit: 230) == .overheating)
+        #expect(HeatLevel.level(fahrenheit: 225) == .overheating)
+        #expect(HeatLevel.level(fahrenheit: 226) == .critical)
+        #expect(HeatLevel.level(fahrenheit: 260) == .critical)
     }
 
     @Test func followsMacOSsThermalState() {
-        #expect(HeatLevel.level(ProcessInfo.ThermalState.nominal) == .normal)
+        // Nothing wrong says nothing, so a cool Mac stays cool
+        #expect(HeatLevel.level(ProcessInfo.ThermalState.nominal) == nil)
         #expect(HeatLevel.level(ProcessInfo.ThermalState.fair) == .warm)
         #expect(HeatLevel.level(ProcessInfo.ThermalState.serious) == .hot)
         #expect(HeatLevel.level(ProcessInfo.ThermalState.critical) == .overheating)
@@ -52,6 +57,14 @@ struct TemperatureReadingTests {
         #expect(TemperatureReading(celsius: 41, thermalState: .critical).level == .overheating)
     }
 
+    @Test func aCoolMacIsCoolUnlessMacOSSaysOtherwise() {
+        #expect(TemperatureReading(celsius: 30, thermalState: .nominal).level == .cool)
+        #expect(TemperatureReading(celsius: 30, thermalState: .fair).level == .warm)
+        #expect(TemperatureReading(celsius: 110, thermalState: .nominal).level == .critical)
+        // macOS can't make it any less hot
+        #expect(TemperatureReading(celsius: 110, thermalState: .critical).level == .critical)
+    }
+
     @Test func withoutSensorsMacOSSaysHowHot() {
         #expect(TemperatureReading(celsius: nil, thermalState: .nominal).level == .normal)
         #expect(TemperatureReading(celsius: nil, thermalState: .fair).level == .warm)
@@ -65,6 +78,8 @@ struct TemperatureReadingTests {
 
     @Test func speaksTheTemperatureAndHowHot() {
         #expect(TemperatureReading(celsius: 41, thermalState: .nominal).spoken == "106 degrees Fahrenheit, normal")
+        #expect(TemperatureReading(celsius: 30, thermalState: .nominal).spoken == "86 degrees Fahrenheit, cool")
+        #expect(TemperatureReading(celsius: 110, thermalState: .nominal).spoken == "230 degrees Fahrenheit, critical")
         #expect(TemperatureReading(celsius: nil, thermalState: .fair).spoken == "can't be read, warm")
     }
 }
