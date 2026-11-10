@@ -36,7 +36,7 @@ final class MenuModel {
     var stayAwakeSummary: String?
     var stayAwakeSymbol = "moon.fill"
     var stayAwakeAction: MenuAction?
-    /// The inside of the Mac, read every 2 seconds while the menu is open. Nil before the first reading.
+    /// The inside of the Mac, read every 10 seconds while the menu is open. Nil before the first reading.
     var temperature: TemperatureReading?
     var isCheckingForUpdates = false
     /// The row under the pointer, highlighted as a menu's would be

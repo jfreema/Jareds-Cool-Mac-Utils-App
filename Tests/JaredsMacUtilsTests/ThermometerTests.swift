@@ -41,6 +41,18 @@ struct HeatLevelTests {
 }
 
 struct TemperatureReadingTests {
+    /// Jared, on November 10, 2026: "check only every 10 seconds on the mac"
+    @Test func isReadEveryTenSecondsAndNoSooner() {
+        #expect(TemperatureReading.every == 10)
+        #expect(TemperatureReading.isDue(after: nil))
+        #expect(!TemperatureReading.isDue(after: 0))
+        #expect(!TemperatureReading.isDue(after: 9.9))
+        #expect(TemperatureReading.isDue(after: 10))
+        #expect(TemperatureReading.isDue(after: 3600))
+        // The clock was set back
+        #expect(TemperatureReading.isDue(after: -5))
+    }
+
     @Test func showsWholeDegreesFahrenheit() {
         #expect(TemperatureReading(celsius: 41, thermalState: .nominal).fahrenheit == 106)
         #expect(TemperatureReading(celsius: 100, thermalState: .nominal).fahrenheit == 212)

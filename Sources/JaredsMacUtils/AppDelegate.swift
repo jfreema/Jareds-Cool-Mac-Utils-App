@@ -14,6 +14,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let thermometer = Thermometer()
     /// The last temperature read, which the menu shows as it opens, until the next
     private var temperature: TemperatureReading?
+    /// When it was last asked for
+    private var temperatureReadAt: Date?
     private var temperatureTimer: Timer?
     private lazy var drums = DrumMachineWindowController()
     private lazy var tuner: TunerWindowController = {
@@ -232,11 +234,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     // MARK: Temperature
 
-    /// Every 2 seconds while the menu is open
+    /// As the menu opens, unless it was read in the last 10 seconds, then every 10 seconds while the menu is open
+    /// (`TemperatureReading.every`, which Jared set)
     private func startReadingTemperature() {
-        readTemperature()
+        let elapsed = temperatureReadAt.map { Date().timeIntervalSince($0) }
+        if TemperatureReading.isDue(after: elapsed) { readTemperature() }
         guard temperatureTimer == nil else { return }
-        let timer = Timer(timeInterval: 2, repeats: true) { [weak self] _ in
+        let timer = Timer(timeInterval: TemperatureReading.every, repeats: true) { [weak self] _ in
             MainActor.assumeIsolated { self?.readTemperature() }
         }
         RunLoop.main.add(timer, forMode: .common)  // fires while the menu is open
@@ -249,6 +253,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func readTemperature() {
+        temperatureReadAt = Date()
         thermometer.read { [weak self] celsius in
             guard let self else { return }
             temperature = TemperatureReading(celsius: celsius, thermalState: ProcessInfo.processInfo.thermalState)

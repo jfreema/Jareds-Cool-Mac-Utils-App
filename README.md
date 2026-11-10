@@ -222,7 +222,7 @@ If the app quits or crashes, sleep comes back on, and Low Power Mode goes back t
 
 Shows how hot the inside of your Mac is, in °F, so you can tell when it's running hot or overheating.
 
-**Use it:** click the app's icon in the menu bar. **Inside Your Mac**, at the bottom of the menu, is the temperature of the processor, the hottest part inside your Mac. It updates every 2 seconds while the menu is open, and the pill beside it says how hot that is:
+**Use it:** click the app's icon in the menu bar. **Inside Your Mac**, at the bottom of the menu, is the temperature of the processor, the hottest part inside your Mac. It updates every 10 seconds while the menu is open, and the pill beside it says how hot that is:
 
 | Pill | Temperature | What it means |
 |---|---|---|

@@ -47,6 +47,19 @@ struct TemperatureReading: Equatable {
 
     var fahrenheit: Int? { celsius.map { Int(($0 * 9 / 5 + 32).rounded()) } }
 
+    /// How often it's read while the menu is open, in seconds, and how far apart at least. Jared set it on November
+    /// 10, 2026: "check only every 10 seconds on the mac and once every 2 minutes on the windows app." It was every 2
+    /// seconds before.
+    static let every: TimeInterval = 10
+
+    /// Whether to read it again, this many seconds after the last time, or nil if it hasn't been read. The menu
+    /// opened again sooner shows the reading it has.
+    static func isDue(after elapsed: TimeInterval?) -> Bool {
+        guard let elapsed else { return true }
+        // Less than no time means the clock was set back, which mustn't keep an old reading on show
+        return elapsed >= every || elapsed < 0
+    }
+
     /// The hotter of the two. macOS saying nothing's wrong doesn't make a cool Mac normal.
     var level: HeatLevel {
         let macOS = HeatLevel.level(thermalState)
