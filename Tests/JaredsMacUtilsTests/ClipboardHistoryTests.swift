@@ -21,10 +21,10 @@ private func png(width: Int, height: Int) -> Data {
 private func previews(_ history: ClipHistory) -> [ClipPreview] { history.entries.map(\.preview) }
 
 struct ClipHistoryTests {
-    @Test func keepsTheLastThreeNewestFirst() {
+    @Test func keepsTheLastFiveNewestFirst() {
         var history = ClipHistory()
-        for word in ["one", "two", "three", "four"] { history.add(text(word)) }
-        #expect(previews(history) == [.text("four"), .text("three"), .text("two")])
+        for word in ["one", "two", "three", "four", "five", "six"] { history.add(text(word)) }
+        #expect(previews(history) == [.text("six"), .text("five"), .text("four"), .text("three"), .text("two")])
     }
 
     @Test func aCopyMadeAgainMovesToTheTop() {
@@ -127,8 +127,11 @@ struct ClipKeyTests {
         #expect(ClipKey(keyCode: UInt16(kVK_ANSI_1)) == .choose(0))
         #expect(ClipKey(keyCode: UInt16(kVK_ANSI_2)) == .choose(1))
         #expect(ClipKey(keyCode: UInt16(kVK_ANSI_3)) == .choose(2))
+        #expect(ClipKey(keyCode: UInt16(kVK_ANSI_4)) == .choose(3))
+        #expect(ClipKey(keyCode: UInt16(kVK_ANSI_5)) == .choose(4))
         #expect(ClipKey(keyCode: UInt16(kVK_ANSI_Keypad1)) == .choose(0))
         #expect(ClipKey(keyCode: UInt16(kVK_ANSI_Keypad3)) == .choose(2))
+        #expect(ClipKey(keyCode: UInt16(kVK_ANSI_Keypad5)) == .choose(4))
     }
 
     @Test func returnPastesTheLitRowAndArrowsMoveIt() {
@@ -140,7 +143,7 @@ struct ClipKeyTests {
 
     @Test func anyOtherKeyCloses() {
         #expect(ClipKey(keyCode: UInt16(kVK_Escape)) == .close)
-        #expect(ClipKey(keyCode: UInt16(kVK_ANSI_4)) == .close)
+        #expect(ClipKey(keyCode: UInt16(kVK_ANSI_6)) == .close)
         #expect(ClipKey(keyCode: UInt16(kVK_ANSI_V)) == .close)
     }
 }

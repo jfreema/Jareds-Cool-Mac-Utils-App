@@ -21,18 +21,25 @@ final class ClipPickerModel {
     /// Each row's frame from the top left of the panel, to find the one clicked
     @ObservationIgnored var rowFrames: [Int: CGRect] = [:]
 
+    /// A key: pastes it
     @ObservationIgnored var onChoose: (Int) -> Void = { _ in }
+    /// A click: pastes it, or opens a picture in the editor
+    @ObservationIgnored var onClick: (Int) -> Void = { _ in }
     @ObservationIgnored var onResize: (CGSize) -> Void = { _ in }
 }
 
-/// The last three copies by the pointer, in the bubble pop style. Like the menu, it takes the keyboard without
+/// The last five copies by the pointer, in the bubble pop style. Like the menu, it takes the keyboard without
 /// activating the app, so the app you're in keeps the focus, and it closes on a click elsewhere or Esc.
 @MainActor
 final class ClipPicker: NSObject, NSWindowDelegate {
     let model = ClipPickerModel()
-    /// With the row's index, counting from 0
+    /// A number key, or Return, with the row's index, counting from 0
     var onChoose: ((Int) -> Void)? {
         didSet { model.onChoose = { [weak self] index in self?.onChoose?(index) } }
+    }
+    /// A click on a row, with its index
+    var onClick: ((Int) -> Void)? {
+        didSet { model.onClick = { [weak self] index in self?.onClick?(index) } }
     }
 
     private lazy var panel = makePanel()
@@ -70,7 +77,7 @@ final class ClipPicker: NSObject, NSWindowDelegate {
             }
         }
         NSAccessibility.post(element: panel, notification: .announcementRequested,
-                             userInfo: [.announcement: "Clipboard history: press 1, 2 or 3 to paste",
+                             userInfo: [.announcement: "Clipboard history: press 1 to 5 to paste",
                                         .priority: NSAccessibilityPriorityLevel.high.rawValue])
     }
 
@@ -175,7 +182,7 @@ final class ClipPicker: NSObject, NSWindowDelegate {
             let chosen = row != nil && row == downRow ? row : nil
             downRow = nil
             model.pressed = nil
-            if let chosen, model.rows.indices.contains(chosen) { model.onChoose(chosen) }
+            if let chosen, model.rows.indices.contains(chosen) { model.onClick(chosen) }
         default:
             break
         }
@@ -347,7 +354,7 @@ private struct ClipRowButton: View {
     var body: some View {
         let index = row.number - 1
         // Clicks go to ClipPicker.mouse instead. The button is for VoiceOver.
-        Button { model.onChoose(index) } label: {
+        Button { model.onClick(index) } label: {
             HStack(spacing: 9) {
                 Text(verbatim: "\(row.number)")
                     .font(Bubble.display(13))
@@ -368,7 +375,11 @@ private struct ClipRowButton: View {
         .onHover { inside in if inside { model.lit = index } }
         .padding(.trailing, 2)
         .accessibilityLabel("\(row.number): \(spoken)")
-        .accessibilityHint("Pastes it")
+        .accessibilityHint(isPicture ? "Opens it in the editor" : "Pastes it")
+    }
+
+    private var isPicture: Bool {
+        if case .picture = row.preview { true } else { false }
     }
 
     /// Like the menu's tool tiles
@@ -376,7 +387,9 @@ private struct ClipRowButton: View {
         switch row.number {
         case 1: Bubble.yellow
         case 2: Bubble.green
-        default: Bubble.orange
+        case 3: Bubble.orange
+        case 4: Bubble.sky
+        default: Bubble.red
         }
     }
 
@@ -399,7 +412,14 @@ private struct ClipRowButton: View {
                     .clipShape(shape)
                     .overlay(shape.strokeBorder(Bubble.ink.opacity(0.35), lineWidth: 1))
             }
-            note(spoken, symbol: row.thumbnail == nil ? "photo" : nil)
+            VStack(alignment: .leading, spacing: 2) {
+                note(spoken, symbol: row.thumbnail == nil ? "photo" : nil)
+                // A click edits it, its number pastes it
+                Text("Click to edit")
+                    .font(Bubble.body(11))
+                    .foregroundStyle(Bubble.ink.opacity(0.6))
+                    .accessibilityHidden(true)
+            }
         case .files:
             note(spoken, symbol: "doc.fill")
         case .other:
@@ -465,6 +485,8 @@ enum ClipPickerPicture {
                 + "and the folding chairs from the garage"), thumbnail: nil),
             .init(id: UUID(), number: 2, preview: .picture(width: 1600, height: 1000), thumbnail: dots),
             .init(id: UUID(), number: 3, preview: .files(["Battle Plan.pdf"]), thumbnail: nil),
+            .init(id: UUID(), number: 4, preview: .text("https://www.example.com/tickets/order/48213"), thumbnail: nil),
+            .init(id: UUID(), number: 5, preview: .text("Gate C, row 12, seats 4 to 7"), thumbnail: nil),
         ]
         let renderer = ImageRenderer(content: ClipPickerView(model: model))
         renderer.proposedSize = ProposedViewSize(width: ClipPickerView.width, height: 1000)

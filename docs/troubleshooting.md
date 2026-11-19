@@ -96,8 +96,10 @@ From 1.1.6, the app is signed with an Apple Developer ID and notarized, so macOS
 - **Says Copied: press command+V to paste, instead of pasting.** The app doesn't have the Accessibility permission, so it can only put your choice on the clipboard. Turn on **Jared's Cool Mac Utilities App** in **System Settings → Privacy & Security → Accessibility**. If it's on already, reset it as for [app preview](#app-preview).
 - **Says Nothing copied yet.** Nothing's been copied since the app opened or the switch went on, or the last copy was private. Copy something, then press **control+option+V** again.
 - **A password you copied isn't there.** On purpose: the app never keeps what a password manager marks as private.
-- **Something you copied earlier is gone.** Only the last three copies are kept, and only until the app quits or the switch goes off. Copying the same thing again moves it to the top instead of taking a second spot.
+- **Something you copied earlier is gone.** Only the last five copies are kept, and only until the app quits or the switch goes off. Copying the same thing again moves it to the top instead of taking a second spot.
 - **"Another app is using control+option+V."** Another app, like another clipboard app, has the same shortcut. Quit it or change its shortcut, then turn **Clipboard History with control+option+V** off and on.
+- **Clicking a picture opened the editor instead of pasting it.** On purpose: a click on a picture opens it in the editor. Press its number to paste it.
+- **Says Couldn't open that picture.** The app that copied it gave a picture macOS can't read. Press its number to paste it instead.
 - **An app's own ⌃⌥V stopped working.** While clipboard history is on, ⌃⌥V belongs to it in every app. Turn it off to give it back.
 
 ## Screenshot tool

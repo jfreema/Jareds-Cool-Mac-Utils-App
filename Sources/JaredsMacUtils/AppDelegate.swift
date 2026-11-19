@@ -64,6 +64,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         snipper.onChange = { [weak self] in self?.refreshMenu() }
         snipper.start()
         clipboard.onChange = { [weak self] in self?.refreshMenu() }
+        clipboard.onEdit = { [weak self] snip, app in self?.snipper.editors.open(snip, returningTo: app) }
         clipboard.start()
         hiddenIcons.onChange = { [weak self] in self?.refreshMenu() }
         hiddenIcons.willShow = { [weak self] in self?.menu.close() }

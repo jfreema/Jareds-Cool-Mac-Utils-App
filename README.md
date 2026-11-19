@@ -17,7 +17,7 @@
   </tr>
   <tr>
     <td width="50%"><b><a href="#screenshot-tool">Screenshot tool</a></b><br>⌃⌥P snips part of the screen to copy, save or mark up, or copies the text in it. ⌃⌥G records it as a GIF.</td>
-    <td width="50%"><b><a href="#clipboard-history">Clipboard history</a></b><br>control+option+V brings back the last three things you copied, to paste any of them.</td>
+    <td width="50%"><b><a href="#clipboard-history">Clipboard history</a></b><br>control+option+V brings back the last five things you copied, to paste any of them.</td>
   </tr>
   <tr>
     <td width="50%"><b><a href="#hidden-menu-bar-icons">Hidden menu bar icons</a></b><br>An arrow, or control+option+H, brings back the menu bar icons that don't fit, as beside the notch.</td>
@@ -131,16 +131,18 @@ GIFs show the pointer, but not the red line or **Stop**. They're 15 frames a sec
 
 ## Clipboard history
 
-Press control+option+V to bring back the last three things you copied, then paste whichever you want. Text, pictures and files all come back as they were copied.
+Press control+option+V to bring back the last five things you copied, then paste whichever you want. Text, pictures and files all come back as they were copied.
 
-<img src="docs/clipboard.png" width="320" alt="The clipboard history: three numbered cards, newest first, with a line of text, a picture and a file">
+<img src="docs/clipboard.png" width="320" alt="The clipboard history: five numbered cards, newest first, with a line of text, a picture, a file, a link and another line of text">
 
 **Turn it on:**
 
 1. Click the app's icon in the menu bar and turn on **Clipboard History with control+option+V**.
 2. It pastes by pressing ⌘V for you, which needs the Accessibility permission, as [window snapping](#window-snapping) does. With snapping or app previews on, the app has it already. Otherwise, click **Open System Settings** when macOS asks, and turn on **Jared's Cool Mac Utilities App**.
 
-**Use it:** copy as you always do. Where you want to paste, press **control+option+V**. Your last three copies appear by the pointer, newest first. Press **1**, **2** or **3**, or click one, and it's pasted where you were typing. It becomes your newest copy, so ⌘V pastes it again. You can also pick one with ↑ and ↓ and press Return. Press Esc, or click anywhere else, to close it without pasting.
+**Use it:** copy as you always do. Where you want to paste, press **control+option+V**. Your last five copies appear by the pointer, newest first. Press a number from **1** to **5**, or click one, and it's pasted where you were typing. It becomes your newest copy, so ⌘V pastes it again. You can also pick one with ↑ and ↓ and press Return. Press Esc, or click anywhere else, to close it without pasting.
+
+**Mark up a picture:** click a picture instead, and it opens in the [screenshot tool's editor](#screenshot-tool), to draw on it, copy it or save it. Its number still pastes it.
 
 The app keeps your copies in memory only, so they're gone when it quits or you turn the switch off. It never keeps what a password manager marks as private, like a password copied from 1Password.
 

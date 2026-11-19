@@ -5,14 +5,17 @@ import os
 
 let clipLogger = Logger(subsystem: Bundle.main.bundleIdentifier ?? "jaredsmacutils", category: "clip")
 
-/// control+option+V brings back the last three things you copied: a picker by the pointer pastes the one you choose,
-/// with a click or its number. They're kept in memory only, so they're gone when the app quits or the switch goes off,
-/// and anything a password manager marks as private is never kept.
+/// control+option+V brings back the last five things you copied: a picker by the pointer pastes the one you choose,
+/// with a click or its number. A click on a picture opens it in the snip editor instead, to mark it up. They're kept
+/// in memory only, so they're gone when the app quits or the switch goes off, and anything a password manager marks as
+/// private is never kept.
 @MainActor
 final class ClipboardHistory {
     enum Status { case off, shortcutTaken, on }
 
     var onChange: (() -> Void)?
+    /// A picture clicked in the picker, to open in the snip editor, with the app to give the focus back to
+    var onEdit: ((Snip, NSRunningApplication?) -> Void)?
 
     private(set) var isEnabled = UserDefaults.standard.bool(forKey: Keys.enabled) {
         didSet { UserDefaults.standard.set(isEnabled, forKey: Keys.enabled) }
@@ -42,6 +45,7 @@ final class ClipboardHistory {
 
     func start() {
         picker.onChoose = { [weak self] index in self?.paste(index) }
+        picker.onClick = { [weak self] index in self?.clicked(index) }
         refresh()
     }
 
@@ -181,6 +185,21 @@ final class ClipboardHistory {
         let thumbnail = NSImage(cgImage: image, size: .zero)
         thumbnails[entry.id] = thumbnail
         return thumbnail
+    }
+
+    /// A picture opens in the editor. Anything else is pasted, as with its number.
+    private func clicked(_ index: Int) {
+        guard history.entries.indices.contains(index) else { return picker.close() }
+        let entry = history.entries[index]
+        guard case .picture = entry.preview else { return paste(index) }
+        picker.close()
+        guard let data = entry.pictureData, let snip = Snip(data: data) else {
+            clipLogger.error("Couldn't read picture number \(index + 1) to edit it")
+            Toast.show("Couldn't open that picture", near: NSEvent.mouseLocation)
+            return
+        }
+        clipLogger.notice("Opening picture number \(index + 1) in the editor")
+        onEdit?(snip, previousApp)
     }
 
     // MARK: Pasting
@@ -400,9 +419,9 @@ struct ClipEntry: Sendable {
     }
 }
 
-/// The last three copies, newest first
+/// The last five copies, newest first
 struct ClipHistory {
-    static let size = 3
+    static let size = 5
 
     private(set) var entries: [ClipEntry] = []
 
@@ -424,7 +443,7 @@ struct ClipHistory {
 /// What a key does in the picker. By key code, so the number keys work in any layout and with control and option
 /// still held.
 enum ClipKey: Equatable {
-    /// 1, 2 or 3, on the number row or keypad: that one, counting from 0
+    /// 1 to 5, on the number row or keypad: that one, counting from 0
     case choose(Int)
     /// Return or Enter: the one lit up
     case chooseLit
@@ -437,6 +456,8 @@ enum ClipKey: Equatable {
         case kVK_ANSI_1, kVK_ANSI_Keypad1: .choose(0)
         case kVK_ANSI_2, kVK_ANSI_Keypad2: .choose(1)
         case kVK_ANSI_3, kVK_ANSI_Keypad3: .choose(2)
+        case kVK_ANSI_4, kVK_ANSI_Keypad4: .choose(3)
+        case kVK_ANSI_5, kVK_ANSI_Keypad5: .choose(4)
         case kVK_Return, kVK_ANSI_KeypadEnter: .chooseLit
         case kVK_UpArrow: .up
         case kVK_DownArrow: .down
