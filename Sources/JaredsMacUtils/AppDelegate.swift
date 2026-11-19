@@ -11,6 +11,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let screenLock = ScreenLock()
     private let cleaner = KeyboardCleaner()
     private let hiddenIcons = HiddenIcons()
+    private let clipboard = ClipboardHistory()
     private let thermometer = Thermometer()
     /// The last temperature read, which the menu shows as it opens, until the next
     private var temperature: TemperatureReading?
@@ -62,6 +63,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         previews.start()
         snipper.onChange = { [weak self] in self?.refreshMenu() }
         snipper.start()
+        clipboard.onChange = { [weak self] in self?.refreshMenu() }
+        clipboard.start()
         hiddenIcons.onChange = { [weak self] in self?.refreshMenu() }
         hiddenIcons.willShow = { [weak self] in self?.menu.close() }
         hiddenIcons.keepsRegular = { [weak self] in self?.snipper.editors.isOpen ?? false }
@@ -81,8 +84,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         #if DEBUG
         // Test hooks: --update-now, --tuner, --drums, --snip-editor <image file>, --show-hidden-icons (with the arrow
-        // on, after 3 seconds), --show-menu (after 3 seconds), --temperature (what the sensors say, on stdout) and
-        // --render-menu <png file> (the README's picture of the menu)
+        // on, after 3 seconds), --show-menu (after 3 seconds), --temperature (what the sensors say, on stdout),
+        // --render-menu <png file> (the README's picture of the menu) and --render-clipboard <png file> (the
+        // clipboard history's picker)
         let arguments = CommandLine.arguments
         if arguments.contains("--update-now") { updater.checkForUpdates(askFirst: false) }
         if arguments.contains("--temperature") {
@@ -91,6 +95,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if let index = arguments.firstIndex(of: "--render-menu"), arguments.indices.contains(index + 1) {
             let saved = MenuPicture.render(to: arguments[index + 1])
             logger.notice("Menu picture \(saved ? "saved" : "not saved", privacy: .public)")
+        }
+        if let index = arguments.firstIndex(of: "--render-clipboard"), arguments.indices.contains(index + 1) {
+            let saved = ClipPickerPicture.render(to: arguments[index + 1])
+            logger.notice("Clipboard picture \(saved ? "saved" : "not saved", privacy: .public)")
         }
         if arguments.contains("--show-menu") {
             Task { @MainActor [weak self] in
@@ -172,7 +180,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         snapper.refresh()
         previews.refresh()
         snipper.refresh()
-        // The app holding control+option+L may have quit
+        // The app holding control+option+V or L may have quit
+        clipboard.refresh()
         screenLock.refresh()
         refreshMenu(force: true)
         startReadingTemperature()
@@ -199,6 +208,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             .snapThirds: snapper.usesThirds,
             .snipScreen: snipper.isEnabled,
             .recordGIFs: snipper.recordsGIFs,
+            .clipboardHistory: clipboard.isEnabled,
             .hiddenIcons: hiddenIcons.isEnabled,
             .stayAwake: controller.isEnabled,
             .requirePower: controller.requiresPower,
@@ -228,6 +238,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         case .shortcutTaken(let keys): MenuAction(title: "Another app is using \(keys)")
         case .off, .on: nil
         }
+        // Why the shortcut didn't take
+        model.clipboardAction = clipboard.status == .shortcutTaken
+            ? MenuAction(title: "Another app is using control+option+V") : nil
         model.isCheckingForUpdates = updater.isBusy
         model.temperature = temperature
     }
@@ -277,6 +290,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         case .snapThirds: snapper.setUsesThirds(on)
         case .snipScreen: setSnipScreen(on)
         case .recordGIFs: snipper.setRecordsGIFs(on)
+        case .clipboardHistory: setClipboardHistory(on)
         case .hiddenIcons: hiddenIcons.setEnabled(on)
         case .stayAwake: setStayAwake(on)
         case .requirePower: controller.setRequiresPower(on)
@@ -321,6 +335,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             closeMenu { [weak self] in self?.snapper.setEnabled(true) }
         } else {
             snapper.setEnabled(on)
+        }
+    }
+
+    private func setClipboardHistory(_ on: Bool) {
+        if on, !AXIsProcessTrusted() {
+            // macOS's permission dialog needs the screen
+            closeMenu { [weak self] in self?.clipboard.setEnabled(true) }
+        } else {
+            clipboard.setEnabled(on)
         }
     }
 

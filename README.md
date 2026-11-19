@@ -17,19 +17,19 @@
   </tr>
   <tr>
     <td width="50%"><b><a href="#screenshot-tool">Screenshot tool</a></b><br>⌃⌥P snips part of the screen to copy, save or mark up, or copies the text in it. ⌃⌥G records it as a GIF.</td>
+    <td width="50%"><b><a href="#clipboard-history">Clipboard history</a></b><br>control+option+V brings back the last three things you copied, to paste any of them.</td>
+  </tr>
+  <tr>
     <td width="50%"><b><a href="#hidden-menu-bar-icons">Hidden menu bar icons</a></b><br>An arrow, or control+option+H, brings back the menu bar icons that don't fit, as beside the notch.</td>
-  </tr>
-  <tr>
     <td width="50%"><b><a href="#guitar-tuner">Guitar tuner</a></b><br>Shows the note you're playing and how sharp or flat it is.</td>
+  </tr>
+  <tr>
     <td width="50%"><b><a href="#drum-machine">Drum machine</a></b><br>Tap a beat on the trackpad, with a metronome and a loop to play along to.</td>
-  </tr>
-  <tr>
     <td width="50%"><b><a href="#keyboard-cleaning">Keyboard cleaning</a></b><br>Turns off the keyboard and trackpad for a few minutes while you wipe them.</td>
-    <td width="50%"><b><a href="#stay-awake-with-the-lid-closed">Stay awake with the lid closed</a></b><br>Keeps a MacBook running with its lid shut, plugged in or on battery.</td>
   </tr>
   <tr>
+    <td width="50%"><b><a href="#stay-awake-with-the-lid-closed">Stay awake with the lid closed</a></b><br>Keeps a MacBook running with its lid shut, plugged in or on battery.</td>
     <td width="50%"><b><a href="#temperature">Temperature</a></b><br>Shows how hot the inside of your Mac is, in °F, so you can tell when it's running hot.</td>
-    <td width="50%"></td>
   </tr>
 </table>
 
@@ -126,6 +126,23 @@ To change a shape, click it. The one you just drew is picked up already, so you 
 **Record a GIF:** press ⌃⌥G, then drag across part of the screen, or click a window to record all of it. Click off any window for the whole screen, or press Esc to cancel. A red line goes around what's recording: scroll, click and type as you like, then click **Stop** under it or press ⌃⌥G again. It stops by itself after a minute. A menu opens where the pointer is, saying how long and how big the GIF is, with **Copy to Clipboard**, to paste it into Slack, a message, an email or a document, and **Save…**.
 
 GIFs show the pointer, but not the red line or **Stop**. They're 15 frames a second, a pixel per point, and 1280 pixels across at most. Parts that don't move cost next to nothing, so a smaller area or a shorter recording makes a smaller file. The wait before you start scrolling is cut to a second, and any pause along the way to two, so the GIF doesn't sit still each time it plays.
+
+---
+
+## Clipboard history
+
+Press control+option+V to bring back the last three things you copied, then paste whichever you want. Text, pictures and files all come back as they were copied.
+
+<img src="docs/clipboard.png" width="320" alt="The clipboard history: three numbered cards, newest first, with a line of text, a picture and a file">
+
+**Turn it on:**
+
+1. Click the app's icon in the menu bar and turn on **Clipboard History with control+option+V**.
+2. It pastes by pressing ⌘V for you, which needs the Accessibility permission, as [window snapping](#window-snapping) does. With snapping or app previews on, the app has it already. Otherwise, click **Open System Settings** when macOS asks, and turn on **Jared's Cool Mac Utilities App**.
+
+**Use it:** copy as you always do. Where you want to paste, press **control+option+V**. Your last three copies appear by the pointer, newest first. Press **1**, **2** or **3**, or click one, and it's pasted where you were typing. It becomes your newest copy, so ⌘V pastes it again. You can also pick one with ↑ and ↓ and press Return. Press Esc, or click anywhere else, to close it without pasting.
+
+The app keeps your copies in memory only, so they're gone when it quits or you turn the switch off. It never keeps what a password manager marks as private, like a password copied from 1Password.
 
 ---
 

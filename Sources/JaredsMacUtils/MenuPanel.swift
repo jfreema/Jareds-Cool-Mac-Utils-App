@@ -6,7 +6,7 @@ import SwiftUI
 
 /// A switch in the menu
 enum MenuToggle: Hashable {
-    case appPreviews, snapWindows, snapThirds, snipScreen, recordGIFs, hiddenIcons
+    case appPreviews, snapWindows, snapThirds, snipScreen, recordGIFs, clipboardHistory, hiddenIcons
     case stayAwake, requirePower, requireInternet, lowPower
     case openAtLogin
 }
@@ -32,6 +32,7 @@ final class MenuModel {
     var isDisabled: Set<MenuToggle> = []
     var snapAction: MenuAction?
     var snipAction: MenuAction?
+    var clipboardAction: MenuAction?
     /// Only when it says more than the switch does: why the Mac sleeps anyway, or what needs doing
     var stayAwakeSummary: String?
     var stayAwakeSymbol = "moon.fill"
@@ -229,6 +230,12 @@ struct MenuView: View {
                                    help: "Records part of the screen as a GIF, like scrolling through a page")
                     }
                     if let action = model.snipAction { ActionRow(model: model, action: action) }
+                }
+            }
+            section("Clipboard") {
+                card {
+                    ToggleRow(model: model, toggle: .clipboardHistory, title: "Clipboard History with control+option+V")
+                    if let action = model.clipboardAction { ActionRow(model: model, action: action) }
                 }
             }
             section("Menu Bar") {
@@ -635,7 +642,8 @@ enum MenuPicture {
     @MainActor static func render(to path: String) -> Bool {
         let model = MenuModel()
         model.isOn = [.appPreviews: true, .snapWindows: true, .snapThirds: true, .snipScreen: true, .recordGIFs: true,
-                      .hiddenIcons: true, .stayAwake: true, .lowPower: true, .openAtLogin: true]
+                      .clipboardHistory: true, .hiddenIcons: true, .stayAwake: true, .lowPower: true,
+                      .openAtLogin: true]
         model.temperature = TemperatureReading(celsius: 41, thermalState: .nominal)
         let renderer = ImageRenderer(content: MenuView(model: model))
         renderer.proposedSize = ProposedViewSize(width: MenuView.width, height: 2000)  // all of it, without scrolling
